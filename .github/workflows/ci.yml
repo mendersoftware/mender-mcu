@@ -35,7 +35,7 @@ on:
 jobs:
   check:
     name: Check code format
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -57,7 +57,7 @@ jobs:
           ./.github/workflows/check_code_format.sh
   build:
     name: SonarCloud analysis
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:

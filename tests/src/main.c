@@ -389,6 +389,20 @@ sig_handler(int signo, siginfo_t *info, void *arg) {
 }
 
 /**
+ * @brief Print usage
+ * @param argv0 Name of the binary (first argument)
+ */
+void
+print_usage(const char *argv0) {
+    printf("usage: %s [options]\n", (strrchr(argv0, '/') ? strrchr(argv0, '/') + 1 : argv0));
+    printf("\t--help, -h: Print this help\n");
+    printf("\t--mac_address, -m: MAC address\n");
+    printf("\t--artifact_name, -a: Artifact name\n");
+    printf("\t--device_type, -d: Device type\n");
+    printf("\t--tenant_token, -t: Tenant token (optional)\n");
+}
+
+/**
  * @brief Main function
  * @param argc Number of arguments
  * @param argv Arguments
@@ -417,12 +431,7 @@ main(int argc, char **argv) {
         switch (opt) {
             case 'h':
                 /* Help */
-                printf("usage: %s [options]\n", (strrchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0]));
-                printf("\t--help, -h: Print this help\n");
-                printf("\t--mac_address, -m: MAC address\n");
-                printf("\t--artifact_name, -a: Artifact name\n");
-                printf("\t--device_type, -d: Device type\n");
-                printf("\t--tenant_token, -t: Tenant token (optional)\n");
+                print_usage(argv[0]);
                 goto END;
                 break;
             case 'm':
@@ -444,6 +453,7 @@ main(int argc, char **argv) {
             default:
                 /* Unknown option */
                 ret = EXIT_FAILURE;
+                print_usage(argv[0]);
                 goto END;
                 break;
         }
@@ -452,6 +462,8 @@ main(int argc, char **argv) {
     /* Verify mandatory options */
     if ((NULL == mac_address) || (NULL == artifact_name) || (NULL == device_type)) {
         ret = EXIT_FAILURE;
+        printf("Missing MAC address, Artifact name, or Device type\n");
+        print_usage(argv[0]);
         goto END;
     }
 

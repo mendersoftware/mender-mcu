@@ -7,14 +7,21 @@ include:
 stages:
   - test
 
-test:static:
+.test:static:
   stage: test
   image: ubuntu:20.04
   needs: []
   before_script:
     - apt-get update && apt-get install -y git clang-format pcregrep
+
+test:static:license:
+  extends: .test:static
   script:
     - ./.github/workflows/check_headers.sh
+
+test:static:format:
+  extends: .test:static
+  script:
     - ./.github/workflows/check_include_guards.sh
     - ./.github/workflows/check_equivalence_tests.sh
     - ./.github/workflows/check_code_format.sh

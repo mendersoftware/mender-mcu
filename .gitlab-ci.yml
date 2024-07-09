@@ -9,7 +9,7 @@ stages:
 
 .test:static:
   stage: test
-  image: ubuntu:20.04
+  image: ubuntu:24.04
   needs: []
   before_script:
     - apt-get update && apt-get install -y git clang-format pcregrep

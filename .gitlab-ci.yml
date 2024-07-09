@@ -14,10 +14,11 @@ stages:
   before_script:
     - apt-get update && apt-get install -y git clang-format pcregrep
 
-test:static:license:
-  extends: .test:static
-  script:
-    - ./.github/workflows/check_headers.sh
+# MEN-7396: License checks disabled until we conclude on the licensing for the project
+# test:static:license:
+#   extends: .test:static
+#   script:
+#     - ./.github/workflows/check_headers.sh
 
 test:static:format:
   extends: .test:static

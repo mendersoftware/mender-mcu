@@ -43,6 +43,35 @@
  */
 static struct nvs_fs mender_storage_nvs_handle;
 
+static mender_err_t
+nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
+    ssize_t ret;
+
+    /* Retrieve length of the data */
+    ret = nvs_read(nvs, id, NULL, 0);
+    if (ret <= 0) {
+        return (0 == ret) ? MENDER_NOT_FOUND : MENDER_FAIL;
+    }
+    *length = (size_t)ret;
+
+    /* Allocate memory */
+    *data = malloc(*length);
+    if (NULL == *data) {
+        mender_log_error("Unable to allocate memory for: %d", id);
+        return MENDER_FAIL;
+    }
+
+    /* Read data */
+    ret = nvs_read(nvs, id, *data, *length);
+    if (ret < 0) {
+        free(*data);
+        *data = NULL;
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
 mender_err_t
 mender_storage_init(void) {
 
@@ -97,39 +126,28 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
     assert(NULL != public_key_length);
     ssize_t ret;
 
-    /* Retrieve length of the keys */
-    if ((ret = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PRIVATE_KEY, NULL, 0)) <= 0) {
-        mender_log_info("Authentication keys are not available");
-        return MENDER_NOT_FOUND;
-    }
-    *private_key_length = (size_t)ret;
-    if ((ret = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PUBLIC_KEY, NULL, 0)) <= 0) {
-        mender_log_info("Authentication keys are not available");
-        return MENDER_NOT_FOUND;
-    }
-    *public_key_length = (size_t)ret;
-
-    /* Allocate memory to copy keys */
-    if (NULL == (*private_key = (unsigned char *)malloc(*private_key_length))) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
-    }
-    if (NULL == (*public_key = (unsigned char *)malloc(*public_key_length))) {
-        mender_log_error("Unable to allocate memory");
-        free(*private_key);
-        *private_key = NULL;
-        return MENDER_FAIL;
+    /* Read private key */
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PRIVATE_KEY, (void **)private_key, private_key_length);
+    if (MENDER_OK != ret) {
+        if (MENDER_NOT_FOUND == ret) {
+            mender_log_info("Private key not available");
+        } else {
+            mender_log_error("Unable to read private key");
+        }
+        return ret;
     }
 
-    /* Read keys */
-    if ((nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PRIVATE_KEY, *private_key, *private_key_length) < 0)
-        || (nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PUBLIC_KEY, *public_key, *public_key_length) < 0)) {
-        mender_log_error("Unable to read authentication keys");
+    /* Read public key */
+    ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PUBLIC_KEY, (void **)public_key, public_key_length);
+    if (MENDER_OK != ret) {
+        if (MENDER_NOT_FOUND == ret) {
+            mender_log_info("Public key not available");
+        } else {
+            mender_log_error("Unable to read public key");
+        }
         free(*private_key);
         *private_key = NULL;
-        free(*public_key);
-        *public_key = NULL;
-        return MENDER_FAIL;
+        return ret;
     }
 
     return MENDER_OK;
@@ -169,25 +187,15 @@ mender_storage_get_deployment_data(char **deployment_data) {
     size_t  deployment_data_length = 0;
     ssize_t ret;
 
-    /* Retrieve length of the deployment data */
-    if ((ret = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, NULL, 0)) <= 0) {
-        mender_log_info("Deployment data not available");
-        return MENDER_NOT_FOUND;
-    }
-    deployment_data_length = (size_t)ret;
-
-    /* Allocate memory to copy deployment data */
-    if (NULL == (*deployment_data = (char *)malloc(deployment_data_length))) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
-    }
-
     /* Read deployment data */
-    if (nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, *deployment_data, deployment_data_length) < 0) {
-        mender_log_error("Unable to read deployment data");
-        free(*deployment_data);
-        *deployment_data = NULL;
-        return MENDER_FAIL;
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, (void **)deployment_data, deployment_data_length);
+    if (MENDER_OK != ret) {
+        if (ENDER_NOT_FOUND == ret) {
+            mender_log_info("Deployment data not available");
+        } else {
+            mender_log_error("Unable to read deployment data");
+        }
+        return ret;
     }
 
     return MENDER_OK;
@@ -230,24 +238,15 @@ mender_storage_get_device_config(char **device_config) {
     ssize_t ret;
 
     /* Retrieve length of the device configuration */
-    if ((ret = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, NULL, 0)) <= 0) {
-        mender_log_info("Device configuration not available");
-        return MENDER_NOT_FOUND;
-    }
-    device_config_length = (size_t)ret;
-
-    /* Allocate memory to copy device configuration */
-    if (NULL == (*device_config = (char *)malloc(device_config_length))) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
-    }
-
-    /* Read device_configuration */
-    if (nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, *device_config, device_config_length) < 0) {
-        mender_log_error("Unable to read device configuration");
-        free(*device_config);
-        *device_config = NULL;
-        return MENDER_FAIL;
+    /* Read  device configuration */
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, (void **)device_config, device_config_length);
+    if (MENDER_OK != ret) {
+        if (MENDER_NOT_FOUND == ret) {
+            mender_log_info("Device configuration not available");
+        } else {
+            mender_log_error("Unable to read device configuration");
+        }
+        return ret;
     }
 
     return MENDER_OK;

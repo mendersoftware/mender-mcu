@@ -38,6 +38,17 @@ typedef struct {
 } mender_api_config_t;
 
 /**
+ * @brief Deployment API Struct
+ */
+typedef struct {
+    char  *id;                           /**< ID of the deployment */
+    char  *artifact_name;                /**< Artifact name of the deployment */
+    char  *uri;                          /**< URI of the deployment */
+    char **device_types_compatible;      /**< Array of comaptible deployment types */
+    size_t device_types_compatible_size; /**< Size of the  deployment type array */
+} mender_api_deployment_data_t;
+
+/**
  * @brief Initialization of the API
  * @param config Mender API configuration
  * @return MENDER_OK if the function succeeds, error code otherwise
@@ -52,12 +63,10 @@ mender_err_t mender_api_perform_authentication(void);
 
 /**
  * @brief Check for deployments for the device from the mender-server
- * @param id ID of the deployment, if one is pending
- * @param artifact_name Artifact name of the deployment, if one is pending
- * @param uri URI of the deployment, if one is pending
+ * @param deployment Deployment structure to be filled with the deployment information, if one is pending
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_api_check_for_deployment(char **id, char **artifact_name, char **uri);
+mender_err_t mender_api_check_for_deployment(mender_api_deployment_data_t *deployment);
 
 /**
  * @brief Publish deployment status of the device to the mender-server

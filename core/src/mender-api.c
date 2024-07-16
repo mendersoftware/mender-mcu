@@ -92,7 +92,6 @@ mender_err_t
 mender_api_init(mender_api_config_t *config) {
 
     assert(NULL != config);
-    assert(NULL != config->identity);
     assert(NULL != config->artifact_name);
     assert(NULL != config->device_type);
     assert(NULL != config->host);
@@ -119,18 +118,20 @@ mender_api_init(mender_api_config_t *config) {
 }
 
 mender_err_t
-mender_api_perform_authentication(void) {
+mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t **identity)) {
 
-    mender_err_t ret;
-    char        *public_key_pem   = NULL;
-    cJSON       *json_identity    = NULL;
-    char        *identity         = NULL;
-    cJSON       *json_payload     = NULL;
-    char        *payload          = NULL;
-    char        *response         = NULL;
-    char        *signature        = NULL;
-    size_t       signature_length = 0;
-    int          status           = 0;
+    assert(NULL != get_identity);
+    mender_err_t       ret;
+    char              *public_key_pem       = NULL;
+    cJSON             *json_identity        = NULL;
+    mender_identity_t *identity             = NULL;
+    char              *unformatted_identity = NULL;
+    cJSON             *json_payload         = NULL;
+    char              *payload              = NULL;
+    char              *response             = NULL;
+    char              *signature            = NULL;
+    size_t             signature_length     = 0;
+    int                status               = 0;
 
     /* Get public key in PEM format */
     if (MENDER_OK != (ret = mender_tls_get_public_key_pem(&public_key_pem))) {
@@ -138,12 +139,18 @@ mender_api_perform_authentication(void) {
         goto END;
     }
 
+    /* Get identity */
+    if (MENDER_OK != (ret = get_identity(&identity))) {
+        mender_log_error("Unable to get identity");
+        goto END;
+    }
+
     /* Format identity */
-    if (MENDER_OK != (ret = mender_utils_keystore_to_json(mender_api_config.identity, &json_identity))) {
+    if (MENDER_OK != (ret = mender_utils_identity_to_json(identity, &json_identity))) {
         mender_log_error("Unable to format identity");
         goto END;
     }
-    if (NULL == (identity = cJSON_PrintUnformatted(json_identity))) {
+    if (NULL == (unformatted_identity = cJSON_PrintUnformatted(json_identity))) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto END;
@@ -155,7 +162,7 @@ mender_api_perform_authentication(void) {
         ret = MENDER_FAIL;
         goto END;
     }
-    cJSON_AddStringToObject(json_payload, "id_data", identity);
+    cJSON_AddStringToObject(json_payload, "id_data", unformatted_identity);
     cJSON_AddStringToObject(json_payload, "pubkey", public_key_pem);
     if (NULL != mender_api_config.tenant_token) {
         cJSON_AddStringToObject(json_payload, "tenant_token", mender_api_config.tenant_token);
@@ -210,6 +217,7 @@ mender_api_perform_authentication(void) {
 END:
 
     /* Release memory */
+    free(unformatted_identity);
     if (NULL != response) {
         free(response);
     }
@@ -221,9 +229,6 @@ END:
     }
     if (NULL != json_payload) {
         cJSON_Delete(json_payload);
-    }
-    if (NULL != identity) {
-        free(identity);
     }
     if (NULL != json_identity) {
         cJSON_Delete(json_identity);

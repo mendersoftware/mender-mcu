@@ -216,18 +216,12 @@ mender_err_t
 mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks) {
 
     assert(NULL != config);
-    assert(NULL != config->identity);
     assert(NULL != config->artifact_name);
     assert(NULL != config->device_type);
     assert(NULL != callbacks);
     assert(NULL != callbacks->restart);
     mender_err_t ret;
 
-    /* Save configuration */
-    if (MENDER_OK != (ret = mender_utils_keystore_copy(&mender_client_config.identity, config->identity))) {
-        mender_log_error("Unable to copy identity");
-        goto END;
-    }
     mender_client_config.artifact_name = config->artifact_name;
     mender_client_config.device_type   = config->device_type;
     if ((NULL != config->host) && (strlen(config->host) > 0)) {
@@ -286,7 +280,6 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
     mender_api_config_t mender_api_config = {
-        .identity      = mender_client_config.identity,
         .artifact_name = mender_client_config.artifact_name,
         .device_type   = mender_client_config.device_type,
         .host          = mender_client_config.host,
@@ -605,8 +598,6 @@ mender_client_exit(void) {
     mender_scheduler_exit();
 
     /* Release memory */
-    mender_utils_keystore_delete(mender_client_config.identity);
-    mender_client_config.identity                     = NULL;
     mender_client_config.artifact_name                = NULL;
     mender_client_config.device_type                  = NULL;
     mender_client_config.host                         = NULL;
@@ -734,7 +725,7 @@ mender_client_authentication_work_function(void) {
     mender_err_t ret;
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != (ret = mender_api_perform_authentication())) {
+    if (MENDER_OK != (ret = mender_api_perform_authentication(mender_client_callbacks.get_identity))) {
 
         /* Invoke authentication error callback */
         if (NULL != mender_client_callbacks.authentication_failure) {

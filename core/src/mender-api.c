@@ -244,11 +244,9 @@ END:
 }
 
 mender_err_t
-mender_api_check_for_deployment(char **id, char **artifact_name, char **uri) {
+mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
 
-    assert(NULL != id);
-    assert(NULL != artifact_name);
-    assert(NULL != uri);
+    assert(NULL != deployment);
     mender_err_t ret;
     char        *path     = NULL;
     char        *response = NULL;
@@ -282,7 +280,7 @@ mender_api_check_for_deployment(char **id, char **artifact_name, char **uri) {
         if (NULL != json_response) {
             cJSON *json_id = cJSON_GetObjectItem(json_response, "id");
             if (NULL != json_id) {
-                if (NULL == (*id = strdup(cJSON_GetStringValue(json_id)))) {
+                if (NULL == (deployment->id = strdup(cJSON_GetStringValue(json_id)))) {
                     ret = MENDER_FAIL;
                     goto END;
                 }
@@ -291,7 +289,7 @@ mender_api_check_for_deployment(char **id, char **artifact_name, char **uri) {
             if (NULL != json_artifact) {
                 cJSON *json_artifact_name = cJSON_GetObjectItem(json_artifact, "artifact_name");
                 if (NULL != json_artifact_name) {
-                    if (NULL == (*artifact_name = strdup(cJSON_GetStringValue(json_artifact_name)))) {
+                    if (NULL == (deployment->artifact_name = strdup(cJSON_GetStringValue(json_artifact_name)))) {
                         ret = MENDER_FAIL;
                         goto END;
                     }
@@ -300,7 +298,7 @@ mender_api_check_for_deployment(char **id, char **artifact_name, char **uri) {
                 if (NULL != json_source) {
                     cJSON *json_uri = cJSON_GetObjectItem(json_source, "uri");
                     if (NULL != json_uri) {
-                        if (NULL == (*uri = strdup(cJSON_GetStringValue(json_uri)))) {
+                        if (NULL == (deployment->uri = strdup(cJSON_GetStringValue(json_uri)))) {
                             ret = MENDER_FAIL;
                             goto END;
                         }
@@ -311,6 +309,31 @@ mender_api_check_for_deployment(char **id, char **artifact_name, char **uri) {
                     }
                 } else {
                     mender_log_error("Invalid response");
+                    ret = MENDER_FAIL;
+                }
+                cJSON *json_device_types_compatible = cJSON_GetObjectItem(json_artifact, "device_types_compatible");
+                if (NULL != json_device_types_compatible && cJSON_IsArray(json_device_types_compatible)) {
+                    deployment->device_types_compatible_size = cJSON_GetArraySize(json_device_types_compatible);
+                    deployment->device_types_compatible      = (char **)malloc(deployment->device_types_compatible_size * sizeof(char *));
+                    if (NULL == deployment->device_types_compatible) {
+                        mender_log_error("Unable to allocate memory");
+                        ret = MENDER_FAIL;
+                        goto END;
+                    }
+                    for (size_t i = 0; i < deployment->device_types_compatible_size; i++) {
+                        cJSON *json_device_type = cJSON_GetArrayItem(json_device_types_compatible, i);
+                        if (NULL != json_device_type && cJSON_IsString(json_device_type)) {
+                            if (NULL == (deployment->device_types_compatible[i] = strdup(cJSON_GetStringValue(json_device_type)))) {
+                                ret = MENDER_FAIL;
+                                goto END;
+                            }
+                        } else {
+                            mender_log_error("Could not get device type form device_types_compatible array");
+                            ret = MENDER_FAIL;
+                        }
+                    }
+                } else {
+                    mender_log_error("Could not load device_types_compatible");
                     ret = MENDER_FAIL;
                 }
             } else {

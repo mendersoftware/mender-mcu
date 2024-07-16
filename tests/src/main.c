@@ -36,6 +36,11 @@ static const struct option mender_client_options[] = { { "help", 0, NULL, 'h' },
                                                        { "device_type", 1, NULL, 'd' }, { "tenant_token", 1, NULL, 't' }, { NULL, 0, NULL, 0 } };
 
 /**
+ * @brief Mender client identity
+ */
+static mender_identity_t mender_identity = { .name = "mac", .value = NULL };
+
+/**
  * @brief Mender client events
  */
 static pthread_mutex_t mender_client_events_mutex;
@@ -150,6 +155,19 @@ restart_cb(void) {
     pthread_mutex_unlock(&mender_client_events_mutex);
 
     return MENDER_OK;
+}
+
+/**
+ * @brief Get identity callback
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t
+get_identity_cb(mender_identity_t **identity) {
+    if (NULL != identity) {
+        *identity = &mender_identity;
+        return MENDER_OK;
+    }
+    return MENDER_FAIL;
 }
 
 #ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
@@ -481,9 +499,8 @@ main(int argc, char **argv) {
     }
 
     /* Initialize mender-client */
-    mender_keystore_t         identity[]              = { { .name = "mac", .value = mac_address }, { .name = NULL, .value = NULL } };
-    mender_client_config_t    mender_client_config    = { .identity                     = identity,
-                                                          .artifact_name                = artifact_name,
+    mender_identity.value                             = mac_address;
+    mender_client_config_t    mender_client_config    = { .artifact_name                = artifact_name,
                                                           .device_type                  = device_type,
                                                           .host                         = NULL,
                                                           .tenant_token                 = tenant_token,
@@ -495,7 +512,8 @@ main(int argc, char **argv) {
                                                           .authentication_success = authentication_success_cb,
                                                           .authentication_failure = authentication_failure_cb,
                                                           .deployment_status      = deployment_status_cb,
-                                                          .restart                = restart_cb };
+                                                          .restart                = restart_cb,
+                                                          .get_identity           = get_identity_cb };
     if (MENDER_OK != mender_client_init(&mender_client_config, &mender_client_callbacks)) {
         mender_log_error("Unable to initialize mender-client");
         ret = EXIT_FAILURE;

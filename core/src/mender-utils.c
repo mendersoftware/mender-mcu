@@ -162,14 +162,14 @@ mender_keystore_t *
 mender_utils_keystore_new(size_t length) {
 
     /* Allocate memory */
-    mender_keystore_t *keystore = (mender_keystore_t *)malloc((length + 1) * sizeof(mender_keystore_item_t));
+    mender_keystore_t *keystore = (mender_keystore_t *)malloc((length + 1) * sizeof(mender_item_t));
     if (NULL == keystore) {
         mender_log_error("Unable to allocate memory");
         return NULL;
     }
 
     /* Initialize keystore */
-    memset(keystore, 0, (length + 1) * sizeof(mender_keystore_item_t));
+    memset(keystore, 0, (length + 1) * sizeof(mender_item_t));
 
     return keystore;
 }
@@ -330,5 +330,23 @@ mender_utils_keystore_delete(mender_keystore_t *keystore) {
         free(keystore);
     }
 
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object) {
+
+    assert(NULL != object);
+
+    /* Format data */
+    *object = cJSON_CreateObject();
+    if (NULL == *object) {
+        mender_log_error("Unable to allocate memory");
+        return MENDER_FAIL;
+    }
+    if (NULL == cJSON_AddStringToObject(*object, identity->name, identity->value)) {
+        mender_log_error("Unable to add identity to JSON object");
+        return MENDER_FAIL;
+    }
     return MENDER_OK;
 }

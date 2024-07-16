@@ -170,14 +170,14 @@ mender_keystore_t *
 mender_utils_keystore_new(size_t length) {
 
     /* Allocate memory */
-    mender_keystore_t *keystore = (mender_keystore_t *)malloc((length + 1) * sizeof(mender_keystore_item_t));
+    mender_keystore_t *keystore = (mender_keystore_t *)malloc((length + 1) * sizeof(mender_item_t));
     if (NULL == keystore) {
         mender_log_error("Unable to allocate memory");
         return NULL;
     }
 
     /* Initialize keystore */
-    memset(keystore, 0, (length + 1) * sizeof(mender_keystore_item_t));
+    memset(keystore, 0, (length + 1) * sizeof(mender_item_t));
 
     return keystore;
 }

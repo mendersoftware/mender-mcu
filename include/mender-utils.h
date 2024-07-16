@@ -57,17 +57,17 @@ typedef enum {
 } mender_deployment_status_t;
 
 /**
- * @brief Key-store item
+ * @brief Item struct
  */
 typedef struct {
     char *name;  /**< Name of the item */
     char *value; /**< Value of the item */
-} mender_keystore_item_t;
+} mender_item_t;
 
 /**
  * @brief Key-store
  */
-typedef mender_keystore_item_t mender_keystore_t;
+typedef mender_item_t mender_keystore_t;
 
 /**
  * @brief Function used to print HTTP status as string

@@ -65,17 +65,22 @@ typedef enum {
 } mender_deployment_status_t;
 
 /**
- * @brief Key-store item
+ * @brief Item struct
  */
 typedef struct {
     char *name;  /**< Name of the item */
     char *value; /**< Value of the item */
-} mender_keystore_item_t;
+} mender_item_t;
 
 /**
  * @brief Key-store
  */
-typedef mender_keystore_item_t mender_keystore_t;
+typedef mender_item_t mender_keystore_t;
+
+/**
+ * @brief Identity
+ */
+typedef mender_item_t mender_identity_t;
 
 /**
  * @brief Function used to print HTTP status as string
@@ -145,6 +150,14 @@ mender_err_t mender_utils_keystore_from_json(mender_keystore_t **keystore, cJSON
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_utils_keystore_to_json(mender_keystore_t *keystore, cJSON **object);
+
+/**
+ * @brief Function used to format identity to JSON object
+ * @param  identity Identity
+ * @param object JSON object
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object);
 
 /**
  * @brief Function used to set key-store item name and value

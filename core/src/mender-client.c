@@ -695,7 +695,7 @@ END:
 static mender_err_t
 mender_client_initialization_work_function(void) {
 
-    char        *deployment_data = NULL;
+    char        *storage_deployment_data = NULL;
     mender_err_t ret;
 
     /* Retrieve or generate authentication keys */
@@ -705,20 +705,20 @@ mender_client_initialization_work_function(void) {
     }
 
     /* Retrieve deployment data if it is found (following an update) */
-    if (MENDER_OK != (ret = mender_storage_get_deployment_data(&deployment_data))) {
+    if (MENDER_OK != (ret = mender_storage_get_deployment_data(&storage_deployment_data))) {
         if (MENDER_NOT_FOUND != ret) {
             mender_log_error("Unable to get deployment data");
             goto END;
         }
     }
-    if (NULL != deployment_data) {
-        if (NULL == (mender_client_deployment_data = cJSON_Parse(deployment_data))) {
+    if (NULL != storage_deployment_data) {
+        if (NULL == (mender_client_deployment_data = cJSON_Parse(storage_deployment_data))) {
             mender_log_error("Unable to allocate memory");
-            free(deployment_data);
+            free(storage_deployment_data);
             ret = MENDER_FAIL;
             goto END;
         }
-        free(deployment_data);
+        free(storage_deployment_data);
     }
 
     return MENDER_DONE;
@@ -872,31 +872,45 @@ REBOOT:
 }
 
 static mender_err_t
+deployment_destroy(mender_api_deployment_data_t *deployment) {
+    if (NULL != deployment) {
+        free(deployment->id);
+        free(deployment->artifact_name);
+        free(deployment->uri);
+        for (size_t i = 0; i < deployment->device_types_compatible_size; ++i) {
+            free(deployment->device_types_compatible[i]);
+        }
+        free(deployment->device_types_compatible);
+        free(deployment);
+    }
+    return MENDER_OK;
+}
+
+static mender_err_t
 mender_client_update_work_function(void) {
 
     mender_err_t ret;
 
     /* Check for deployment */
-    char *id              = NULL;
-    char *artifact_name   = NULL;
-    char *uri             = NULL;
-    char *deployment_data = NULL;
+    mender_api_deployment_data_t *deployment              = calloc(1, sizeof(mender_api_deployment_data_t));
+    char                         *storage_deployment_data = NULL;
+
     mender_log_info("Checking for deployment...");
-    if (MENDER_OK != (ret = mender_api_check_for_deployment(&id, &artifact_name, &uri))) {
+    if (MENDER_OK != (ret = mender_api_check_for_deployment(deployment))) {
         mender_log_error("Unable to check for deployment");
         goto END;
     }
 
     /* Check if deployment is available */
-    if ((NULL == id) || (NULL == artifact_name) || (NULL == uri)) {
+    if ((NULL == deployment->id) || (NULL == deployment->artifact_name) || (NULL == deployment->uri) || (NULL == deployment->device_types_compatible)) {
         mender_log_info("No deployment available");
         goto END;
     }
 
     /* Check if artifact is already installed (should not occur) */
-    if (!strcmp(artifact_name, mender_client_config.artifact_name)) {
+    if (!strcmp(deployment->artifact_name, mender_client_config.artifact_name)) {
         mender_log_error("Artifact is already installed");
-        mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_ALREADY_INSTALLED);
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_ALREADY_INSTALLED);
         goto END;
     }
 
@@ -910,16 +924,17 @@ mender_client_update_work_function(void) {
         ret = MENDER_FAIL;
         goto END;
     }
-    cJSON_AddStringToObject(mender_client_deployment_data, "id", id);
-    cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", artifact_name);
+    cJSON_AddStringToObject(mender_client_deployment_data, "id", deployment->id);
+    cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", deployment->artifact_name);
     cJSON_AddArrayToObject(mender_client_deployment_data, "types");
 
     /* Download deployment artifact */
-    mender_log_info("Downloading deployment artifact with id '%s', artifact name '%s' and uri '%s'", id, artifact_name, uri);
-    mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
-    if (MENDER_OK != (ret = mender_api_download_artifact(uri, mender_client_download_artifact_callback))) {
+    mender_log_info(
+        "Downloading deployment artifact with id '%s', artifact name '%s' and uri '%s'", deployment->id, deployment->artifact_name, deployment->uri);
+    mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
+    if (MENDER_OK != (ret = mender_api_download_artifact(deployment->uri, mender_client_download_artifact_callback))) {
         mender_log_error("Unable to download artifact");
-        mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
         if (true == mender_client_deployment_needs_set_pending_image) {
             mender_flash_abort_deployment(mender_client_flash_handle);
         }
@@ -928,11 +943,11 @@ mender_client_update_work_function(void) {
 
     /* Set boot partition */
     mender_log_info("Download done, installing artifact");
-    mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_INSTALLING);
+    mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_INSTALLING);
     if (true == mender_client_deployment_needs_set_pending_image) {
         if (MENDER_OK != (ret = mender_flash_set_pending_image(mender_client_flash_handle))) {
             mender_log_error("Unable to set boot partition");
-            mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+            mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
             goto END;
         }
     }
@@ -940,36 +955,28 @@ mender_client_update_work_function(void) {
     /* Check if the system must restart following downloading the deployment */
     if (true == mender_client_deployment_needs_restart) {
         /* Save deployment data to publish deployment status after rebooting */
-        if (NULL == (deployment_data = cJSON_PrintUnformatted(mender_client_deployment_data))) {
+        if (NULL == (storage_deployment_data = cJSON_PrintUnformatted(mender_client_deployment_data))) {
             mender_log_error("Unable to save deployment data");
-            mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+            mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
             ret = MENDER_FAIL;
             goto END;
         }
-        if (MENDER_OK != (ret = mender_storage_set_deployment_data(deployment_data))) {
+        if (MENDER_OK != (ret = mender_storage_set_deployment_data(storage_deployment_data))) {
             mender_log_error("Unable to save deployment data");
-            mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+            mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
             goto END;
         }
-        mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
     } else {
         /* Publish deployment status success */
-        mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
         goto END;
     }
 
     /* Release memory */
-    if (NULL != id) {
-        free(id);
-    }
-    if (NULL != artifact_name) {
-        free(artifact_name);
-    }
-    if (NULL != uri) {
-        free(uri);
-    }
-    if (NULL != deployment_data) {
-        free(deployment_data);
+    deployment_destroy(deployment);
+    if (NULL != storage_deployment_data) {
+        free(storage_deployment_data);
     }
     if (NULL != mender_client_deployment_data) {
         cJSON_Delete(mender_client_deployment_data);
@@ -989,17 +996,9 @@ mender_client_update_work_function(void) {
 END:
 
     /* Release memory */
-    if (NULL != id) {
-        free(id);
-    }
-    if (NULL != artifact_name) {
-        free(artifact_name);
-    }
-    if (NULL != uri) {
-        free(uri);
-    }
-    if (NULL != deployment_data) {
-        free(deployment_data);
+    deployment_destroy(deployment);
+    if (NULL != storage_deployment_data) {
+        free(storage_deployment_data);
     }
     if (NULL != mender_client_deployment_data) {
         cJSON_Delete(mender_client_deployment_data);

@@ -213,6 +213,15 @@ if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     target_include_directories(mender-mcu-client PRIVATE ${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/include)
 endif()
 
+# cJSON location/options
+find_package(PkgConfig)
+if (PKG_CONFIG_FOUND)
+  pkg_check_modules(cjson libcjson)
+  if (cjson_FOUND)
+    target_compile_options(mender-mcu-client PRIVATE ${cjson_CFLAGS})
+  endif()
+endif()
+
 # Define version
 file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/VERSION" MENDER_CLIENT_VERSION)
 add_definitions("-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\"")

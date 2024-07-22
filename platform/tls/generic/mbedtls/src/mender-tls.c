@@ -39,8 +39,10 @@
 
 /**
  * @brief Signature buffer length (base64 encoded)
+ * @note base64 produces 4 bytes of output per 3 bytes of input (padded to be
+ *       divisible), see RFC-4648 or man:EVP_EncodeBlock(3)
  */
-#define MENDER_TLS_SIGNATURE_LENGTH (512)
+#define MENDER_TLS_SIGNATURE_LENGTH (((MBEDTLS_PK_SIGNATURE_MAX_SIZE + 2) / 3) * 4)
 
 #ifdef MBEDTLS_ERROR_C
 #define MBEDTLS_ERR_BUF char err[128]
@@ -238,12 +240,12 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
     }
 
     /* Compute signature */
-    if (NULL == (sig = (unsigned char *)malloc(MENDER_TLS_SIGNATURE_LENGTH + 1))) {
+    if (NULL == (sig = (unsigned char *)malloc(MBEDTLS_PK_SIGNATURE_MAX_SIZE))) {
         mender_log_error("Unable to allocate memory");
         ret = -1;
         goto END;
     }
-    sig_length = MENDER_TLS_SIGNATURE_LENGTH + 1;
+    sig_length = MBEDTLS_PK_SIGNATURE_MAX_SIZE;
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
     if (0 != (ret = mbedtls_pk_sign(pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), sig, sig_length, &sig_length, mbedtls_ctr_drbg_random, ctr_drbg))) {
 #else
@@ -253,7 +255,7 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
         goto END;
     }
 
-    /* Encode signature to base64 */
+    /* Encode signature to base64 (1 extra byte for the NUL character) */
     if (NULL == (*signature = (char *)malloc(MENDER_TLS_SIGNATURE_LENGTH + 1))) {
         mender_log_error("Unable to allocate memory");
         ret = -1;
@@ -262,19 +264,14 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
     *signature_length = MENDER_TLS_SIGNATURE_LENGTH + 1;
     if (0 != (ret = mbedtls_base64_encode((unsigned char *)*signature, *signature_length, signature_length, sig, sig_length))) {
         LOG_MBEDTLS_ERROR("Unable to encode signature", ret);
+        if (MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL == ret) {
+            mender_log_error("This is a bug, please report it");
+        }
         free(*signature);
-        *signature = NULL;
+        *signature        = NULL;
+        *signature_length = 0;
         goto END;
     }
-    *signature_length = strlen(*signature);
-    if (NULL == (tmp = realloc(*signature, *signature_length + 1))) {
-        mender_log_error("Unable to allocate memory");
-        free(*signature);
-        *signature = NULL;
-        ret        = -1;
-        goto END;
-    }
-    *signature = tmp;
 
 END:
 

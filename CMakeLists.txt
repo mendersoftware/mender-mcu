@@ -136,6 +136,8 @@ else()
     message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_TLS_TYPE}' platform TLS implementation")
 endif()
 
+option(MENDER_MBEDTLS_ERROR_STR "Enable mbedtls error strings" OFF)
+
 # Definitions
 if (CONFIG_MENDER_SERVER_HOST)
     target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_SERVER_HOST=\"${CONFIG_MENDER_SERVER_HOST}\")
@@ -219,6 +221,13 @@ if (PKG_CONFIG_FOUND)
   pkg_check_modules(cjson libcjson)
   if (cjson_FOUND)
     target_compile_options(mender-mcu-client PRIVATE ${cjson_CFLAGS})
+  endif()
+endif()
+
+# mbedtls error strings
+if (CONFIG_MENDER_PLATFORM_TLS_TYPE STREQUAL "mbedtls")
+  if (MENDER_MBEDTLS_ERROR_STR)
+    target_compile_definitions(mender-mcu-client PRIVATE MBEDTLS_ERROR_C)
   endif()
 endif()
 

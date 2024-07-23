@@ -136,6 +136,8 @@ else()
     message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_TLS_TYPE}' platform TLS implementation")
 endif()
 
+option(MENDER_MBEDTLS_ERROR_STR "Enable mbedtls error strings" OFF)
+
 # Definitions
 if (CONFIG_MENDER_SERVER_HOST)
     target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_SERVER_HOST=\"${CONFIG_MENDER_SERVER_HOST}\")
@@ -211,6 +213,22 @@ target_sources(mender-mcu-client PRIVATE ${SOURCES_TEMP})
 target_include_directories(mender-mcu-client PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     target_include_directories(mender-mcu-client PRIVATE ${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/include)
+endif()
+
+# cJSON location/options
+find_package(PkgConfig)
+if (PKG_CONFIG_FOUND)
+  pkg_check_modules(cjson libcjson)
+  if (cjson_FOUND)
+    target_compile_options(mender-mcu-client PRIVATE ${cjson_CFLAGS})
+  endif()
+endif()
+
+# mbedtls error strings
+if (CONFIG_MENDER_PLATFORM_TLS_TYPE STREQUAL "mbedtls")
+  if (MENDER_MBEDTLS_ERROR_STR)
+    target_compile_definitions(mender-mcu-client PRIVATE MBEDTLS_ERROR_C)
+  endif()
 endif()
 
 # Define version

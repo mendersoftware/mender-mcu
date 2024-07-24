@@ -686,11 +686,13 @@ END:
 static mender_err_t
 mender_client_initialization_work_function(void) {
 
+    assert(NULL != mender_client_callbacks.get_user_provided_keys);
+
     char        *storage_deployment_data = NULL;
     mender_err_t ret;
 
     /* Retrieve or generate authentication keys */
-    if (MENDER_OK != (ret = mender_tls_init_authentication_keys(mender_client_config.recommissioning))) {
+    if (MENDER_OK != (ret = mender_tls_init_authentication_keys(mender_client_callbacks.get_user_provided_keys, mender_client_config.recommissioning))) {
         mender_log_error("Unable to retrieve or generate authentication keys");
         goto END;
     }

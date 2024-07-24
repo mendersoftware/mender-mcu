@@ -79,16 +79,38 @@ static size_t         mender_tls_public_key_length  = 0;
 
 /**
  * @brief Generate authentication keys
+ * @param pk_context PK context
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context);
+
+/**
+ * @brief Get user provided authentication keys
+ * @param pk_context PK context
+ * @param user_provided_key Buffer of user provided key
+ * @param user_provided_key_length Length of buffer of user provided key
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context,
+                                                                 const char         *user_provided_key,
+                                                                 size_t              user_provided_key_length);
+
+/**
+ * @brief Generate authentication keys
  * @param private_key Private key generated
  * @param private_key_length Private key length
  * @param public_key Public key generated
  * @param public_key_length Public key length
+ * @param user_provided_key Path to user-provided key
+ * @param user_provided_key_length Length of buffer of user provided key
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-static mender_err_t mender_tls_generate_authentication_keys(unsigned char **private_key,
-                                                            size_t         *private_key_length,
-                                                            unsigned char **public_key,
-                                                            size_t         *public_key_length);
+static mender_err_t mender_tls_get_authentication_keys(unsigned char **private_key,
+                                                       size_t         *private_key_length,
+                                                       unsigned char **public_key,
+                                                       size_t         *public_key_length,
+                                                       const char     *user_provided_key,
+                                                       size_t          user_provided_key_length);
 
 /**
  * @brief Write a buffer of PEM information from a DER encoded buffer
@@ -110,7 +132,7 @@ mender_tls_init(void) {
 }
 
 mender_err_t
-mender_tls_init_authentication_keys(bool recommissioning) {
+mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char **user_provided_key, size_t *user_provided_key_length), bool recommissioning) {
 
     mender_err_t ret;
 
@@ -136,18 +158,37 @@ mender_tls_init_authentication_keys(bool recommissioning) {
         }
     }
 
-    /* Retrieve or generate private and public keys if not allready done */
-    if (MENDER_OK
-        != (ret = mender_storage_get_authentication_keys(
-                &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length))) {
+    /* Buffer used for user-provided key */
+    char  *user_provided_key        = NULL;
+    size_t user_provided_key_length = 0;
 
+    if (MENDER_OK != (ret = get_user_provided_keys(&user_provided_key, &user_provided_key_length))) {
+        mender_log_error("Unable to get user provided key");
+        goto END;
+    }
+    if (NULL != user_provided_key) {
+        mender_log_info("Getting authentication key...");
+        if (MENDER_OK
+            != (ret = mender_tls_get_authentication_keys(&mender_tls_private_key,
+                                                         &mender_tls_private_key_length,
+                                                         &mender_tls_public_key,
+                                                         &mender_tls_public_key_length,
+                                                         user_provided_key,
+                                                         user_provided_key_length))) {
+            mender_log_error("Unable to get user provided authentication key");
+            goto END;
+        }
+        /* Retrieve or generate private and public keys */
+    } else if (MENDER_OK
+               != (ret = mender_storage_get_authentication_keys(
+                       &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length))) {
         /* Generate authentication keys */
         mender_log_info("Generating authentication keys...");
         if (MENDER_OK
-            != (ret = mender_tls_generate_authentication_keys(
-                    &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length))) {
+            != (ret = mender_tls_get_authentication_keys(
+                    &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length, NULL, 0))) {
             mender_log_error("Unable to generate authentication keys");
-            return ret;
+            goto END;
         }
 
         /* Record keys */
@@ -155,11 +196,15 @@ mender_tls_init_authentication_keys(bool recommissioning) {
             != (ret = mender_storage_set_authentication_keys(
                     mender_tls_private_key, mender_tls_private_key_length, mender_tls_public_key, mender_tls_public_key_length))) {
             mender_log_error("Unable to record authentication keys");
-            return ret;
+            goto END;
         }
     }
 
-    return ret;
+END:
+    /* Release memory */
+    free(user_provided_key);
+
+    return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
 
 mender_err_t
@@ -324,26 +369,13 @@ mender_tls_exit(void) {
 }
 
 static mender_err_t
-mender_tls_generate_authentication_keys(unsigned char **private_key, size_t *private_key_length, unsigned char **public_key, size_t *public_key_length) {
+mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
 
-    assert(NULL != private_key);
-    assert(NULL != private_key_length);
-    assert(NULL != public_key);
-    assert(NULL != public_key_length);
+    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
+    mbedtls_entropy_context  *entropy  = NULL;
     int                       ret;
-    mbedtls_pk_context       *pk_context = NULL;
-    mbedtls_ctr_drbg_context *ctr_drbg   = NULL;
-    mbedtls_entropy_context  *entropy    = NULL;
-    unsigned char            *tmp;
     MBEDTLS_ERR_BUF;
 
-    /* Initialize mbedtls */
-    if (NULL == (pk_context = (mbedtls_pk_context *)malloc(sizeof(mbedtls_pk_context)))) {
-        mender_log_error("Unable to allocate memory");
-        ret = -1;
-        goto END;
-    }
-    mbedtls_pk_init(pk_context);
     if (NULL == (ctr_drbg = (mbedtls_ctr_drbg_context *)malloc(sizeof(mbedtls_ctr_drbg_context)))) {
         mender_log_error("Unable to allocate memory");
         ret = -1;
@@ -373,6 +405,74 @@ mender_tls_generate_authentication_keys(unsigned char **private_key, size_t *pri
     if (0 != (ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(*pk_context), mbedtls_ctr_drbg_random, ctr_drbg, 3072, 65537))) {
         LOG_MBEDTLS_ERROR("Unable to generate key", ret);
         goto END;
+    }
+
+END:
+    /* Release mbedtls */
+    if (NULL != entropy) {
+        mbedtls_entropy_free(entropy);
+        free(entropy);
+    }
+    if (NULL != ctr_drbg) {
+        mbedtls_ctr_drbg_free(ctr_drbg);
+        free(ctr_drbg);
+    }
+
+    return (0 != ret) ? MENDER_FAIL : MENDER_OK;
+}
+
+static mender_err_t
+mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, const char *user_provided_key, size_t user_provided_key_length) {
+
+    assert(NULL != user_provided_key);
+    assert(0 != user_provided_key_length);
+
+    int ret;
+    MBEDTLS_ERR_BUF;
+
+    /* Load and parse the private key buffer */
+    if (0 != (ret = mbedtls_pk_parse_key(pk_context, user_provided_key, user_provided_key_length, NULL, 0))) {
+        LOG_MBEDTLS_ERROR("Unable to parse private key", ret);
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_tls_get_authentication_keys(unsigned char **private_key,
+                                   size_t         *private_key_length,
+                                   unsigned char **public_key,
+                                   size_t         *public_key_length,
+                                   const char     *user_provided_key,
+                                   size_t          user_provided_key_length) {
+
+    assert(NULL != private_key);
+    assert(NULL != private_key_length);
+    assert(NULL != public_key);
+    assert(NULL != public_key_length);
+
+    int                 ret;
+    mbedtls_pk_context *pk_context = NULL;
+    unsigned char      *tmp;
+    MBEDTLS_ERR_BUF;
+
+    /* Initialize mbedtls */
+    if (NULL == (pk_context = (mbedtls_pk_context *)malloc(sizeof(mbedtls_pk_context)))) {
+        mender_log_error("Unable to allocate memory");
+        ret = -1;
+        goto END;
+    }
+    mbedtls_pk_init(pk_context);
+    /* Get user provided key, else generate key  */
+    if (NULL != user_provided_key) {
+        if (MENDER_OK != mender_tls_user_provided_authentication_keys(pk_context, user_provided_key, user_provided_key_length)) {
+            goto END;
+        }
+    } else {
+        /* Generate key */
+        if (MENDER_OK != mender_tls_generate_authentication_keys(pk_context)) {
+            goto END;
+        }
     }
 
     /* Export private key */
@@ -431,14 +531,6 @@ mender_tls_generate_authentication_keys(unsigned char **private_key, size_t *pri
 END:
 
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
     if (NULL != pk_context) {
         mbedtls_pk_free(pk_context);
         free(pk_context);

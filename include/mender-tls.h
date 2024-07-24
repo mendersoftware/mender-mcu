@@ -34,10 +34,12 @@ mender_err_t mender_tls_init(void);
 
 /**
  * @brief Initialize mender TLS authentication keys
+ * @param callback to get buffer of user provided key
  * @param recommissioning Perform recommissioning (if supported by the platform)
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_tls_init_authentication_keys(bool recommissioning);
+mender_err_t mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char **user_provided_key, size_t *user_provided_key_length),
+                                                 bool recommissioning);
 
 /**
  * @brief Get public key (PEM format suitable to be integrated in mender authentication request)

@@ -32,13 +32,23 @@
 /**
  * @brief Mender client options
  */
-static const struct option mender_client_options[] = { { "help", 0, NULL, 'h' },        { "mac_address", 1, NULL, 'm' },  { "artifact_name", 1, NULL, 'a' },
-                                                       { "device_type", 1, NULL, 'd' }, { "tenant_token", 1, NULL, 't' }, { NULL, 0, NULL, 0 } };
+static const struct option mender_client_options[] = { { "help", 0, NULL, 'h' },
+                                                       { "mac_address", 1, NULL, 'm' },
+                                                       { "artifact_name", 1, NULL, 'a' },
+                                                       { "device_type", 1, NULL, 'd' },
+                                                       { "tenant_token", 1, NULL, 't' },
+                                                       { "private_key", 1, NULL, 'p' },
+                                                       { NULL, 0, NULL, 0 } };
 
 /**
  * @brief Mender client identity
  */
 static mender_identity_t mender_identity = { .name = "mac", .value = NULL };
+
+/**
+ * @brief Private key path
+ */
+static char *key_path = NULL;
 
 /**
  * @brief Mender client events
@@ -168,6 +178,43 @@ get_identity_cb(mender_identity_t **identity) {
         return MENDER_OK;
     }
     return MENDER_FAIL;
+}
+
+/**
+ * @brief Get user-provided keys callback
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t
+get_user_provided_keys_cb(char **user_provided_key, size_t *user_provided_key_length) {
+    if (NULL == key_path) {
+        return MENDER_OK;
+    }
+    mender_log_info("Using key: `%s`", key_path);
+    FILE *file = fopen(key_path, "r");
+    if (NULL == file) {
+        mender_log_error("Unable to open file");
+        return MENDER_FAIL;
+    }
+    fseek(file, 0, SEEK_END);
+    size_t length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    *user_provided_key = (char *)malloc(length + 1);
+    if (NULL == *user_provided_key) {
+        mender_log_error("Unable to allocate memory");
+        fclose(file);
+        return MENDER_FAIL;
+    }
+    int ret = fread(*user_provided_key, 1, length, file);
+    if (ret != length) {
+        mender_log_error("Unable to read file");
+        fclose(file);
+        return MENDER_FAIL;
+    }
+    fclose(file);
+
+    *user_provided_key_length = length + 1;
+
+    return MENDER_OK;
 }
 
 #ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
@@ -418,6 +465,7 @@ print_usage(const char *argv0) {
     printf("\t--artifact_name, -a: Artifact name\n");
     printf("\t--device_type, -d: Device type\n");
     printf("\t--tenant_token, -t: Tenant token (optional)\n");
+    printf("\t--private_key, -p: Key path (optional)\n");
 }
 
 /**
@@ -434,6 +482,7 @@ main(int argc, char **argv) {
     char *artifact_name = NULL;
     char *device_type   = NULL;
     char *tenant_token  = NULL;
+    char *private_key   = NULL;
 
     /* Initialize sig handler */
     struct sigaction action;
@@ -468,6 +517,10 @@ main(int argc, char **argv) {
                 /* Tenant token */
                 tenant_token = strdup(optarg);
                 break;
+            case 'p':
+                /* Key path */
+                private_key = strdup(optarg);
+                break;
             default:
                 /* Unknown option */
                 ret = EXIT_FAILURE;
@@ -498,6 +551,9 @@ main(int argc, char **argv) {
         goto END;
     }
 
+    /* Set key path */
+    key_path = private_key;
+
     /* Initialize mender-client */
     mender_identity.value                             = mac_address;
     mender_client_config_t    mender_client_config    = { .artifact_name                = artifact_name,
@@ -513,7 +569,8 @@ main(int argc, char **argv) {
                                                           .authentication_failure = authentication_failure_cb,
                                                           .deployment_status      = deployment_status_cb,
                                                           .restart                = restart_cb,
-                                                          .get_identity           = get_identity_cb };
+                                                          .get_identity           = get_identity_cb,
+                                                          .get_user_provided_keys = get_user_provided_keys_cb };
     if (MENDER_OK != mender_client_init(&mender_client_config, &mender_client_callbacks)) {
         mender_log_error("Unable to initialize mender-client");
         ret = EXIT_FAILURE;
@@ -590,6 +647,7 @@ END:
     if (NULL != tenant_token) {
         free(tenant_token);
     }
+    free(private_key);
 
     return ret;
 }

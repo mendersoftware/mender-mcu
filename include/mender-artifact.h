@@ -68,6 +68,14 @@ typedef struct mender_artifact_provides_depends_t {
     struct mender_artifact_provides_depends_t *next;
 } mender_artifact_provides_depends_t;
 
+/**
+ * @brief Function used to get the artifact checksum
+ * @param ctx Artifact context
+ * @param device_type Device type to get from the artifact
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, char **device_type);
+
 #endif
 
 /**

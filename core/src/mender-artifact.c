@@ -499,6 +499,22 @@ END:
 }
 
 #ifdef MENDER_FULL_PARSE_ARTIFACT
+mender_err_t
+mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, char **device_type) {
+
+    assert(NULL != ctx);
+    assert(NULL != device_type);
+    mender_artifact_provides_depends_t *item = ctx->artifact_info.provides;
+    while (NULL != item) {
+        if (MENDER_PROVIDES_DEPENDS_ARTIFACT_DEVICE_TYPE == item->type) {
+            *device_type = item->value;
+            return MENDER_OK;
+        }
+        item = item->next;
+    }
+    return MENDER_FAIL;
+}
+
 static mender_err_t
 mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 

@@ -42,12 +42,46 @@ typedef enum {
     MENDER_ARTIFACT_STREAM_STATE_PARSING_DATA        /**< Currently parsing data */
 } mender_artifact_stream_state_t;
 
+#ifdef MENDER_FULL_PARSE_ARTIFACT
+typedef struct mender_artifact_checksum_t {
+    char *checksum;                          /**< Checksum of the file */
+    char *file_name;                         /**< File that the checksum is calculated for */
+    struct mender_artifact_checksum_t *next; /**< Next checksum in the manifest file */
+} mender_artifact_checksum_t;
+
+/**
+ * @brief Artifact provides/depends types
+ */
+typedef enum {
+    MENDER_PROVIDES_DEPENDS_ARTIFACT_UNKNOWN = -1,
+    MENDER_PROVIDES_DEPENDS_ARTIFACT_NAME,
+    MENDER_PROVIDES_DEPENDS_ARTIFACT_GROUP,
+    MENDER_PROVIDES_DEPENDS_ARTIFACT_DEVICE_TYPE
+} mender_artifact_provides_depends_type_t;
+
+/**
+ * @brief Artifact provides/depends
+ */
+typedef struct mender_artifact_provides_depends_t {
+    mender_artifact_provides_depends_type_t type;
+    char *value;
+    struct mender_artifact_provides_depends_t *next;
+} mender_artifact_provides_depends_t;
+
+#endif
+
 /**
  * @brief Artifact payloads
  */
 typedef struct {
     char  *type;      /**< Type of the payload */
-    cJSON *meta_data; /**< Meta-data from the header tarball, NULL if no meta-data */
+#ifdef MENDER_FULL_PARSE_ARTIFACT
+    mender_artifact_provides_depends_t *provides; /**< Provides of the payload */
+    mender_artifact_provides_depends_t  *depends; /**< Depends of the payload */
+    char **clears_provides;                       /**< Clears provides of the payload (string list) */
+    size_t clears_provides_size;                  /**< Number of clears provides of the payload */
+#endif
+    cJSON *meta_data;                      /**< Meta-data from the header tarball, NULL if no meta-data */
 } mender_artifact_payload_t;
 
 /**
@@ -63,6 +97,13 @@ typedef struct {
         size_t                     size;   /**< Number of payloads in the artifact */
         mender_artifact_payload_t *values; /**< Values of payloads in the artifact */
     } payloads;                            /**< Payloads of the artifact */
+#ifdef MENDER_FULL_PARSE_ARTIFACT
+    struct {
+        mender_artifact_checksum_t         *manifest;  /**< Contains checksums of the artifact */
+        mender_artifact_provides_depends_t *provides;  /**< Provides of the artifact */
+        mender_artifact_provides_depends_t *depends;   /**< Depends of the artifact */
+    } artifact_info;                           /**< Global information about the artifact */
+#endif
     struct {
         char  *name;  /**< Name of the file currently parsed */
         size_t size;  /**< Size of the file currently parsed (bytes) */

@@ -183,7 +183,7 @@ mender_err_t
 mender_storage_get_deployment_data(char **deployment_data) {
 
     assert(NULL != deployment_data);
-    size_t  deployment_data_length = 0;
+    size_t deployment_data_length = 0;
 
     /* Read deployment data */
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, (void **)deployment_data, &deployment_data_length);
@@ -232,7 +232,7 @@ mender_err_t
 mender_storage_get_device_config(char **device_config) {
 
     assert(NULL != device_config);
-    size_t  device_config_length = 0;
+    size_t device_config_length = 0;
 
     /* Retrieve length of the device configuration */
     /* Read  device configuration */

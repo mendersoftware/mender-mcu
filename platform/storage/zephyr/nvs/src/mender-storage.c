@@ -124,7 +124,6 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
     assert(NULL != private_key_length);
     assert(NULL != public_key);
     assert(NULL != public_key_length);
-    ssize_t ret;
 
     /* Read private key */
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PRIVATE_KEY, (void **)private_key, private_key_length);
@@ -185,12 +184,11 @@ mender_storage_get_deployment_data(char **deployment_data) {
 
     assert(NULL != deployment_data);
     size_t  deployment_data_length = 0;
-    ssize_t ret;
 
     /* Read deployment data */
-    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, (void **)deployment_data, deployment_data_length);
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, (void **)deployment_data, &deployment_data_length);
     if (MENDER_OK != ret) {
-        if (ENDER_NOT_FOUND == ret) {
+        if (MENDER_NOT_FOUND == ret) {
             mender_log_info("Deployment data not available");
         } else {
             mender_log_error("Unable to read deployment data");
@@ -235,11 +233,10 @@ mender_storage_get_device_config(char **device_config) {
 
     assert(NULL != device_config);
     size_t  device_config_length = 0;
-    ssize_t ret;
 
     /* Retrieve length of the device configuration */
     /* Read  device configuration */
-    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, (void **)device_config, device_config_length);
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, (void **)device_config, &device_config_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
             mender_log_info("Device configuration not available");

@@ -26,6 +26,13 @@
 #define MENDER_ARTIFACT_STREAM_BLOCK_SIZE (512)
 
 /**
+ * @brief Device type key
+ */
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#define MENDER_ARTIFACT_DEVICE_TYPE_KEY "device_type"
+#endif
+
+/**
  * @brief TAR file header
  */
 typedef struct {
@@ -450,6 +457,25 @@ END:
 }
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+mender_err_t
+mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const char **device_type) {
+
+    assert(NULL != ctx);
+    assert(NULL != device_type);
+
+    mender_key_value_list_t *item = ctx->artifact_info.depends;
+    while (NULL != item) {
+        if (NULL != item->key) {
+            if (0 == strcmp(MENDER_ARTIFACT_DEVICE_TYPE_KEY, item->key)) {
+                *device_type = item->value;
+                return MENDER_OK;
+            }
+        }
+        item = item->next;
+    }
+    return MENDER_FAIL;
+}
+
 static mender_err_t
 mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 

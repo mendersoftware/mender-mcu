@@ -77,6 +77,16 @@ typedef struct {
     } file;           /**< Information about the file currently parsed */
 } mender_artifact_ctx_t;
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+/**
+ * @brief Function used to retrieve device type from artifact context
+ * @param ctx Artifact context
+ * @param device_type Device type
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const char **device_type);
+#endif
+
 /**
  * @brief Function used to create a new artifact context
  * @return Artifact context if the function succeeds, NULL otherwise

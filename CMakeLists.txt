@@ -172,6 +172,9 @@ endif()
 if (CONFIG_MENDER_LOG_LEVEL)
     target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_LOG_LEVEL=${CONFIG_MENDER_LOG_LEVEL})
 endif()
+if (CONFIG_MENDER_FULL_PARSE_ARTIFACT)
+    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_FULL_PARSE_ARTIFACT)
+endif()
 
 # List of sources
 file(GLOB SOURCES_TEMP

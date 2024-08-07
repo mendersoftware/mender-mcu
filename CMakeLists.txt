@@ -2,6 +2,7 @@
 # @brief     mender-mcu-client static library CMakeLists file
 #
 # Copyright joelguittet and mender-mcu-client contributors
+# Copyright Northern.tech AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

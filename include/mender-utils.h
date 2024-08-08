@@ -76,6 +76,14 @@ typedef mender_item_t mender_keystore_t;
 typedef mender_item_t mender_identity_t;
 
 /**
+ * @brief Linked-list
+ */
+typedef struct mender_key_value_list_t {
+    char                           *key;
+    char                           *value;
+    struct mender_key_value_list_t *next;
+} mender_key_value_list_t;
+/**
  * @brief Function used to print HTTP status as string
  * @param status HTTP status code
  * @return HTTP status as string, NULL if it is not found
@@ -175,6 +183,12 @@ size_t mender_utils_keystore_length(mender_keystore_t *keystore);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_utils_keystore_delete(mender_keystore_t *keystore);
+
+/**
+ * @brief Free linked list list
+ * @param provides_depends List to clear
+ */
+mender_err_t mender_utils_free_linked_list(mender_key_value_list_t *list);
 
 #ifdef __cplusplus
 }

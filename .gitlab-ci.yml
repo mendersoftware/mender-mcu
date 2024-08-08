@@ -44,5 +44,6 @@ test:smoke-build:
       -DCONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE=OFF
       -DCONFIG_MENDER_CLIENT_CONFIGURE_STORAGE=OFF
       -DCONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT=OFF
+      -DCONFIG_MENDER_FULL_PARSE_ARTIFACT=ON
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help

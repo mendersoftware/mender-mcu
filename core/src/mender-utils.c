@@ -351,3 +351,16 @@ mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object) {
     }
     return MENDER_OK;
 }
+
+mender_err_t
+mender_utils_free_linked_list(mender_key_value_list_t *list) {
+    mender_key_value_list_t *item = list;
+    while (NULL != item) {
+        mender_key_value_list_t *next = item->next;
+        free(item->key);
+        free(item->value);
+        free(item);
+        item = next;
+    }
+    return MENDER_OK;
+}

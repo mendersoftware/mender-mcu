@@ -38,7 +38,15 @@ typedef enum {
  * @brief Artifact payloads
  */
 typedef struct {
-    char  *type;      /**< Type of the payload */
+    char *type; /**< Type of the payload */
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    /* Provides and depends are key-value pairs e.g.: `artifact_name: "test" */
+    mender_key_value_list_t *provides; /**< Provides of the payload */
+    mender_key_value_list_t *depends;  /**< Depends of the payload */
+    /* Clears provides is an array of provides to clear  e.g.: ["artifact_name", "artifact_group"] */
+    char **clears_provides;      /**< Clears provides of the payload (string list) */
+    size_t clears_provides_size; /**< Number of clears provides of the payload */
+#endif
     cJSON *meta_data; /**< Meta-data from the header tarball, NULL if no meta-data */
 } mender_artifact_payload_t;
 
@@ -55,12 +63,29 @@ typedef struct {
         size_t                     size;   /**< Number of payloads in the artifact */
         mender_artifact_payload_t *values; /**< Values of payloads in the artifact */
     } payloads;                            /**< Payloads of the artifact */
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    struct {
+        mender_key_value_list_t *checksums; /**< Contains checksums of the artifact */
+        mender_key_value_list_t *provides;  /**< Provides of the artifact */
+        mender_key_value_list_t *depends;   /**< Depends of the artifact */
+    } artifact_info;                        /**< Global information about the artifact */
+#endif
     struct {
         char  *name;  /**< Name of the file currently parsed */
         size_t size;  /**< Size of the file currently parsed (bytes) */
         size_t index; /**< Index of the data in the file currently parsed (bytes), incremented block by block */
     } file;           /**< Information about the file currently parsed */
 } mender_artifact_ctx_t;
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+/**
+ * @brief Function used to retrieve device type from artifact context
+ * @param ctx Artifact context
+ * @param device_type Device type
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const char **device_type);
+#endif
 
 /**
  * @brief Function used to create a new artifact context

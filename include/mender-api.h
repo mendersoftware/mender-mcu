@@ -26,6 +26,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "mender-utils.h"
+#include "mender-artifact.h"
 
 /**
  * @brief Mender API configuration

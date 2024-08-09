@@ -152,18 +152,38 @@ static mender_err_t mender_artifact_shift_data(mender_artifact_ctx_t *ctx, size_
  */
 static size_t mender_artifact_round_up(size_t length, size_t incr);
 
+/**
+ * @brief Artifact context
+ */
+static mender_artifact_ctx_t *mender_artifact_ctx = NULL;
+
 mender_artifact_ctx_t *
 mender_artifact_create_ctx(void) {
 
     mender_artifact_ctx_t *ctx;
 
     /* Create new context */
-    if (NULL == (ctx = (mender_artifact_ctx_t *)malloc(sizeof(mender_artifact_ctx_t)))) {
+    if (NULL == (ctx = (mender_artifact_ctx_t *)calloc(1, sizeof(mender_artifact_ctx_t)))) {
         return NULL;
     }
-    memset(ctx, 0, sizeof(mender_artifact_ctx_t));
+
+    /* Save context */
+    mender_artifact_ctx = ctx;
 
     return ctx;
+}
+
+mender_err_t
+mender_artifact_get_ctx(mender_artifact_ctx_t **ctx) {
+
+    assert(NULL != ctx);
+
+    if (NULL == mender_artifact_ctx) {
+        return MENDER_FAIL;
+    }
+
+    *ctx = mender_artifact_ctx;
+    return MENDER_OK;
 }
 
 mender_err_t

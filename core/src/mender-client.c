@@ -20,6 +20,7 @@
 
 #include "mender-api.h"
 #include "mender-client.h"
+#include "mender-artifact.h"
 #include "mender-flash.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"
@@ -889,6 +890,9 @@ mender_client_update_work_function(void) {
 
     mender_err_t ret;
 
+    /* Ensure that the context is initialized to NULL before goto END */
+    mender_artifact_ctx_t *mender_artifact_ctx = NULL;
+
     /* Check for deployment */
     mender_api_deployment_data_t *deployment              = calloc(1, sizeof(mender_api_deployment_data_t));
     char                         *storage_deployment_data = NULL;
@@ -939,6 +943,15 @@ mender_client_update_work_function(void) {
         goto END;
     }
 
+    /* Artifact context */
+    if (MENDER_OK != (ret = mender_artifact_get_ctx(&mender_artifact_ctx))) {
+        mender_log_error("Unable to get artifact context");
+        if (mender_client_deployment_needs_set_pending_image) {
+            mender_flash_abort_deployment(mender_client_flash_handle);
+        }
+        goto END;
+    }
+
     /* Set boot partition */
     mender_log_info("Download done, installing artifact");
     mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_INSTALLING);
@@ -980,6 +993,7 @@ mender_client_update_work_function(void) {
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
     }
+    mender_artifact_release_ctx(mender_artifact_ctx);
 
     /* Check if the system must restart following downloading the deployment */
     if (true == mender_client_deployment_needs_restart) {
@@ -1002,6 +1016,7 @@ END:
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
     }
+    mender_artifact_release_ctx(mender_artifact_ctx);
 
     return ret;
 }

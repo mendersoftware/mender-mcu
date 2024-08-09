@@ -153,6 +153,21 @@ static mender_err_t mender_client_initialization_work_function(void);
  */
 static mender_err_t mender_client_authentication_work_function(void);
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+/**
+ * @brief Compare artifact, device and deployment device types
+ * @param device_type_artifact Device type of artifact
+ * @param device_type_device Device type of configuration
+ * @param device_type_deployment Device types of deployment
+ * @param device_type_deployment_size Deployment device types size
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t mender_compare_device_types(const char  *device_type_artifact,
+                                                const char  *device_type_device,
+                                                const char **device_type_deployment,
+                                                const size_t device_type_deployment_size);
+#endif
+
 /**
  * @brief Mender client update work function
  * @return MENDER_OK if the function succeeds, error code otherwise
@@ -885,6 +900,34 @@ deployment_destroy(mender_api_deployment_data_t *deployment) {
     return MENDER_OK;
 }
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+static mender_err_t
+mender_compare_device_types(const char  *device_type_artifact,
+                            const char  *device_type_device,
+                            const char **device_type_deployment,
+                            const size_t device_type_deployment_size) {
+
+    assert(NULL != device_type_artifact);
+    assert(NULL != device_type_deployment);
+    assert(NULL != device_type_device);
+    assert(0 < device_type_deployment_size);
+
+    if (0 != strcmp(device_type_artifact, device_type_device)) {
+        mender_log_error("Device type from artifact '%s' is not compatible with device '%s'", device_type_artifact, device_type_device);
+        return MENDER_FAIL;
+    }
+
+    /* Return MENDER_OK if one of the devices in the deployment are compatible with the device */
+    for (size_t i = 0; i < device_type_deployment_size; i++) {
+        if (0 == strcmp(device_type_deployment[i], device_type_device)) {
+            return MENDER_OK;
+        }
+    }
+    mender_log_error("None of the device types from the deployment are compatible with device '%s'", device_type_device);
+    return MENDER_FAIL;
+}
+#endif
+
 static mender_err_t
 mender_client_update_work_function(void) {
 
@@ -951,6 +994,33 @@ mender_client_update_work_function(void) {
         }
         goto END;
     }
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    /* Retrieve device type from artifact */
+    const char *device_type_artifact = NULL;
+    if (MENDER_OK != (ret = mender_artifact_get_device_type(mender_artifact_ctx, &device_type_artifact))) {
+        mender_log_error("Unable to get device type from artifact");
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        if (mender_client_deployment_needs_set_pending_image) {
+            mender_flash_abort_deployment(mender_client_flash_handle);
+        }
+        goto END;
+    }
+
+    /* Match device type  */
+    if (MENDER_OK
+        != mender_compare_device_types(device_type_artifact,
+                                       mender_client_config.device_type,
+                                       (const char **)deployment->device_types_compatible,
+                                       deployment->device_types_compatible_size)) {
+        /* Erorrs are logged by the function */
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        if (mender_client_deployment_needs_set_pending_image) {
+            mender_flash_abort_deployment(mender_client_flash_handle);
+        }
+        goto END;
+    }
+#endif
 
     /* Set boot partition */
     mender_log_info("Download done, installing artifact");

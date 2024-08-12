@@ -239,7 +239,6 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
     mbedtls_entropy_context  *entropy    = NULL;
     unsigned char            *sig        = NULL;
     size_t                    sig_length;
-    char                     *tmp;
     MBEDTLS_ERR_BUF;
 
     /* Initialize mbedtls */

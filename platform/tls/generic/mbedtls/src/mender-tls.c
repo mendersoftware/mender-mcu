@@ -419,15 +419,52 @@ mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, con
     assert(NULL != user_provided_key);
     assert(0 != user_provided_key_length);
 
-    int ret;
+    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
+    mbedtls_entropy_context  *entropy  = NULL;
+    int                       ret;
     MBEDTLS_ERR_BUF;
 
-    /* Load and parse the private key buffer */
-    if (0 != (ret = mbedtls_pk_parse_key(pk_context, user_provided_key, user_provided_key_length, NULL, 0))) {
-        LOG_MBEDTLS_ERROR("Unable to parse private key", ret);
-        return MENDER_FAIL;
+    if (NULL == (ctr_drbg = (mbedtls_ctr_drbg_context *)malloc(sizeof(mbedtls_ctr_drbg_context)))) {
+        mender_log_error("Unable to allocate memory");
+        ret = -1;
+        goto END;
     }
-    return MENDER_OK;
+    mbedtls_ctr_drbg_init(ctr_drbg);
+    if (NULL == (entropy = (mbedtls_entropy_context *)malloc(sizeof(mbedtls_entropy_context)))) {
+        mender_log_error("Unable to allocate memory");
+        ret = -1;
+        goto END;
+    }
+    mbedtls_entropy_init(entropy);
+
+    /* Setup CRT DRBG */
+    if (0 != (ret = mbedtls_ctr_drbg_seed(ctr_drbg, mbedtls_entropy_func, entropy, (const unsigned char *)"mender", strlen("mender")))) {
+        LOG_MBEDTLS_ERROR("Unable to initialize ctr drbg", ret);
+        goto END;
+    }
+
+    /* Load and parse the private key buffer */
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+    if (0 != (ret = mbedtls_pk_parse_key(pk_context, user_provided_key, user_provided_key_length, NULL, 0, mbedtls_ctr_drbg_random, ctr_drbg))) {
+#else
+    if (0 != (ret = mbedtls_pk_parse_key(pk_context, user_provided_key, user_provided_key_length, NULL, 0))) {
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x03000000 */
+        LOG_MBEDTLS_ERROR("Unable to parse private key", ret);
+        goto END;
+    }
+
+END:
+    /* Release mbedtls */
+    if (NULL != entropy) {
+        mbedtls_entropy_free(entropy);
+        free(entropy);
+    }
+    if (NULL != ctr_drbg) {
+        mbedtls_ctr_drbg_free(ctr_drbg);
+        free(ctr_drbg);
+    }
+
+    return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
 
 static mender_err_t

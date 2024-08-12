@@ -495,11 +495,13 @@ mender_tls_get_authentication_keys(unsigned char **private_key,
     /* Get user provided key, else generate key  */
     if (NULL != user_provided_key) {
         if (MENDER_OK != mender_tls_user_provided_authentication_keys(pk_context, user_provided_key, user_provided_key_length)) {
+            ret = -1;
             goto END;
         }
     } else {
         /* Generate key */
         if (MENDER_OK != mender_tls_generate_authentication_keys(pk_context)) {
+            ret = -1;
             goto END;
         }
     }

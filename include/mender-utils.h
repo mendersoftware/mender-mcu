@@ -41,6 +41,21 @@ extern "C" {
 #define StringEqual(str1, str2) (0 == strcmp(str1, str2))
 
 /**
+ * @brief A utility macro to make marking unused arguments less noisy/disruptive
+ */
+#define ARG_UNUSED __attribute__((unused))
+
+/**
+ * For variables only used in debug builds, in particular only in assert()
+ * calls, use NDEBUG_UNUSED.
+ */
+#ifdef NDEBUG
+#define NDEBUG_UNUSED __attribute__((unused))
+#else
+#define NDEBUG_UNUSED
+#endif
+
+/**
  * @brief Mender error codes
  */
 typedef enum {

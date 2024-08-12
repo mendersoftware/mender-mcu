@@ -451,7 +451,7 @@ END:
 }
 
 mender_err_t
-mender_api_publish_deployment_status(char *id, mender_deployment_status_t deployment_status) {
+mender_api_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
 
     assert(NULL != id);
     mender_err_t ret;

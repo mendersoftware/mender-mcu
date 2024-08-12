@@ -27,6 +27,7 @@ extern "C" {
 
 #include "mender-addon.h"
 #include "mender-utils.h"
+#include "mender-update-module.h"
 
 /**
  * @brief Mender client configuration
@@ -71,19 +72,6 @@ char *mender_client_version(void);
 mender_err_t mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks);
 
 /**
- * @brief Register artifact type
- * @param type Artifact type
- * @param callback Artifact type callback
- * @param needs_restart Flag to indicate if the artifact type requires the device to restart after downloading
- * @param artifact_name Artifact name (optional, NULL otherwise), set to validate module update after restarting
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_client_register_artifact_type(char *type,
-                                                  mender_err_t (*callback)(char *, char *, char *, cJSON *, char *, size_t, void *, size_t, size_t),
-                                                  bool  needs_restart,
-                                                  char *artifact_name);
-
-/**
  * @brief Register add-on
  * @param addon Add-on
  * @param config Add-on configuration
@@ -91,6 +79,14 @@ mender_err_t mender_client_register_artifact_type(char *type,
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_client_register_addon(mender_addon_instance_t *addon, void *config, void *callbacks);
+
+/**
+ * @brief Register update module
+ * @param update_module The update module to register
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ * @note Takes ownership of #update_module in case of success
+ */
+mender_err_t mender_client_register_update_module(mender_update_module_t *update_module);
 
 /**
  * @brief Activate mender client

@@ -25,6 +25,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "mender-utils.h"
+#include "mender-update-module.h"
 
 /**
  * @brief Initialize mender storage
@@ -74,6 +75,19 @@ mender_err_t mender_storage_set_deployment_data(char *deployment_data);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_storage_get_deployment_data(char **deployment_data);
+
+/**
+ * @brief Save update module state
+ * @param artifact_type artifact type of the update module we are saving the state of
+ * @param state state of the update module
+ */
+mender_err_t mender_storage_save_update_state(mender_update_state_t state, const char *artifact_type);
+
+/**
+ * @brief Get update module state
+ * @see mender_storage_save_update_state()
+ */
+mender_err_t mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type);
 
 /**
  * @brief Delete deployment data

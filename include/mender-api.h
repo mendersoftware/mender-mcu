@@ -75,7 +75,7 @@ mender_err_t mender_api_check_for_deployment(mender_api_deployment_data_t *deplo
  * @param deployment_status Deployment status
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_api_publish_deployment_status(char *id, mender_deployment_status_t deployment_status);
+mender_err_t mender_api_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status);
 
 /**
  * @brief Download artifact from the mender-server

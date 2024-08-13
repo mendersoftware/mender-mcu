@@ -263,15 +263,16 @@ static enum http_method
 mender_http_method_to_zephyr_http_client_method(mender_http_method_t method) {
 
     /* Convert method */
-    if (MENDER_HTTP_GET == method) {
-        return HTTP_GET;
-    } else if (MENDER_HTTP_POST == method) {
-        return HTTP_POST;
-    } else if (MENDER_HTTP_PUT == method) {
-        return HTTP_PUT;
-    } else if (MENDER_HTTP_PATCH == method) {
-        return HTTP_PATCH;
+    switch (method) {
+        case MENDER_HTTP_GET:
+            return HTTP_GET;
+        case MENDER_HTTP_POST:
+            return HTTP_POST;
+        case MENDER_HTTP_PUT:
+            return HTTP_PUT;
+        case MENDER_HTTP_PATCH:
+            return HTTP_PATCH;
+        default:
+            return -1;
     }
-
-    return -1;
 }

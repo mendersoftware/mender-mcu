@@ -41,10 +41,9 @@ mender_err_t mender_net_get_host_port_url(char *path, char *config_host, char **
  * @brief Perform connection with the server
  * @param host Host
  * @param port Port
- * @param sock Client socket
- * @return MENDER_OK if the function succeeds, error code otherwise
+ * @return socket descriptor if the function succeeds, -1 otherwise
  */
-mender_err_t mender_net_connect(const char *host, const char *port, int *sock);
+int mender_net_connect(const char *host, const char *port);
 
 /**
  * @brief Close connection with the server

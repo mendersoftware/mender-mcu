@@ -133,12 +133,11 @@ mender_websocket_connect(
     memset(&request, 0, sizeof(struct websocket_request));
 
     /* Allocate a new handle */
-    if (NULL == (*handle = malloc(sizeof(mender_websocket_handle_t)))) {
+    if (NULL == (*handle = calloc(1, sizeof(mender_websocket_handle_t)))) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto FAIL;
     }
-    memset(*handle, 0, sizeof(mender_websocket_handle_t));
     ((mender_websocket_handle_t *)*handle)->sock = -1;
 
     /* Save callback and params */
@@ -181,7 +180,8 @@ mender_websocket_connect(
     request.optional_headers = (0 != header_index) ? ((const char **)header_fields) : NULL;
 
     /* Connect to the server */
-    if (MENDER_OK != (ret = mender_net_connect(host, port, &((mender_websocket_handle_t *)*handle)->sock))) {
+    ((mender_websocket_handle_t *)*handle)->sock = mender_net_connect(host, port);
+    if (((mender_websocket_handle_t *)*handle)->sock < 0) {
         mender_log_error("Unable to open HTTP client connection");
         goto FAIL;
     }
@@ -216,15 +216,11 @@ mender_websocket_connect(
 
 FAIL:
 
-    /* Close connection */
+    /* Close connection and release memory */
     if (NULL != *handle) {
-        if (-1 != ((mender_websocket_handle_t *)*handle)->sock) {
+        if (((mender_websocket_handle_t *)*handle)->sock > 0) {
             mender_net_disconnect(((mender_websocket_handle_t *)*handle)->sock);
         }
-    }
-
-    /* Release memory */
-    if (NULL != *handle) {
         free(*handle);
         *handle = NULL;
     }

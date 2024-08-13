@@ -168,7 +168,8 @@ mender_http_perform(char                *jwt,
     request.header_fields = (0 != header_index) ? ((const char **)header_fields) : NULL;
 
     /* Connect to the server */
-    if (MENDER_OK != (ret = mender_net_connect(host, port, &sock))) {
+    sock = mender_net_connect(host, port);
+    if (sock < 0) {
         mender_log_error("Unable to open HTTP client connection");
         goto END;
     }
@@ -206,7 +207,9 @@ mender_http_perform(char                *jwt,
 END:
 
     /* Close connection */
-    mender_net_disconnect(sock);
+    if (sock >= 0) {
+        mender_net_disconnect(sock);
+    }
 
     /* Release memory */
     if (NULL != host) {

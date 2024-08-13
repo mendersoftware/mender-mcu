@@ -19,6 +19,7 @@
 
 #include <errno.h>
 #include <zephyr/net/socket.h>
+#include <zephyr/kernel.h>
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
 #include <zephyr/net/tls_credentials.h>
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
@@ -32,6 +33,8 @@
 #ifndef CONFIG_MENDER_NET_TLS_PEER_VERIFY
 #define CONFIG_MENDER_NET_TLS_PEER_VERIFY (2)
 #endif /* CONFIG_MENDER_NET_TLS_PEER_VERIFY */
+
+#define RESOLVE_ATTEMPTS (10)
 
 mender_err_t
 mender_net_get_host_port_url(char *path, char *config_host, char **host, char **port, char **url) {
@@ -101,19 +104,19 @@ mender_net_get_host_port_url(char *path, char *config_host, char **host, char **
     return MENDER_OK;
 }
 
-mender_err_t
-mender_net_connect(const char *host, const char *port, int *sock) {
+int
+mender_net_connect(const char *host, const char *port) {
 
     assert(NULL != host);
     assert(NULL != port);
-    assert(NULL != sock);
+
     int                    result;
-    mender_err_t           ret = MENDER_OK;
-    struct zsock_addrinfo  hints;
-    struct zsock_addrinfo *addr = NULL;
+    int                    sock             = -1;
+    struct zsock_addrinfo  hints            = { 0 };
+    struct zsock_addrinfo *addr             = NULL;
+    unsigned int           resolve_attempts = RESOLVE_ATTEMPTS;
 
     /* Set hints */
-    memset(&hints, 0, sizeof(hints));
     if (IS_ENABLED(CONFIG_NET_IPV6)) {
         hints.ai_family = AF_INET6;
     } else if (IS_ENABLED(CONFIG_NET_IPV4)) {
@@ -122,24 +125,30 @@ mender_net_connect(const char *host, const char *port, int *sock) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    /* Perform DNS resolution of the host */
-    if (0 != (result = zsock_getaddrinfo(host, port, &hints, &addr))) {
+    /* Perform DNS resolution of the host; try RESOLVE_ATTEMPTS times */
+    do {
+        result = zsock_getaddrinfo(host, port, &hints, &addr);
+        if (0 == result) {
+            break;
+        }
+        /* Introduce a backoff mechanism to try every 10ms, 20ms, ..., 100ms */
+        k_sleep(K_MSEC(10 * (RESOLVE_ATTEMPTS - resolve_attempts + 1)));
+    } while (0 != --resolve_attempts);
+
+    if (0 != result) {
         mender_log_error("Unable to resolve host name '%s:%s', result = %d, errno = %d", host, port, result, errno);
-        ret = MENDER_FAIL;
         goto END;
     }
 
     /* Create socket */
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
-    if ((result = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TLS_1_2)) < 0) {
+    if ((sock = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TLS_1_2)) < 0) {
 #else
-    if ((result = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    if ((sock = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
-        mender_log_error("Unable to create socket, result = %d, errno= %d", result, errno);
-        ret = MENDER_FAIL;
+        mender_log_error("Unable to create socket, result = %d, errno= %d", sock, errno);
         goto END;
     }
-    *sock = result;
 
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
 
@@ -147,53 +156,49 @@ mender_net_connect(const char *host, const char *port, int *sock) {
     sec_tag_t sec_tag[] = {
         CONFIG_MENDER_NET_CA_CERTIFICATE_TAG,
     };
-    if ((result = zsock_setsockopt(*sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag, sizeof(sec_tag))) < 0) {
+    if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag, sizeof(sec_tag))) < 0) {
         mender_log_error("Unable to set TLS_SEC_TAG_LIST option, result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
     /* Set TLS_HOSTNAME option */
-    if ((result = zsock_setsockopt(*sock, SOL_TLS, TLS_HOSTNAME, host, strlen(host))) < 0) {
+    if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_HOSTNAME, host, strlen(host))) < 0) {
         mender_log_error("Unable to set TLS_HOSTNAME option, result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
     /* Set TLS_PEER_VERIFY option */
     int verify = CONFIG_MENDER_NET_TLS_PEER_VERIFY;
-    if ((result = zsock_setsockopt(*sock, SOL_TLS, TLS_PEER_VERIFY, &verify, sizeof(int))) < 0) {
+    if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_PEER_VERIFY, &verify, sizeof(int))) < 0) {
         mender_log_error("Unable to set TLS_PEER_VERIFY option, result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
 
     /* Connect to the host */
-    if (0 != (result = zsock_connect(*sock, addr->ai_addr, addr->ai_addrlen))) {
+    if (0 != (result = zsock_connect(sock, addr->ai_addr, addr->ai_addrlen))) {
         mender_log_error("Unable to connect to the host '%s:%s', result = %d, errno = %d", host, port, result, errno);
-        mender_log_error("result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
-END:
+    /* Free the address info */
+    if (NULL != addr) {
+        zsock_freeaddrinfo(addr);
+    }
+    return sock;
 
-    /* Release memory */
+END:
+    /* Close socket */
+    if (sock >= 0) {
+        zsock_close(sock);
+    }
+
     if (NULL != addr) {
         zsock_freeaddrinfo(addr);
     }
 
-    return ret;
+    return -1; /* Error */
 }
 
 mender_err_t

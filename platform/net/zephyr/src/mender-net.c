@@ -39,13 +39,14 @@ mender_net_get_host_port_url(char *path, char *config_host, char **host, char **
     assert(NULL != path);
     assert(NULL != host);
     assert(NULL != port);
-    char *tmp;
-    char *saveptr;
 
-    /* Check if the path start with protocol */
+    char *path_no_prefix = NULL;
+    bool  is_https       = false;
+
+    /* Check if the path start with protocol (meaning we have the full path); alternatively we have only URL (path/to/resource) */
     if ((false == mender_utils_strbeginwith(path, "http://")) && (false == mender_utils_strbeginwith(path, "https://"))) {
 
-        /* Path contain the URL only, retrieve host and port from configuration */
+        /* Path contains the URL only, retrieve host and port from configuration (config_host) */
         assert(NULL != url);
         if (NULL == (*url = strdup(path))) {
             mender_log_error("Unable to allocate memory");
@@ -54,42 +55,48 @@ mender_net_get_host_port_url(char *path, char *config_host, char **host, char **
         return mender_net_get_host_port_url(config_host, NULL, host, port, NULL);
     }
 
-    /* Create a working copy of the path */
-    if (NULL == (tmp = strdup(path))) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
+    /* Determine protocol and default port */
+    if (mender_utils_strbeginwith(path, "http://")) {
+        path_no_prefix = path + strlen("http://");
+    } else if (mender_utils_strbeginwith(path, "https://")) {
+        path_no_prefix = path + strlen("https://");
+        is_https       = true;
     }
 
-    /* Retrieve protocol and host */
-    char *protocol = strtok_r(tmp, "/", &saveptr);
-    char *pch1     = strtok_r(NULL, "/", &saveptr);
-
-    /* Check if the host contains port */
-    char *pch2 = strchr(pch1, ':');
-    if (NULL != pch2) {
-        /* Port is specified */
-        if (NULL == (*host = malloc(pch2 - pch1 + 1))) {
-            mender_log_error("Unable to allocate memory");
-            free(tmp);
+    /* Extract url path: next '/' character in the path after finding protocol must be the beginning of url */
+    char *path_url = strchr(path_no_prefix, '/');
+    if ((NULL != path_url) && (NULL != url)) {
+        if (NULL == (*url = strdup(path_url))) {
+            mender_log_error("Unable to allocate memory for URL");
             return MENDER_FAIL;
         }
-        strncpy(*host, pch1, pch2 - pch1);
-        *port = strdup(pch2 + 1);
-    } else {
-        /* Port is not specified */
-        *host = strdup(pch1);
-        if (true == mender_utils_strbeginwith(path, "http://")) {
-            *port = strdup("80");
-        } else if (true == mender_utils_strbeginwith(path, "https://")) {
-            *port = strdup("443");
-        }
-    }
-    if (NULL != url) {
-        *url = strdup(path + strlen(protocol) + 2 + strlen(pch1));
     }
 
-    /* Release memory */
-    free(tmp);
+    /* Extract host and port */
+    char *path_port = strchr(path_no_prefix, ':');
+    if ((NULL == path_port) && (NULL == path_url)) {
+        *port = strdup(is_https ? "443" : "80");
+        *host = strdup(path_no_prefix);
+    } else if ((NULL == path_port) && (NULL != path_url)) {
+        *port = strdup(is_https ? "443" : "80");
+        *host = strndup(path_no_prefix, path_url - path_no_prefix);
+    } else if ((NULL != path_port) && (NULL == path_url)) {
+        *port = strdup(path_port + 1);
+        *host = strndup(path_no_prefix, path_port - path_no_prefix);
+    } else {
+        *host = strndup(path_no_prefix, path_port - path_no_prefix);
+        *port = strndup(path_port + 1, path_url - path_port - 1);
+    }
+
+    if (NULL == *host || NULL == *port) {
+        /* Clean up */
+        free(*host);
+        free(*port);
+        free(*url);
+
+        mender_log_error("Unable to allocate memory for host or port");
+        return MENDER_FAIL;
+    }
 
     return MENDER_OK;
 }

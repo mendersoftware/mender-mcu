@@ -1067,7 +1067,19 @@ mender_client_update_work_function(void) {
         }
         goto END;
     }
-#endif
+
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+    /* Store provides */
+    if (MENDER_OK != mender_store_provides(mender_artifact_ctx)) {
+        mender_log_error("Unable to store provides");
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        if (mender_client_deployment_needs_set_pending_image) {
+            mender_flash_abort_deployment(mender_client_flash_handle);
+        }
+        goto END;
+    }
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
     /* Set boot partition */
     mender_log_info("Download done, installing artifact");

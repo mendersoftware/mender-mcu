@@ -104,6 +104,48 @@ mender_net_get_host_port_url(char *path, char *config_host, char **host, char **
     return MENDER_OK;
 }
 
+mender_err_t
+header_add(const char **header_list, size_t header_list_size, const char *header) {
+
+    // Headers are added to the header list one by one so that there are no empty spaces in the list
+    if (NULL == header_list) {
+        return MENDER_FAIL;
+    }
+
+    // The list that we pass to the Zephyr request needs to be NULL-terminated so the last element need to stay NULL
+    for (size_t i = 0; i < header_list_size - 1; i++) {
+        if (NULL == header_list[i]) {
+            header_list[i] = header;
+            return MENDER_OK;
+        }
+    }
+
+    mender_log_error("Unable to add header: list is full");
+    return MENDER_FAIL;
+}
+
+char *
+header_alloc_and_add(const char **header_list, size_t header_list_size, const char *format, ...) {
+
+    char   *header = NULL;
+    va_list args;
+
+    va_start(args, format);
+    int ret = vasprintf(&header, format, args);
+    va_end(args);
+    if (ret < 0) {
+        mender_log_error("Unable to create header");
+        return NULL;
+    }
+
+    if (MENDER_FAIL == header_add(header_list, header_list_size, header)) {
+        mender_log_error("Unable to add header to the list");
+        free(header);
+        return NULL;
+    }
+    return header;
+}
+
 int
 mender_net_connect(const char *host, const char *port) {
 

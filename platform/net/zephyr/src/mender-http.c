@@ -19,6 +19,7 @@
 
 #include <version.h>
 #include <zephyr/net/http/client.h>
+#include <zephyr/kernel.h>
 #include "mender-http.h"
 #include "mender-log.h"
 #include "mender-net.h"
@@ -26,7 +27,7 @@
 /**
  * @brief HTTP User-Agent
  */
-#define MENDER_HTTP_USER_AGENT "mender-mcu-client/" MENDER_CLIENT_VERSION " (mender-http) zephyr/" KERNEL_VERSION_STRING
+#define MENDER_HEADER_HTTP_USER_AGENT "User-Agent: Mender/" MENDER_CLIENT_VERSION " MCU Zephyr/" KERNEL_VERSION_STRING "\r\n"
 
 /**
  * @brief Receive buffer length
@@ -36,7 +37,7 @@
 /**
  * @brief Request timeout (milliseconds)
  */
-#define MENDER_HTTP_REQUEST_TIMEOUT (600000)
+#define MENDER_HTTP_REQUEST_TIMEOUT (600 * MSEC_PER_SEC)
 
 /**
  * @brief Request context
@@ -79,6 +80,14 @@ mender_http_init(mender_http_config_t *config) {
     return MENDER_OK;
 }
 
+/* Request built will look like this:
+    GET https://hosted.mender.io/api/devices/v1/deployments/artifacts/{id} HTTP/1.1
+    Host: hosted.mender.io
+    User-Agent: Mender/2.0.0 MCU Zephyr/2.7.0
+    Authorization: Bearer <jwt token>
+    X-MEN-Signature: <string>
+    Content-Type: application/json
+*/
 mender_err_t
 mender_http_perform(char                *jwt,
                     char                *path,
@@ -92,26 +101,23 @@ mender_http_perform(char                *jwt,
     assert(NULL != path);
     assert(NULL != callback);
     assert(NULL != status);
-    mender_err_t                ret;
-    struct http_request         request;
-    mender_http_request_context request_context;
-    char                       *header_fields[5] = { NULL, NULL, NULL, NULL, NULL };
-    size_t                      header_index     = 0;
-    char                       *host             = NULL;
-    char                       *port             = NULL;
-    char                       *url              = NULL;
-    int                         sock             = -1;
+    mender_err_t                ret                = MENDER_FAIL;
+    struct http_request         request            = { 0 };
+    mender_http_request_context request_context    = { callback = callback, params = params, ret = MENDER_OK };
+    const char                 *header_fields[6]   = { NULL }; /* The list is NULL terminated; make sure the size reflects it */
+    size_t                      header_fields_size = sizeof(header_fields) / sizeof(header_fields[0]);
+    char                       *host               = NULL;
+    char                       *port               = NULL;
+    char                       *url                = NULL;
+    int                         sock               = -1;
 
-    /* Initialize request */
-    memset(&request, 0, sizeof(struct http_request));
-
-    /* Initialize request context */
-    request_context.callback = callback;
-    request_context.params   = params;
-    request_context.ret      = MENDER_OK;
+    /* Headers to be added to the request */
+    char *host_header      = NULL;
+    char *auth_header      = NULL;
+    char *signature_header = NULL;
 
     /* Retrieve host, port and url */
-    if (MENDER_OK != (ret = mender_net_get_host_port_url(path, mender_http_config.host, &host, &port, &url))) {
+    if (MENDER_OK != mender_net_get_host_port_url(path, mender_http_config.host, &host, &port, &url)) {
         mender_log_error("Unable to retrieve host/port/url");
         goto END;
     }
@@ -126,46 +132,46 @@ mender_http_perform(char                *jwt,
     request.response    = mender_http_response_cb;
     if (NULL == (request.recv_buf = (uint8_t *)malloc(MENDER_HTTP_RECV_BUF_LENGTH))) {
         mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
         goto END;
     }
     request.recv_buf_len = MENDER_HTTP_RECV_BUF_LENGTH;
-    size_t str_length    = strlen("User-Agent: ") + strlen(MENDER_HTTP_USER_AGENT) + strlen("\r\n") + 1;
-    if (NULL == (header_fields[header_index] = malloc(str_length))) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
+
+    /* Add headers */
+    host_header = header_alloc_and_add(header_fields, header_fields_size, "Host: %s\r\n", host);
+    if (NULL == host_header) {
+        mender_log_error("Unable to add 'Host' header");
         goto END;
     }
-    snprintf(header_fields[header_index], str_length, "User-Agent: %s\r\n", MENDER_HTTP_USER_AGENT);
-    header_index++;
+
+    if (MENDER_FAIL == header_add(header_fields, header_fields_size, MENDER_HEADER_HTTP_USER_AGENT)) {
+        mender_log_error("Unable to add 'User-Agent' header");
+        goto END;
+    }
+
     if (NULL != jwt) {
-        str_length = strlen("Authorization: Bearer ") + strlen(jwt) + strlen("\r\n") + 1;
-        if (NULL == (header_fields[header_index] = (char *)malloc(str_length))) {
-            mender_log_error("Unable to allocate memory");
-            ret = MENDER_FAIL;
+        auth_header = header_alloc_and_add(header_fields, header_fields_size, "Authorization: Bearer %s\r\n", jwt);
+        if (NULL == auth_header) {
+            mender_log_error("Unable to add 'Authorization' header");
             goto END;
         }
-        snprintf(header_fields[header_index], str_length, "Authorization: Bearer %s\r\n", jwt);
-        header_index++;
     }
+
     if (NULL != signature) {
-        str_length = strlen("X-MEN-Signature: ") + strlen(signature) + strlen("\r\n") + 1;
-        if (NULL == (header_fields[header_index] = (char *)malloc(str_length))) {
-            mender_log_error("Unable to allocate memory");
-            ret = MENDER_FAIL;
+        signature_header = header_alloc_and_add(header_fields, header_fields_size, "X-MEN-Signature: %s\r\n", signature);
+        if (NULL == signature_header) {
+            mender_log_error("Unable to add 'X-MEN-Signature' header");
             goto END;
         }
-        snprintf(header_fields[header_index], str_length, "X-MEN-Signature: %s\r\n", signature);
-        header_index++;
     }
+
     if (NULL != payload) {
-        if (NULL == (header_fields[header_index] = strdup("Content-Type: application/json\r\n"))) {
-            mender_log_error("Unable to allocate memory");
-            ret = MENDER_FAIL;
+        if (MENDER_FAIL == header_add(header_fields, header_fields_size, "Content-Type: application/json\r\n")) {
+            mender_log_error("Unable to add 'Content-Type' header");
             goto END;
         }
     }
-    request.header_fields = (0 != header_index) ? ((const char **)header_fields) : NULL;
+
+    request.header_fields = header_fields;
 
     /* Connect to the server */
     sock = mender_net_connect(host, port);
@@ -174,14 +180,13 @@ mender_http_perform(char                *jwt,
         goto END;
     }
     if (MENDER_OK != (ret = callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, params))) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_CONNECTED' callback");
         goto END;
     }
 
     /* Perform HTTP request */
     if (http_client_req(sock, &request, MENDER_HTTP_REQUEST_TIMEOUT, (void *)&request_context) < 0) {
         mender_log_error("Unable to write data");
-        ret = MENDER_FAIL;
         goto END;
     }
 
@@ -194,15 +199,16 @@ mender_http_perform(char                *jwt,
     if (0 == request.internal.response.http_status_code) {
         mender_log_error("An error occurred, connection has been closed");
         callback(MENDER_HTTP_EVENT_ERROR, NULL, 0, params);
-        ret = MENDER_FAIL;
         goto END;
     } else {
         *status = request.internal.response.http_status_code;
     }
     if (MENDER_OK != (ret = callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, params))) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_DISCONNECTED' callback");
         goto END;
     }
+
+    ret = MENDER_OK;
 
 END:
 
@@ -212,23 +218,14 @@ END:
     }
 
     /* Release memory */
-    if (NULL != host) {
-        free(host);
-    }
-    if (NULL != port) {
-        free(port);
-    }
-    if (NULL != url) {
-        free(url);
-    }
-    if (NULL != request.recv_buf) {
-        free(request.recv_buf);
-    }
-    for (size_t index = 0; index < sizeof(header_fields) / sizeof(header_fields[0]); index++) {
-        if (NULL != header_fields[index]) {
-            free(header_fields[index]);
-        }
-    }
+    free(host);
+    free(port);
+    free(url);
+    free(host_header);
+    free(auth_header);
+    free(signature_header);
+
+    free(request.recv_buf);
 
     return ret;
 }

@@ -38,6 +38,24 @@ extern "C" {
 mender_err_t mender_net_get_host_port_url(char *path, char *config_host, char **host, char **port, char **url);
 
 /**
+ * @brief Add a header to the header list
+ * @param header_list Header list
+ * @param header_list_size Header list size
+ * @param header Header to add
+ * @return MENDER_OK if the function succeeds, MENDER_FAIL otherwise
+ */
+mender_err_t header_add(const char **header_list, size_t header_list_size, const char *header);
+
+/**
+ * @brief Allocate and add a header to the header list
+ * @param header_list Header list
+ * @param header_list_size Header list size
+ * @param format Format string
+ * @return Pointer to the allocated string if the function succeeds, NULL otherwise
+ */
+char *header_alloc_and_add(const char **header_list, size_t header_list_size, const char *format, ...);
+
+/**
  * @brief Perform connection with the server
  * @param host Host
  * @param port Port

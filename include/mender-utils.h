@@ -195,6 +195,21 @@ mender_err_t mender_utils_free_linked_list(mender_key_value_list_t *list);
  */
 mender_err_t mender_utils_create_key_value_node(const char *type, const char *value, mender_key_value_list_t **list);
 
+/**
+ * @brief Append linked list - appends list2 to list1 and sets list2 to NULL
+ */
+mender_err_t mender_utils_append_list(mender_key_value_list_t **list1, mender_key_value_list_t **list2);
+
+/**
+ * @brief Convert linked list to string
+ */
+mender_err_t mender_utils_key_value_list_to_string(mender_key_value_list_t *list, char **key_value_str);
+
+/**
+ * @brief Convert string to linked list
+ */
+mender_err_t mender_utils_string_to_key_value_list(const char *key_value_str, mender_key_value_list_t **list);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

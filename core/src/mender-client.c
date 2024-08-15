@@ -928,6 +928,53 @@ mender_compare_device_types(const char  *device_type_artifact,
 }
 #endif
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+static mender_err_t
+mender_store_provides(mender_artifact_ctx_t *mender_artifact_ctx) {
+
+    assert(NULL != mender_artifact_ctx);
+    mender_err_t ret = MENDER_FAIL;
+
+    /* Write provides to the store */
+    /* Load the currently stored provides, combine it with the new provides and write back */
+
+    /* Load stored provides */
+    mender_key_value_list_t *stored_provides = NULL;
+    if (MENDER_FAIL == mender_storage_get_provides(&stored_provides)) {
+        mender_log_error("Unable to get stored provides");
+        goto END;
+    }
+
+    /* Combine the provides from the header-info and from the payloads */
+    mender_key_value_list_t *header_provides = mender_artifact_ctx->artifact_info.provides;
+    for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
+        if (MENDER_OK != mender_utils_append_list(&header_provides, &mender_artifact_ctx->payloads.values[i].provides)) {
+            mender_log_error("Unable to merge provides");
+            goto END;
+        }
+    }
+
+    /* Combine the stored provides with the new ones */
+    if (MENDER_OK != mender_utils_append_list(&header_provides, &stored_provides)) {
+        mender_log_error("Unable to merge provides");
+        goto END;
+    }
+
+    /* Write the combined list back to the store */
+    if (MENDER_OK != mender_storage_set_provides(header_provides)) {
+        mender_log_error("Unable to set provides");
+        goto END;
+    }
+
+    ret = MENDER_OK;
+END:
+    mender_utils_free_linked_list(stored_provides);
+    return ret;
+}
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
 static mender_err_t
 mender_client_update_work_function(void) {
 

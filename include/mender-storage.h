@@ -107,6 +107,29 @@ mender_err_t mender_storage_delete_device_config(void);
 #endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
 #endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+/**
+ * @brief Set provides
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_set_provides(mender_key_value_list_t *provides);
+
+/**
+ * @brief Get provides
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_get_provides(mender_key_value_list_t **provides);
+
+/**
+ * @brief Delete provides
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_delete_provides(void);
+
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
 /**
  * @brief Release mender storage
  * @return MENDER_OK if the function succeeds, error code otherwise

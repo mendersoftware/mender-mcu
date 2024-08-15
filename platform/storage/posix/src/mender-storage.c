@@ -35,6 +35,7 @@
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      CONFIG_MENDER_STORAGE_PATH "pubkey.der"
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA CONFIG_MENDER_STORAGE_PATH "deployment-data.json"
 #define MENDER_STORAGE_NVS_DEVICE_CONFIG   CONFIG_MENDER_STORAGE_PATH "config.json"
+#define MENDER_STORAGE_NVS_PROVIDES        CONFIG_MENDER_STORAGE_PATH "provides.txt"
 
 mender_err_t
 mender_storage_init(void) {
@@ -223,6 +224,63 @@ mender_storage_delete_device_config(void) {
 
 #endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
 #endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+
+mender_err_t
+mender_storage_set_provides(mender_key_value_list_t *provides) {
+
+    assert(NULL != provides);
+
+    char *provides_str = NULL;
+    if (MENDER_OK != mender_utils_key_value_list_to_string(provides, &provides_str)) {
+        return MENDER_FAIL;
+    }
+    size_t provides_str_length = strlen(provides_str);
+
+    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_PROVIDES, provides_str, provides_str_length)) {
+        free(provides_str);
+        return MENDER_FAIL;
+    }
+    free(provides_str);
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_storage_get_provides(mender_key_value_list_t **provides) {
+
+    assert(NULL != provides);
+
+    char  *provides_str = NULL;
+    size_t provides_length;
+    if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_PROVIDES, (void **)&provides_str, &provides_length)) {
+        return MENDER_NOT_FOUND;
+    }
+    if (MENDER_OK != mender_utils_string_to_key_value_list(provides_str, provides)) {
+        mender_log_error("Unable to parse provides");
+        free(provides_str);
+        return MENDER_FAIL;
+    }
+
+    free(provides_str);
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_storage_delete_provides(void) {
+
+    /* Delete provides */
+    if (0 != unlink(MENDER_STORAGE_NVS_PROVIDES)) {
+        mender_log_error("Unable to delete provides");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
+#endif /*CONFIG_MENDER_FULL_PARSE_ARTIFACT*/
+#endif /*CONFIG_MENDER_PROVIDES_DEPENDS*/
 
 mender_err_t
 mender_storage_exit(void) {

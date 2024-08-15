@@ -38,6 +38,7 @@
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      2
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA 3
 #define MENDER_STORAGE_NVS_DEVICE_CONFIG   4
+#define MENDER_STORAGE_NVS_PROVIDES        5
 
 /**
  * @brief NVS storage handle
@@ -250,6 +251,11 @@ mender_storage_get_device_config(char **device_config) {
     return MENDER_OK;
 }
 
+#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
+#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 mender_err_t
 mender_storage_delete_device_config(void) {
 
@@ -262,8 +268,65 @@ mender_storage_delete_device_config(void) {
     return MENDER_OK;
 }
 
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
+mender_err_t
+mender_storage_set_provides(mender_key_value_list_t *provides) {
+
+    assert(NULL != provides);
+
+    char *provides_str = NULL;
+    if (MENDER_OK != mender_utils_key_value_list_to_string(provides, &provides_str)) {
+        return MENDER_FAIL;
+    }
+
+    /* Write provides */
+    if (nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES, provides_str, strlen(provides_str) + 1) < 0) {
+        mender_log_error("Unable to write provides");
+        free(provides_str);
+        return MENDER_FAIL;
+    }
+
+    free(provides_str);
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_storage_get_provides(mender_key_value_list_t **provides) {
+
+    assert(NULL != provides);
+    size_t provides_length = 0;
+
+    char *provides_str = NULL;
+    /* Read provides */
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES, (void **)&provides_str, &provides_length);
+    if (MENDER_OK != ret) {
+        if (MENDER_NOT_FOUND == ret) {
+            mender_log_info("Provides not available");
+        } else {
+            mender_log_error("Unable to read provides");
+        }
+        return ret;
+    }
+
+    /* Convert str to key-value list */
+    if (MENDER_OK != mender_utils_string_to_key_value_list(provides_str, provides)) {
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_storage_delete_provides(void) {
+
+    /* Delete provides */
+    if (0 != nvs_delete(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES)) {
+        mender_log_error("Unable to delete provides");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
 mender_err_t
 mender_storage_exit(void) {

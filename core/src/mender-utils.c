@@ -20,6 +20,11 @@
 
 #include "mender-log.h"
 
+/* ASCII unit separator */
+#define MENDER_KEY_VALUE_DELIMITER "\x1F"
+/* ASCII record separator */
+#define MENDER_KEY_VALUE_SEPARATOR "\x1E"
+
 char *
 mender_utils_http_status_to_string(int status) {
 
@@ -362,5 +367,145 @@ mender_utils_free_linked_list(mender_key_value_list_t *list) {
         free(item);
         item = next;
     }
+    return MENDER_OK;
+}
+mender_err_t
+mender_utils_create_key_value_node(const char *type, const char *value, mender_key_value_list_t **list) {
+
+    assert(NULL != type);
+    assert(NULL != value);
+    assert(NULL != list);
+
+    mender_key_value_list_t *item = (mender_key_value_list_t *)calloc(1, sizeof(mender_key_value_list_t));
+    if (NULL == item) {
+        mender_log_error("Unable to allocate memory for linked list node");
+        return MENDER_FAIL;
+    }
+
+    item->key = strdup(type);
+    if (NULL == item->key) {
+        mender_log_error("Unable to allocate memory for type");
+        goto ERROR;
+    }
+
+    item->value = strdup(value);
+    if (NULL == item->value) {
+        mender_log_error("Unable to allocate memory for value");
+        goto ERROR;
+    }
+
+    item->next = *list;
+    *list      = item;
+
+    return MENDER_OK;
+
+ERROR:
+    mender_utils_free_linked_list(item);
+    return MENDER_FAIL;
+}
+
+mender_err_t
+mender_utils_key_value_list_to_string(mender_key_value_list_t *list, char **key_value_str) {
+
+    /*
+     * Converts key-value linked list to string of format :
+     *      "key<\x1F>value<\x1E>...key<\x1Fvalue<\x1E>"
+     *  Where \x1F is the ASCII unit separator and \x1E is the ASCII record separator
+     * */
+
+    /* Start with 1 for the null terminator */
+    size_t total_len = 1;
+    for (mender_key_value_list_t *item = list; NULL != item; item = item->next) {
+        if (NULL != item->key && NULL != item->value) {
+            total_len += strlen(item->key) + strlen(item->value) + 3; // key=value<space>
+        }
+    }
+
+    *key_value_str = (char *)calloc(1, total_len);
+    if (NULL == *key_value_str) {
+        mender_log_error("Unable to allocate memory for string");
+        return MENDER_FAIL;
+    }
+
+    /* Pointer to key_value_str pointer */
+    char *str_ptr = *key_value_str;
+    for (mender_key_value_list_t *item = list; NULL != item; item = item->next) {
+        if (NULL != item->key && NULL != item->value) {
+            int ret = snprintf(
+                str_ptr, total_len - (str_ptr - *key_value_str), "%s" MENDER_KEY_VALUE_DELIMITER "%s" MENDER_KEY_VALUE_SEPARATOR, item->key, item->value);
+            if (0 > ret) {
+                mender_log_error("Unable to write to string");
+                return MENDER_FAIL;
+            }
+            str_ptr += ret;
+        }
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_utils_string_to_key_value_list(const char *key_value_str, mender_key_value_list_t **list) {
+
+    /*
+     * Converts of format:
+     *      "key<\x1F>value<\x1E>...key<\x1Fvalue<\x1E>"
+     *  to key-value linked list
+     *  Where \x1F is the ASCII unit separator and \x1E is the ASCII record separator
+     * */
+
+    assert(NULL != key_value_str);
+    assert(NULL != list);
+
+    char *str = strdup(key_value_str);
+    if (NULL == str) {
+        mender_log_error("Unable to allocate memory for string");
+        return MENDER_FAIL;
+    }
+    char *saveptr;
+    char *token = strtok_r(str, MENDER_KEY_VALUE_SEPARATOR, &saveptr);
+
+    mender_err_t ret = MENDER_FAIL;
+
+    char *delimiter_pos = NULL;
+    while (NULL != token) {
+        delimiter_pos = strchr(token, MENDER_KEY_VALUE_DELIMITER[0]);
+        if (NULL == delimiter_pos) {
+            mender_log_error("Invalid key-value string");
+            goto END;
+        }
+        /* Add null terminator to split key and value to get the key from the token */
+        token[delimiter_pos - token] = '\0';
+        if (MENDER_OK != mender_utils_create_key_value_node(token, delimiter_pos + 1, list)) {
+            mender_log_error("Unable to create key-value node");
+            goto END;
+        }
+        token = strtok_r(NULL, MENDER_KEY_VALUE_SEPARATOR, &saveptr);
+    }
+
+    ret = MENDER_OK;
+END:
+    free(str);
+    return ret;
+}
+
+mender_err_t
+mender_utils_append_list(mender_key_value_list_t **list1, mender_key_value_list_t **list2) {
+
+    /* Combine two linked lists by pointing the last element of the first list
+     * to the first element of the second list
+     * Sets list2 to NULL
+     * */
+
+    mender_key_value_list_t *item = *list1;
+    if (NULL != item) {
+        while (NULL != item->next) {
+            item = item->next;
+        }
+        item->next = *list2;
+    } else {
+        *list1 = *list2;
+    }
+    *list2 = NULL;
     return MENDER_OK;
 }

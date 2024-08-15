@@ -97,15 +97,6 @@ static mender_err_t mender_artifact_read_manifest(mender_artifact_ctx_t *ctx);
 static mender_err_t mender_artifact_read_type_info(mender_artifact_ctx_t *ctx);
 
 /**
- * @brief Create linked list node
- * @param type Type
- * @param value Value
- * @param provides_depends Pointer to node
- * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
- */
-static mender_err_t mender_create_provides_depends_node(const char *type, const char *value, mender_key_value_list_t **provides_depends);
-
-/**
  * @brief Parse provides/depends from JSON object
  * @param json_provides_depends JSON object to parse
  * @param provides_depends Pointer to the list of provides or depends
@@ -610,14 +601,14 @@ mender_artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_
     cJSON *json_element = NULL;
     cJSON_ArrayForEach(json_element, json_provides_depends) {
         if (cJSON_IsString(json_element)) {
-            if (MENDER_OK != mender_create_provides_depends_node(json_element->string, json_element->valuestring, provides_depends)) {
+            if (MENDER_OK != mender_utils_create_key_value_node(json_element->string, json_element->valuestring, provides_depends)) {
                 mender_log_error("Unable to create linked list node for string element");
                 goto ERROR;
             }
         } else if (cJSON_IsArray(json_element)) {
             cJSON *json_element_value = NULL;
             cJSON_ArrayForEach(json_element_value, json_element) {
-                if (MENDER_OK != mender_create_provides_depends_node(json_element->string, json_element_value->valuestring, provides_depends)) {
+                if (MENDER_OK != mender_utils_create_key_value_node(json_element->string, json_element_value->valuestring, provides_depends)) {
                     mender_log_error("Unable to create linked list node for array element");
                     goto ERROR;
                 }

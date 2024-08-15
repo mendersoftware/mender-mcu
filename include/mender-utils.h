@@ -190,6 +190,11 @@ mender_err_t mender_utils_keystore_delete(mender_keystore_t *keystore);
  */
 mender_err_t mender_utils_free_linked_list(mender_key_value_list_t *list);
 
+/**
+ * @brief Create a new key-value node
+ */
+mender_err_t mender_utils_create_key_value_node(const char *type, const char *value, mender_key_value_list_t **list);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

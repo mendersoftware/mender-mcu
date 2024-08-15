@@ -364,3 +364,37 @@ mender_utils_free_linked_list(mender_key_value_list_t *list) {
     }
     return MENDER_OK;
 }
+mender_err_t
+mender_utils_create_key_value_node(const char *type, const char *value, mender_key_value_list_t **list) {
+
+    assert(NULL != type);
+    assert(NULL != value);
+    assert(NULL != list);
+
+    mender_key_value_list_t *item = (mender_key_value_list_t *)calloc(1, sizeof(mender_key_value_list_t));
+    if (NULL == item) {
+        mender_log_error("Unable to allocate memory for linked list node");
+        return MENDER_FAIL;
+    }
+
+    item->key = strdup(type);
+    if (NULL == item->key) {
+        mender_log_error("Unable to allocate memory for type");
+        goto ERROR;
+    }
+
+    item->value = strdup(value);
+    if (NULL == item->value) {
+        mender_log_error("Unable to allocate memory for value");
+        goto ERROR;
+    }
+
+    item->next = *list;
+    *list      = item;
+
+    return MENDER_OK;
+
+ERROR:
+    mender_utils_free_linked_list(item);
+    return MENDER_FAIL;
+}

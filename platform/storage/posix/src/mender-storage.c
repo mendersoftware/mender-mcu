@@ -43,37 +43,76 @@ mender_storage_init(void) {
     return MENDER_OK;
 }
 
+static mender_err_t
+mender_storage_write_file(const char *file_path, const void *data, size_t data_length) {
+
+    assert(NULL != file_path);
+    assert(NULL != data);
+
+    FILE *f = fopen(file_path, "wb");
+    if (NULL == f) {
+        mender_log_error("Unable to open file %s for writing", file_path);
+        return MENDER_FAIL;
+    }
+    if (fwrite(data, sizeof(unsigned char), data_length, f) != data_length) {
+        mender_log_error("Unable to write data to file %s", file_path);
+        fclose(f);
+        return MENDER_FAIL;
+    }
+    fclose(f);
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_storage_read_file(const char *file_path, void **data, size_t *data_length) {
+
+    assert(NULL != file_path);
+    assert(NULL != data);
+    assert(NULL != data_length);
+
+    FILE *f = fopen(file_path, "rb");
+    if (NULL == f) {
+        return MENDER_NOT_FOUND;
+    }
+    fseek(f, 0, SEEK_END);
+    long length = ftell(f);
+    if (length <= 0) {
+        mender_log_info("File %s is empty or unavailable", file_path);
+        fclose(f);
+        return MENDER_NOT_FOUND;
+    }
+    *data_length = (size_t)length;
+    fseek(f, 0, SEEK_SET);
+    *data = malloc(*data_length + 1);
+    if (NULL == *data) {
+        mender_log_error("Unable to allocate memory");
+        fclose(f);
+        return MENDER_FAIL;
+    }
+    /* Set last byte to \0 */
+    ((unsigned char *)*data)[*data_length] = '\0';
+    if (fread(*data, sizeof(unsigned char), *data_length, f) != *data_length) {
+        mender_log_error("Unable to read data from file %s", file_path);
+        free(*data);
+        fclose(f);
+        return MENDER_FAIL;
+    }
+    fclose(f);
+    return MENDER_OK;
+}
+
 mender_err_t
 mender_storage_set_authentication_keys(unsigned char *private_key, size_t private_key_length, unsigned char *public_key, size_t public_key_length) {
 
     assert(NULL != private_key);
     assert(NULL != public_key);
-    FILE *f;
 
-    /* Write private key */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_PRIVATE_KEY, "wb"))) {
-        mender_log_error("Unable to write authentication keys");
+    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_PRIVATE_KEY, private_key, private_key_length)) {
         return MENDER_FAIL;
     }
-    if (fwrite(private_key, sizeof(unsigned char), private_key_length, f) != private_key_length) {
-        mender_log_error("Unable to write authentication keys");
-        fclose(f);
+    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_PUBLIC_KEY, public_key, public_key_length)) {
         return MENDER_FAIL;
     }
-    fclose(f);
-
-    /* Write public key */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_PUBLIC_KEY, "wb"))) {
-        mender_log_error("Unable to write authentication keys");
-        return MENDER_FAIL;
-    }
-    if (fwrite(public_key, sizeof(unsigned char), public_key_length, f) != public_key_length) {
-        mender_log_error("Unable to write authentication keys");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    fclose(f);
-
     return MENDER_OK;
 }
 
@@ -84,69 +123,16 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
     assert(NULL != private_key_length);
     assert(NULL != public_key);
     assert(NULL != public_key_length);
-    long  length;
-    FILE *f;
 
-    /* Read private key */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_PRIVATE_KEY, "rb"))) {
-        mender_log_info("Authentication keys are not available");
+    if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_PRIVATE_KEY, (void **)private_key, private_key_length)) {
         return MENDER_NOT_FOUND;
     }
-    fseek(f, 0, SEEK_END);
-    if ((length = ftell(f)) <= 0) {
-        mender_log_info("Authentication keys are not available");
-        fclose(f);
-        return MENDER_NOT_FOUND;
-    }
-    *private_key_length = (size_t)length;
-    fseek(f, 0, SEEK_SET);
-    if (NULL == (*private_key = (unsigned char *)malloc(*private_key_length))) {
-        mender_log_error("Unable to allocate memory");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    if (fread(*private_key, sizeof(unsigned char), *private_key_length, f) != *private_key_length) {
-        mender_log_error("Unable to read authentication keys");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    fclose(f);
-
-    /* Read public key */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_PUBLIC_KEY, "rb"))) {
-        mender_log_info("Authentication keys are not available");
+    if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_PUBLIC_KEY, (void **)public_key, public_key_length)) {
         free(*private_key);
         *private_key        = NULL;
         *private_key_length = 0;
         return MENDER_NOT_FOUND;
     }
-    fseek(f, 0, SEEK_END);
-    if ((length = ftell(f)) <= 0) {
-        mender_log_info("Authentication keys are not available");
-        free(*private_key);
-        *private_key        = NULL;
-        *private_key_length = 0;
-        fclose(f);
-        return MENDER_NOT_FOUND;
-    }
-    *public_key_length = (size_t)length;
-    fseek(f, 0, SEEK_SET);
-    if (NULL == (*public_key = (unsigned char *)malloc(*public_key_length))) {
-        mender_log_error("Unable to allocate memory");
-        free(*private_key);
-        *private_key        = NULL;
-        *private_key_length = 0;
-        *public_key_length  = 0;
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    if (fread(*public_key, sizeof(unsigned char), *public_key_length, f) != *public_key_length) {
-        mender_log_error("Unable to read authentication keys");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    fclose(f);
-
     return MENDER_OK;
 }
 
@@ -164,60 +150,23 @@ mender_storage_delete_authentication_keys(void) {
 
 mender_err_t
 mender_storage_set_deployment_data(char *deployment_data) {
-
     assert(NULL != deployment_data);
     size_t deployment_data_length = strlen(deployment_data);
-    FILE  *f;
 
-    /* Write deployment data */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_DEPLOYMENT_DATA, "wb"))) {
-        mender_log_error("Unable to write deployment data");
+    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_DEPLOYMENT_DATA, deployment_data, deployment_data_length)) {
         return MENDER_FAIL;
     }
-    if (fwrite(deployment_data, sizeof(unsigned char), deployment_data_length, f) != deployment_data_length) {
-        mender_log_error("Unable to write deployment data");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    fclose(f);
-
     return MENDER_OK;
 }
 
 mender_err_t
 mender_storage_get_deployment_data(char **deployment_data) {
-
     assert(NULL != deployment_data);
-    size_t deployment_data_length = 0;
-    long   length;
-    FILE  *f;
 
-    /* Read deployment data */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_DEPLOYMENT_DATA, "rb"))) {
-        mender_log_info("Deployment data is not available");
+    size_t deployment_data_length;
+    if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_DEPLOYMENT_DATA, (void **)deployment_data, &deployment_data_length)) {
         return MENDER_NOT_FOUND;
     }
-    fseek(f, 0, SEEK_END);
-    if ((length = ftell(f)) <= 0) {
-        mender_log_info("Deployment data is not available");
-        fclose(f);
-        return MENDER_NOT_FOUND;
-    }
-    deployment_data_length = (size_t)length;
-    fseek(f, 0, SEEK_SET);
-    if (NULL == (*deployment_data = (char *)malloc(deployment_data_length + 1))) {
-        mender_log_error("Unable to allocate memory");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    if (fread(*deployment_data, sizeof(unsigned char), deployment_data_length, f) != deployment_data_length) {
-        mender_log_error("Unable to read deployment data");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    (*deployment_data)[deployment_data_length] = '\0';
-    fclose(f);
-
     return MENDER_OK;
 }
 
@@ -232,7 +181,6 @@ mender_storage_delete_deployment_data(void) {
 
     return MENDER_OK;
 }
-
 #ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
 #ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
 
@@ -240,21 +188,12 @@ mender_err_t
 mender_storage_set_device_config(char *device_config) {
 
     assert(NULL != device_config);
+
     size_t device_config_length = strlen(device_config);
-    FILE  *f;
 
-    /* Write device configuration */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_DEVICE_CONFIG, "wb"))) {
-        mender_log_error("Unable to write device configuration");
+    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_DEVICE_CONFIG, device_config, device_config_length)) {
         return MENDER_FAIL;
     }
-    if (fwrite(device_config, sizeof(unsigned char), device_config_length, f) != device_config_length) {
-        mender_log_error("Unable to write device configuration");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    fclose(f);
-
     return MENDER_OK;
 }
 
@@ -262,36 +201,11 @@ mender_err_t
 mender_storage_get_device_config(char **device_config) {
 
     assert(NULL != device_config);
-    size_t device_config_length = 0;
-    long   length;
-    FILE  *f;
 
-    /* Read device configuration */
-    if (NULL == (f = fopen(MENDER_STORAGE_NVS_DEVICE_CONFIG, "rb"))) {
-        mender_log_info("Device configuration not available");
+    size_t device_config_length;
+    if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_DEVICE_CONFIG, (void **)device_config, &device_config_length)) {
         return MENDER_NOT_FOUND;
     }
-    fseek(f, 0, SEEK_END);
-    if ((length = ftell(f)) <= 0) {
-        mender_log_info("Device configuration not available");
-        fclose(f);
-        return MENDER_NOT_FOUND;
-    }
-    device_config_length = (size_t)length;
-    fseek(f, 0, SEEK_SET);
-    if (NULL == (*device_config = (char *)malloc(device_config_length + 1))) {
-        mender_log_error("Unable to allocate memory");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    if (fread(*device_config, sizeof(unsigned char), device_config_length, f) != device_config_length) {
-        mender_log_error("Unable to read device configuration");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    (*device_config)[device_config_length] = '\0';
-    fclose(f);
-
     return MENDER_OK;
 }
 

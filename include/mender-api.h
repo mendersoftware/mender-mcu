@@ -45,8 +45,8 @@ typedef struct {
     char  *id;                           /**< ID of the deployment */
     char  *artifact_name;                /**< Artifact name of the deployment */
     char  *uri;                          /**< URI of the deployment */
-    char **device_types_compatible;      /**< Array of comaptible deployment types */
-    size_t device_types_compatible_size; /**< Size of the  deployment type array */
+    char **device_types_compatible;      /**< Array of compatible deployment types */
+    size_t device_types_compatible_size; /**< Size of the deployment type array */
 } mender_api_deployment_data_t;
 
 /**

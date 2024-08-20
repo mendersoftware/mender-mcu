@@ -999,13 +999,6 @@ mender_client_update_work_function(void) {
         goto END;
     }
 
-    /* Check if artifact is already installed (should not occur) */
-    if (!strcmp(deployment->artifact_name, mender_client_config.artifact_name)) {
-        mender_log_error("Artifact is already installed");
-        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_ALREADY_INSTALLED);
-        goto END;
-    }
-
     /* Reset flags */
     mender_client_deployment_needs_set_pending_image = false;
     mender_client_deployment_needs_restart           = false;

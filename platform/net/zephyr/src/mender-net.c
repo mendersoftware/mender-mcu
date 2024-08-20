@@ -19,6 +19,7 @@
 
 #include <errno.h>
 #include <zephyr/net/socket.h>
+#include <zephyr/kernel.h>
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
 #include <zephyr/net/tls_credentials.h>
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
@@ -33,19 +34,22 @@
 #define CONFIG_MENDER_NET_TLS_PEER_VERIFY (2)
 #endif /* CONFIG_MENDER_NET_TLS_PEER_VERIFY */
 
+#define RESOLVE_ATTEMPTS (10)
+
 mender_err_t
 mender_net_get_host_port_url(char *path, char *config_host, char **host, char **port, char **url) {
 
     assert(NULL != path);
     assert(NULL != host);
     assert(NULL != port);
-    char *tmp;
-    char *saveptr;
 
-    /* Check if the path start with protocol */
+    char *path_no_prefix = NULL;
+    bool  is_https       = false;
+
+    /* Check if the path start with protocol (meaning we have the full path); alternatively we have only URL (path/to/resource) */
     if ((false == mender_utils_strbeginwith(path, "http://")) && (false == mender_utils_strbeginwith(path, "https://"))) {
 
-        /* Path contain the URL only, retrieve host and port from configuration */
+        /* Path contains the URL only, retrieve host and port from configuration (config_host) */
         assert(NULL != url);
         if (NULL == (*url = strdup(path))) {
             mender_log_error("Unable to allocate memory");
@@ -54,59 +58,107 @@ mender_net_get_host_port_url(char *path, char *config_host, char **host, char **
         return mender_net_get_host_port_url(config_host, NULL, host, port, NULL);
     }
 
-    /* Create a working copy of the path */
-    if (NULL == (tmp = strdup(path))) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
+    /* Determine protocol and default port */
+    if (mender_utils_strbeginwith(path, "http://")) {
+        path_no_prefix = path + strlen("http://");
+    } else if (mender_utils_strbeginwith(path, "https://")) {
+        path_no_prefix = path + strlen("https://");
+        is_https       = true;
     }
 
-    /* Retrieve protocol and host */
-    char *protocol = strtok_r(tmp, "/", &saveptr);
-    char *pch1     = strtok_r(NULL, "/", &saveptr);
-
-    /* Check if the host contains port */
-    char *pch2 = strchr(pch1, ':');
-    if (NULL != pch2) {
-        /* Port is specified */
-        if (NULL == (*host = malloc(pch2 - pch1 + 1))) {
-            mender_log_error("Unable to allocate memory");
-            free(tmp);
+    /* Extract url path: next '/' character in the path after finding protocol must be the beginning of url */
+    char *path_url = strchr(path_no_prefix, '/');
+    if ((NULL != path_url) && (NULL != url)) {
+        if (NULL == (*url = strdup(path_url))) {
+            mender_log_error("Unable to allocate memory for URL");
             return MENDER_FAIL;
         }
-        strncpy(*host, pch1, pch2 - pch1);
-        *port = strdup(pch2 + 1);
-    } else {
-        /* Port is not specified */
-        *host = strdup(pch1);
-        if (true == mender_utils_strbeginwith(path, "http://")) {
-            *port = strdup("80");
-        } else if (true == mender_utils_strbeginwith(path, "https://")) {
-            *port = strdup("443");
-        }
-    }
-    if (NULL != url) {
-        *url = strdup(path + strlen(protocol) + 2 + strlen(pch1));
     }
 
-    /* Release memory */
-    free(tmp);
+    /* Extract host and port */
+    char *path_port = strchr(path_no_prefix, ':');
+    if ((NULL == path_port) && (NULL == path_url)) {
+        *port = strdup(is_https ? "443" : "80");
+        *host = strdup(path_no_prefix);
+    } else if ((NULL == path_port) && (NULL != path_url)) {
+        *port = strdup(is_https ? "443" : "80");
+        *host = strndup(path_no_prefix, path_url - path_no_prefix);
+    } else if ((NULL != path_port) && (NULL == path_url)) {
+        *port = strdup(path_port + 1);
+        *host = strndup(path_no_prefix, path_port - path_no_prefix);
+    } else {
+        *host = strndup(path_no_prefix, path_port - path_no_prefix);
+        *port = strndup(path_port + 1, path_url - path_port - 1);
+    }
+
+    if (NULL == *host || NULL == *port) {
+        /* Clean up */
+        free(*host);
+        free(*port);
+        free(*url);
+
+        mender_log_error("Unable to allocate memory for host or port");
+        return MENDER_FAIL;
+    }
 
     return MENDER_OK;
 }
 
 mender_err_t
-mender_net_connect(const char *host, const char *port, int *sock) {
+header_add(const char **header_list, size_t header_list_size, const char *header) {
+
+    // Headers are added to the header list one by one so that there are no empty spaces in the list
+    if (NULL == header_list) {
+        return MENDER_FAIL;
+    }
+
+    // The list that we pass to the Zephyr request needs to be NULL-terminated so the last element need to stay NULL
+    for (size_t i = 0; i < header_list_size - 1; i++) {
+        if (NULL == header_list[i]) {
+            header_list[i] = header;
+            return MENDER_OK;
+        }
+    }
+
+    mender_log_error("Unable to add header: list is full");
+    return MENDER_FAIL;
+}
+
+char *
+header_alloc_and_add(const char **header_list, size_t header_list_size, const char *format, ...) {
+
+    char   *header = NULL;
+    va_list args;
+
+    va_start(args, format);
+    int ret = vasprintf(&header, format, args);
+    va_end(args);
+    if (ret < 0) {
+        mender_log_error("Unable to create header");
+        return NULL;
+    }
+
+    if (MENDER_FAIL == header_add(header_list, header_list_size, header)) {
+        mender_log_error("Unable to add header to the list");
+        free(header);
+        return NULL;
+    }
+    return header;
+}
+
+int
+mender_net_connect(const char *host, const char *port) {
 
     assert(NULL != host);
     assert(NULL != port);
-    assert(NULL != sock);
+
     int                    result;
-    mender_err_t           ret = MENDER_OK;
-    struct zsock_addrinfo  hints;
-    struct zsock_addrinfo *addr = NULL;
+    int                    sock             = -1;
+    struct zsock_addrinfo  hints            = { 0 };
+    struct zsock_addrinfo *addr             = NULL;
+    unsigned int           resolve_attempts = RESOLVE_ATTEMPTS;
 
     /* Set hints */
-    memset(&hints, 0, sizeof(hints));
     if (IS_ENABLED(CONFIG_NET_IPV6)) {
         hints.ai_family = AF_INET6;
     } else if (IS_ENABLED(CONFIG_NET_IPV4)) {
@@ -115,24 +167,30 @@ mender_net_connect(const char *host, const char *port, int *sock) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    /* Perform DNS resolution of the host */
-    if (0 != (result = zsock_getaddrinfo(host, port, &hints, &addr))) {
+    /* Perform DNS resolution of the host; try RESOLVE_ATTEMPTS times */
+    do {
+        result = zsock_getaddrinfo(host, port, &hints, &addr);
+        if (0 == result) {
+            break;
+        }
+        /* Introduce a backoff mechanism to try every 10ms, 20ms, ..., 100ms */
+        k_sleep(K_MSEC(10 * (RESOLVE_ATTEMPTS - resolve_attempts + 1)));
+    } while (0 != --resolve_attempts);
+
+    if (0 != result) {
         mender_log_error("Unable to resolve host name '%s:%s', result = %d, errno = %d", host, port, result, errno);
-        ret = MENDER_FAIL;
         goto END;
     }
 
     /* Create socket */
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
-    if ((result = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TLS_1_2)) < 0) {
+    if ((sock = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TLS_1_2)) < 0) {
 #else
-    if ((result = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    if ((sock = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
-        mender_log_error("Unable to create socket, result = %d, errno= %d", result, errno);
-        ret = MENDER_FAIL;
+        mender_log_error("Unable to create socket, result = %d, errno= %d", sock, errno);
         goto END;
     }
-    *sock = result;
 
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
 
@@ -140,53 +198,49 @@ mender_net_connect(const char *host, const char *port, int *sock) {
     sec_tag_t sec_tag[] = {
         CONFIG_MENDER_NET_CA_CERTIFICATE_TAG,
     };
-    if ((result = zsock_setsockopt(*sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag, sizeof(sec_tag))) < 0) {
+    if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag, sizeof(sec_tag))) < 0) {
         mender_log_error("Unable to set TLS_SEC_TAG_LIST option, result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
     /* Set TLS_HOSTNAME option */
-    if ((result = zsock_setsockopt(*sock, SOL_TLS, TLS_HOSTNAME, host, strlen(host))) < 0) {
+    if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_HOSTNAME, host, strlen(host))) < 0) {
         mender_log_error("Unable to set TLS_HOSTNAME option, result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
     /* Set TLS_PEER_VERIFY option */
     int verify = CONFIG_MENDER_NET_TLS_PEER_VERIFY;
-    if ((result = zsock_setsockopt(*sock, SOL_TLS, TLS_PEER_VERIFY, &verify, sizeof(int))) < 0) {
+    if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_PEER_VERIFY, &verify, sizeof(int))) < 0) {
         mender_log_error("Unable to set TLS_PEER_VERIFY option, result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
 
     /* Connect to the host */
-    if (0 != (result = zsock_connect(*sock, addr->ai_addr, addr->ai_addrlen))) {
+    if (0 != (result = zsock_connect(sock, addr->ai_addr, addr->ai_addrlen))) {
         mender_log_error("Unable to connect to the host '%s:%s', result = %d, errno = %d", host, port, result, errno);
-        mender_log_error("result = %d, errno = %d", result, errno);
-        zsock_close(*sock);
-        *sock = -1;
-        ret   = MENDER_FAIL;
         goto END;
     }
 
-END:
+    /* Free the address info */
+    if (NULL != addr) {
+        zsock_freeaddrinfo(addr);
+    }
+    return sock;
 
-    /* Release memory */
+END:
+    /* Close socket */
+    if (sock >= 0) {
+        zsock_close(sock);
+    }
+
     if (NULL != addr) {
         zsock_freeaddrinfo(addr);
     }
 
-    return ret;
+    return -1; /* Error */
 }
 
 mender_err_t

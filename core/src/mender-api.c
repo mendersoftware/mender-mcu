@@ -313,19 +313,13 @@ api_check_for_deployment_v1(int *status, void *response) {
 
     /* Compute path */
     /* TODO: Retrieve artifact name from store (see ticket MEN-7479) */
-    size_t str_length = strlen("?artifact_name=&device_type=") + strlen(MENDER_API_PATH_GET_NEXT_DEPLOYMENT) + strlen(mender_api_config.artifact_name)
-                        + strlen(mender_api_config.device_type) + 1;
-    if (NULL == (path = (char *)malloc(str_length))) {
+    if (-1
+        == asprintf(
+            &path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", mender_api_config.artifact_name, mender_api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto END;
     }
-    snprintf(path,
-             str_length,
-             "%s?artifact_name=%s&device_type=%s",
-             MENDER_API_PATH_GET_NEXT_DEPLOYMENT,
-             mender_api_config.artifact_name,
-             mender_api_config.device_type);
 
     /* Perform HTTP request */
     if (MENDER_OK != (ret = mender_http_perform(mender_api_jwt, path, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_text_callback, (void *)response, status))) {

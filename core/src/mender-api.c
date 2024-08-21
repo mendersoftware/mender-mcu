@@ -330,9 +330,7 @@ api_check_for_deployment_v1(int *status, void *response) {
 END:
 
     /* Release memory */
-    if (NULL != path) {
-        free(path);
-    }
+    free(path);
 
     return ret;
 }

@@ -308,7 +308,7 @@ api_check_for_deployment_v1(int *status, void *response) {
     assert(NULL != status);
     assert(NULL != response);
 
-    mender_err_t ret;
+    mender_err_t ret  = MENDER_FAIL;
     char        *path = NULL;
 
     /* Compute path */
@@ -317,7 +317,6 @@ api_check_for_deployment_v1(int *status, void *response) {
         == asprintf(
             &path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", mender_api_config.artifact_name, mender_api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
         goto END;
     }
 
@@ -326,6 +325,8 @@ api_check_for_deployment_v1(int *status, void *response) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
+
+    ret = MENDER_OK;
 
 END:
 

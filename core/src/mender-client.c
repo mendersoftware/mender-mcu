@@ -166,7 +166,27 @@ static mender_err_t mender_compare_device_types(const char  *device_type_artifac
                                                 const char  *device_type_device,
                                                 const char **device_type_deployment,
                                                 const size_t device_type_deployment_size);
-#endif
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+/**
+ * @brief Filter provides and merge the two lists
+ * @param mender_artifact_ctx Mender artifact context
+ * @param new_provides New provides list
+ * @param stored_provides Stored provides list
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t mender_filter_provides(mender_artifact_ctx_t    *mender_artifact_ctx,
+                                           mender_key_value_list_t **new_provides,
+                                           mender_key_value_list_t **stored_provides);
+/**
+ * @brief Prepare the new provides data to be commited on a successful deployment
+ * @param mender_artifact_ctx Mender artifact context
+ * @param provides Provies data to be written
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **provides);
+
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
 /**
  * @brief Mender client update work function
@@ -779,6 +799,13 @@ mender_client_authentication_work_function(void) {
         }
     }
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+    /* New provides to be written on success */
+    mender_key_value_list_t *new_provides = NULL;
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+
     /* Check if deployment is pending */
     if (NULL != mender_client_deployment_data) {
 
@@ -808,6 +835,19 @@ mender_client_authentication_work_function(void) {
             mender_log_error("Unable to get types from the deployment data");
             goto RELEASE;
         }
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+        cJSON *provides = NULL;
+        if (NULL == (provides = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "provides"))) {
+            mender_log_error("Unable to get new_provides from the deployment data");
+            goto RELEASE;
+        }
+        if (MENDER_OK != mender_utils_string_to_key_value_list(provides->valuestring, &new_provides)) {
+            mender_log_error("Unable to parse provides from the deployment data");
+            goto RELEASE;
+        }
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
         /* Take mutex used to protect access to the artifact types management list */
         if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_artifact_types_mutex, -1))) {
@@ -838,7 +878,19 @@ mender_client_authentication_work_function(void) {
 
         /* Publish deployment status */
         if (true == success) {
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+            /* Replace the stored provides with the new provides */
+            if (MENDER_OK != mender_storage_set_provides(new_provides)) {
+                mender_log_error("Unable to set provides");
+                mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                goto RELEASE;
+            }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
             mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
+
         } else {
             mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
         }
@@ -872,6 +924,7 @@ RELEASE:
 
     /* Release mutex used to protect access to the add-ons management list */
     mender_scheduler_mutex_give(mender_client_addons_mutex);
+    mender_storage_delete_deployment_data();
 
     return MENDER_DONE;
 
@@ -926,51 +979,76 @@ mender_compare_device_types(const char  *device_type_artifact,
     mender_log_error("None of the device types from the deployment are compatible with device '%s'", device_type_device);
     return MENDER_FAIL;
 }
-#endif
 
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 static mender_err_t
-mender_store_provides(mender_artifact_ctx_t *mender_artifact_ctx) {
+mender_filter_provides(mender_artifact_ctx_t *mender_artifact_ctx, mender_key_value_list_t **new_provides, mender_key_value_list_t **stored_provides) {
 
-    assert(NULL != mender_artifact_ctx);
     mender_err_t ret = MENDER_FAIL;
-
-    /* Write provides to the store */
-    /* Load the currently stored provides, combine it with the new provides and write back */
-
-    /* Load stored provides */
-    mender_key_value_list_t *stored_provides = NULL;
-    if (MENDER_FAIL == mender_storage_get_provides(&stored_provides)) {
-        mender_log_error("Unable to get stored provides");
-        goto END;
-    }
-
-    /* Combine the provides from the header-info and from the payloads */
-    mender_key_value_list_t *header_provides = mender_artifact_ctx->artifact_info.provides;
+    /* Clears provides */
+    bool matches;
     for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
-        if (MENDER_OK != mender_utils_append_list(&header_provides, &mender_artifact_ctx->payloads.values[i].provides)) {
-            mender_log_error("Unable to merge provides");
-            goto END;
+        for (size_t j = 0; j < mender_artifact_ctx->payloads.values[i].clears_provides_size; j++) {
+            const char *to_clear = mender_artifact_ctx->payloads.values[i].clears_provides[j];
+            for (mender_key_value_list_t *item = *stored_provides; NULL != item; item = item->next) {
+                if (MENDER_OK != mender_utils_compare_wildcard(item->key, to_clear, &matches)) {
+                    mender_log_error("Unable to compare wildcard %s with key %s", to_clear, item->key);
+                    goto END;
+                }
+                if (matches && MENDER_OK != mender_utils_key_value_list_delete_node(stored_provides, item->key)) {
+                    mender_log_error("Unable to delete node containing key %s", item->key);
+                    goto END;
+                }
+            }
         }
     }
 
     /* Combine the stored provides with the new ones */
-    if (MENDER_OK != mender_utils_append_list(&header_provides, &stored_provides)) {
+    if (MENDER_OK != mender_utils_key_value_list_append_unique(new_provides, stored_provides)) {
         mender_log_error("Unable to merge provides");
         goto END;
     }
 
-    /* Write the combined list back to the store */
-    if (MENDER_OK != mender_storage_set_provides(header_provides)) {
-        mender_log_error("Unable to set provides");
-        goto END;
+    ret = MENDER_OK;
+
+END:
+
+    mender_utils_free_linked_list(*stored_provides);
+    return ret;
+}
+
+static mender_err_t
+mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **new_provides) {
+
+    assert(NULL != mender_artifact_ctx);
+
+    /* Load the currently stored provides */
+    mender_key_value_list_t *stored_provides = NULL;
+    if (MENDER_FAIL == mender_storage_get_provides(&stored_provides)) {
+        mender_log_error("Unable to get provides");
+        return MENDER_FAIL;
     }
 
-    ret = MENDER_OK;
-END:
-    mender_utils_free_linked_list(stored_provides);
-    return ret;
+    /* Combine the provides from the header-info and from the payloads */
+    mender_key_value_list_t *provides = mender_artifact_ctx->artifact_info.provides;
+    for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
+        if (MENDER_OK != mender_utils_append_list(&provides, &mender_artifact_ctx->payloads.values[i].provides)) {
+            mender_log_error("Unable to merge provides");
+            mender_utils_free_linked_list(stored_provides);
+            return MENDER_FAIL;
+        }
+    }
+
+    /* Filter provides */
+    if (MENDER_OK != mender_filter_provides(mender_artifact_ctx, &provides, &stored_provides)) {
+        return MENDER_FAIL;
+    }
+
+    if (MENDER_OK != mender_utils_key_value_list_to_string(provides, new_provides)) {
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
 }
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
@@ -1025,7 +1103,6 @@ mender_client_update_work_function(void) {
         }
         goto END;
     }
-
     /* Artifact context */
     if (MENDER_OK != (ret = mender_artifact_get_ctx(&mender_artifact_ctx))) {
         mender_log_error("Unable to get artifact context");
@@ -1035,7 +1112,6 @@ mender_client_update_work_function(void) {
         goto END;
     }
 
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
     /* Retrieve device type from artifact */
     const char *device_type_artifact = NULL;
     if (MENDER_OK != (ret = mender_artifact_get_device_type(mender_artifact_ctx, &device_type_artifact))) {
@@ -1061,18 +1137,21 @@ mender_client_update_work_function(void) {
         goto END;
     }
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
-    /* Store provides */
-    if (MENDER_OK != mender_store_provides(mender_artifact_ctx)) {
-        mender_log_error("Unable to store provides");
+    /* Add the new provides to the deployment data (we need the artifact context)*/
+    char *new_provides = NULL;
+    if (MENDER_OK != mender_prepare_new_provides(mender_artifact_ctx, &new_provides)) {
+        mender_log_error("Unable to prepare new provides");
         mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
         if (mender_client_deployment_needs_set_pending_image) {
             mender_flash_abort_deployment(mender_client_flash_handle);
         }
         goto END;
     }
-#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+    cJSON_AddStringToObject(mender_client_deployment_data, "provides", new_provides);
+#endif
+#endif
 
     /* Set boot partition */
     mender_log_info("Download done, installing artifact");
@@ -1101,7 +1180,22 @@ mender_client_update_work_function(void) {
         }
         mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
     } else {
-        /* Publish deployment status success */
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+        /* Write new_provides directly to provides store */
+        mender_key_value_list_t *provides = NULL;
+        /* Convert 'new_provides' to key value list */
+        if (MENDER_OK != mender_utils_string_to_key_value_list(new_provides, &provides)) {
+            mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+            goto END;
+        }
+        /* Store provides */
+        if (MENDER_OK != mender_storage_set_provides(provides)) {
+            mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+            goto END;
+        }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
         mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
         goto END;
     }

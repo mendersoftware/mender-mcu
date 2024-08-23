@@ -237,6 +237,13 @@ if (CONFIG_MENDER_PLATFORM_TLS_TYPE STREQUAL "mbedtls")
   endif()
 endif()
 
+# cmocka
+if (BUILD_TESTS)
+  include(cmake/FetchCMocka.cmake)
+  enable_testing()
+  add_subdirectory(tests)
+endif(BUILD_TESTS)
+
 # Define version
 file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/VERSION" MENDER_CLIENT_VERSION)
 add_definitions("-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\"")

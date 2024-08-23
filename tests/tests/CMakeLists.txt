@@ -4,6 +4,7 @@ set(MCU_LIBRARIES "mender-mcu-client;pthread;cjson;mbedtls;mbedx509;mbedcrypto")
 # Add tests by adding the target name to this list
 # Example:
 # list(APPEND TEST_TARGETS mender_test_target)
+list(APPEND TEST_TARGETS mender_test_client)
 
 foreach(TEST_TARGET IN LISTS TEST_TARGETS)
     add_cmocka_test(

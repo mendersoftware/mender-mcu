@@ -509,3 +509,145 @@ mender_utils_append_list(mender_key_value_list_t **list1, mender_key_value_list_
     *list2 = NULL;
     return MENDER_OK;
 }
+
+mender_err_t
+mender_utils_key_value_list_append_unique(mender_key_value_list_t **list1, mender_key_value_list_t **list2) {
+
+    /* Get the last item of list1 */
+    mender_key_value_list_t *last_item1 = *list1;
+    if (NULL != last_item1) {
+        while (NULL != last_item1->next) {
+            last_item1 = last_item1->next;
+        }
+    }
+
+    mender_key_value_list_t *prev_item2 = NULL;
+    mender_key_value_list_t *item2      = *list2;
+
+    while (NULL != item2) {
+        bool unique = true;
+        /* Check if the item2 key is unique in list1 */
+        for (mender_key_value_list_t *item1 = *list1; item1 != NULL; item1 = item1->next) {
+            if (0 == strcmp(item1->key, item2->key)) {
+                unique = false;
+                break;
+            }
+        }
+
+        /* If unique, append item2 to list1 */
+        if (unique) {
+            /* Detach item2 from list2 */
+            if (NULL != prev_item2) {
+                prev_item2->next = item2->next;
+            } else {
+                *list2 = item2->next;
+            }
+
+            /* Append item2 to list1 */
+            if (NULL != last_item1) {
+                last_item1->next = item2;
+            } else {
+                *list1 = item2;
+            }
+
+            /* Update the last_item1 to the newly added node */
+            last_item1 = item2;
+            /* Move to the next item in list2 */
+            item2 = item2->next;
+            /* Ensure the last node of list1 has next set to NULL */
+            last_item1->next = NULL;
+        } else {
+            /* Move to the next item in list2 */
+            prev_item2 = item2;
+            item2      = item2->next;
+        }
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_utils_key_value_list_delete_node(mender_key_value_list_t **list, const char *key) {
+
+    mender_key_value_list_t *to_free = NULL;
+    mender_key_value_list_t *prev    = NULL;
+    mender_key_value_list_t *item    = *list;
+    while (NULL != item) {
+        if (0 == strcmp(item->key, key)) {
+            to_free = item;
+            if (NULL == prev) {
+                *list = item->next;
+                break;
+            } else {
+                prev->next = item->next;
+            }
+            break;
+        }
+        prev = item;
+        item = item->next;
+    }
+
+    free(to_free->key);
+    free(to_free->value);
+    free(to_free);
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_utils_compare_wildcard(const char *str, const char *wildcard_str, bool *match) {
+
+    assert(NULL != str);
+    assert(NULL != wildcard_str);
+    assert(NULL != match);
+
+    const char *to_match = str;
+    const char *boundary = wildcard_str;
+
+    char *ptr = strchr(boundary, '*');
+
+    /* Check if the wildcard contains wildcard, else compare strings */
+    if (NULL == ptr) {
+        *match = (0 == strcmp(str, wildcard_str));
+        return MENDER_OK;
+    }
+
+    *match = true;
+
+    /* Check if the wildcard string starts with wildcard */
+    if (to_match[0] != '*') {
+        if (0 != strncmp(wildcard_str, str, ptr - boundary)) {
+            *match = false;
+            return MENDER_OK;
+        }
+    }
+
+    /*
+     * Iterate over substrings separated by wildcard *
+     * Attempt to find the substring in the string
+     */
+    while (NULL != (ptr = strchr(boundary, '*'))) {
+        const size_t len          = (size_t)(ptr - boundary);
+        const size_t to_match_len = strlen(to_match);
+        const char  *find         = NULL;
+
+        for (size_t i = 0; i <= to_match_len - len; i++) {
+            if (0 == memcmp(to_match + i, boundary, len)) {
+                find = to_match + i;
+                break;
+            }
+        }
+
+        if (NULL == find) {
+            *match = false;
+            break;
+        }
+        to_match = find + len;
+        boundary = ptr + 1;
+    }
+
+    if (NULL == strstr(to_match, boundary)) {
+        *match = false;
+    }
+
+    return MENDER_OK;
+}

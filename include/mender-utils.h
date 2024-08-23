@@ -210,6 +210,22 @@ mender_err_t mender_utils_key_value_list_to_string(mender_key_value_list_t *list
  */
 mender_err_t mender_utils_string_to_key_value_list(const char *key_value_str, mender_key_value_list_t **list);
 
+/**
+ * @brief Append items from list2 that are not in list1
+ */
+mender_err_t mender_utils_key_value_list_append_unique(mender_key_value_list_t **list1, mender_key_value_list_t **list2);
+
+/**
+ * @brief Delete a node from a linked list
+ */
+mender_err_t mender_utils_key_value_list_delete_node(mender_key_value_list_t **list, const char *key);
+
+/**
+ * @brief Compare `string` with `wild_card_string`
+ * @return true if matches, else false
+ */
+mender_err_t mender_utils_compare_wildcard(const char *str, const char *wildcard_str, bool *match);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

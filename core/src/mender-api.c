@@ -32,6 +32,7 @@
  */
 #define MENDER_API_PATH_POST_AUTHENTICATION_REQUESTS "/api/devices/v1/authentication/auth_requests"
 #define MENDER_API_PATH_GET_NEXT_DEPLOYMENT          "/api/devices/v1/deployments/device/deployments/next"
+#define MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2      "/api/devices/v2/deployments/device/deployments/next"
 #define MENDER_API_PATH_PUT_DEPLOYMENT_STATUS        "/api/devices/v1/deployments/device/deployments/%s/status"
 #define MENDER_API_PATH_GET_DEVICE_CONFIGURATION     "/api/devices/v1/deviceconfig/configuration"
 #define MENDER_API_PATH_PUT_DEVICE_CONFIGURATION     "/api/devices/v1/deviceconfig/configuration"
@@ -241,35 +242,120 @@ END:
     return ret;
 }
 
+static mender_err_t
+api_check_for_deployment_v2(int *status, void *response) {
+    assert(NULL != status);
+    assert(NULL != response);
+
+    mender_err_t ret          = MENDER_FAIL;
+    cJSON       *json_payload = NULL;
+    char        *payload      = NULL;
+
+    /* Create payload */
+    if (NULL == (json_payload = cJSON_CreateObject())) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    /* Add "device_provides" entity to payload */
+    cJSON *json_provides = NULL;
+    if (NULL == (json_provides = cJSON_AddObjectToObject(json_payload, "device_provides"))) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    if (NULL == cJSON_AddStringToObject(json_provides, "device_type", mender_api_config.device_type)) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    /* TODO: Retrieve artifact name from store (see ticket MEN-7479) */
+    if (NULL == cJSON_AddStringToObject(json_provides, "artifact_name", mender_api_config.artifact_name)) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    if (NULL == (payload = cJSON_PrintUnformatted(json_payload))) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    /* Perform HTTP request */
+    if (MENDER_OK
+        != (ret = mender_http_perform(mender_api_jwt,
+                                      MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2,
+                                      MENDER_HTTP_POST,
+                                      payload,
+                                      NULL,
+                                      &mender_api_http_text_callback,
+                                      (void *)response,
+                                      status))) {
+        mender_log_error("Unable to perform HTTP request");
+        goto END;
+    }
+
+    ret = MENDER_OK;
+
+END:
+
+    cJSON_Delete(json_payload);
+    free(payload);
+    return ret;
+}
+
+static mender_err_t
+api_check_for_deployment_v1(int *status, void *response) {
+    assert(NULL != status);
+    assert(NULL != response);
+
+    mender_err_t ret  = MENDER_FAIL;
+    char        *path = NULL;
+
+    /* Compute path */
+    /* TODO: Retrieve artifact name from store (see ticket MEN-7479) */
+    if (-1
+        == asprintf(
+            &path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", mender_api_config.artifact_name, mender_api_config.device_type)) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    /* Perform HTTP request */
+    if (MENDER_OK != (ret = mender_http_perform(mender_api_jwt, path, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_text_callback, (void *)response, status))) {
+        mender_log_error("Unable to perform HTTP request");
+        goto END;
+    }
+
+    ret = MENDER_OK;
+
+END:
+
+    /* Release memory */
+    free(path);
+
+    return ret;
+}
+
 mender_err_t
 mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
 
     assert(NULL != deployment);
-    mender_err_t ret;
-    char        *path     = NULL;
+    mender_err_t ret      = MENDER_FAIL;
     char        *response = NULL;
     int          status   = 0;
 
-    /* Compute path */
-    size_t str_length = strlen("?artifact_name=&device_type=") + strlen(MENDER_API_PATH_GET_NEXT_DEPLOYMENT) + strlen(mender_api_config.artifact_name)
-                        + strlen(mender_api_config.device_type) + 1;
-    if (NULL == (path = (char *)malloc(str_length))) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
+    if (MENDER_FAIL == (ret = api_check_for_deployment_v2(&status, (void *)&response))) {
         goto END;
     }
-    snprintf(path,
-             str_length,
-             "%s?artifact_name=%s&device_type=%s",
-             MENDER_API_PATH_GET_NEXT_DEPLOYMENT,
-             mender_api_config.artifact_name,
-             mender_api_config.device_type);
 
-    /* Perform HTTP request */
-    if (MENDER_OK
-        != (ret = mender_http_perform(mender_api_jwt, path, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_text_callback, (void *)&response, &status))) {
-        mender_log_error("Unable to perform HTTP request");
-        goto END;
+    /* Yes, 404 still means MENDER_OK above */
+    if (404 == status) {
+        mender_log_debug("POST request to v2 version of the deployments API failed, falling back to v1 version and GET");
+        free(response);
+        response = NULL;
+        if (MENDER_FAIL == (ret = api_check_for_deployment_v1(&status, (void *)&response))) {
+            goto END;
+        }
     }
 
     /* Treatment depending of the status */
@@ -356,9 +442,6 @@ END:
     /* Release memory */
     if (NULL != response) {
         free(response);
-    }
-    if (NULL != path) {
-        free(path);
     }
 
     return ret;

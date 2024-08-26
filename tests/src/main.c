@@ -109,7 +109,7 @@ authentication_success_cb(void) {
 #endif /* CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT */
 
     /* Validate the image if it is still pending */
-    /* Note it is possible to do multiple diagnosic tests before validating the image */
+    /* Note it is possible to do multiple diagnostic tests before validating the image */
     if (MENDER_OK != (ret = mender_flash_confirm_image())) {
         mender_log_error("Unable to validate the image");
         return ret;

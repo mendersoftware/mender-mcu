@@ -18,6 +18,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/fs/nvs.h>
 #include <zephyr/storage/flash_map.h>
@@ -52,7 +53,7 @@ nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
     /* Retrieve length of the data */
     ret = nvs_read(nvs, id, NULL, 0);
     if (ret <= 0) {
-        return (0 == ret) ? MENDER_NOT_FOUND : MENDER_FAIL;
+        return (0 == ret || -ENOENT == ret) ? MENDER_NOT_FOUND : MENDER_FAIL;
     }
     *length = (size_t)ret;
 

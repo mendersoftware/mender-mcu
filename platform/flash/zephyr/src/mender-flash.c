@@ -126,20 +126,17 @@ mender_flash_abort_deployment(void *handle) {
 mender_err_t
 mender_flash_confirm_image(void) {
 
-    int          result;
-    mender_err_t ret = MENDER_OK;
-
     /* Validate the image if it is still pending */
     if (false == mender_flash_is_image_confirmed()) {
+        int result;
         if ((result = boot_write_img_confirmed()) != 0) {
             mender_log_error("Unable to mark application valid, application will rollback (%d)", -result);
-            ret = MENDER_FAIL;
-        } else {
-            mender_log_info("Application has been mark valid and rollback canceled");
+            return MENDER_FAIL;
         }
+        mender_log_info("Application has been mark valid and rollback canceled");
     }
 
-    return ret;
+    return MENDER_OK;
 }
 
 bool

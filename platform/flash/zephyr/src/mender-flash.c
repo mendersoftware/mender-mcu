@@ -128,6 +128,9 @@ mender_flash_confirm_image(void) {
 
     /* Validate the image if it is still pending */
     if (false == mender_flash_is_image_confirmed()) {
+        /* It's safe to call boot_write_img_confirmed() even though the current
+         * image has already been confirmed. The check above is primarily to
+         * control when the info message below is logged. */
         int result;
         if ((result = boot_write_img_confirmed()) != 0) {
             mender_log_error("Unable to mark application valid, application will rollback (%d)", -result);

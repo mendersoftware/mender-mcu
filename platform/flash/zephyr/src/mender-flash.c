@@ -145,6 +145,6 @@ mender_flash_confirm_image(void) {
 bool
 mender_flash_is_image_confirmed(void) {
 
-    /* Check if the image it still pending */
+    /* Check if the image is still pending */
     return boot_is_img_confirmed();
 }

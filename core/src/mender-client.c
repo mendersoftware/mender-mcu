@@ -1366,6 +1366,7 @@ mender_client_download_artifact_flash_callback(
                 mender_log_error("Unable to close flash handle");
                 goto END;
             }
+            mender_client_flash_handle = NULL;
         }
     }
 

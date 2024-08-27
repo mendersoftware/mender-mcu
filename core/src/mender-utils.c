@@ -88,7 +88,7 @@ mender_utils_http_status_to_string(int status) {
                  { 511, "Network Authentication Required" } };
 
     /* Return HTTP status as string */
-    for (int index = 0; index < sizeof(desc) / sizeof(desc[0]); index++) {
+    for (size_t index = 0; index < sizeof(desc) / sizeof(desc[0]); index++) {
         if (desc[index].status == status) {
             return desc[index].str;
         }

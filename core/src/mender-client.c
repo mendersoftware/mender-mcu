@@ -861,9 +861,9 @@ mender_client_authentication_work_function(void) {
         cJSON_ArrayForEach(json_type, json_types) {
             if (NULL != mender_client_artifact_types_list) {
                 for (size_t artifact_type_index = 0; artifact_type_index < mender_client_artifact_types_count; artifact_type_index++) {
-                    if (!strcmp(mender_client_artifact_types_list[artifact_type_index]->type, cJSON_GetStringValue(json_type))) {
+                    if (StringEqual(mender_client_artifact_types_list[artifact_type_index]->type, cJSON_GetStringValue(json_type))) {
                         if (NULL != mender_client_artifact_types_list[artifact_type_index]->artifact_name) {
-                            if (strcmp(mender_client_artifact_types_list[artifact_type_index]->artifact_name, artifact_name)) {
+                            if (!StringEqual(mender_client_artifact_types_list[artifact_type_index]->artifact_name, artifact_name)) {
                                 /* Deployment status failure */
                                 success = false;
                             }
@@ -964,14 +964,14 @@ mender_compare_device_types(const char  *device_type_artifact,
     assert(NULL != device_type_device);
     assert(0 < device_type_deployment_size);
 
-    if (0 != strcmp(device_type_artifact, device_type_device)) {
+    if (!StringEqual(device_type_artifact, device_type_device)) {
         mender_log_error("Device type from artifact '%s' is not compatible with device '%s'", device_type_artifact, device_type_device);
         return MENDER_FAIL;
     }
 
     /* Return MENDER_OK if one of the devices in the deployment are compatible with the device */
     for (size_t i = 0; i < device_type_deployment_size; i++) {
-        if (0 == strcmp(device_type_deployment[i], device_type_device)) {
+        if (StringEqual(device_type_deployment[i], device_type_device)) {
             return MENDER_OK;
         }
     }
@@ -1254,7 +1254,7 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
         for (size_t artifact_type_index = 0; artifact_type_index < mender_client_artifact_types_count; artifact_type_index++) {
 
             /* Check artifact type */
-            if (!strcmp(type, mender_client_artifact_types_list[artifact_type_index]->type)) {
+            if (StringEqual(type, mender_client_artifact_types_list[artifact_type_index]->type)) {
 
                 /* Retrieve ID and artifact name */
                 cJSON *json_id = NULL;
@@ -1298,7 +1298,7 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
                     bool   found     = false;
                     cJSON *json_type = NULL;
                     cJSON_ArrayForEach(json_type, json_types) {
-                        if (!strcmp(type, cJSON_GetStringValue(json_type))) {
+                        if (StringEqual(type, cJSON_GetStringValue(json_type))) {
                             found = true;
                         }
                     }

@@ -35,6 +35,12 @@ extern "C" {
 #include <cJSON.h>
 
 /**
+ * @brief Macro for comparing two strings
+ * @return true if the strings are equal, false otherwise
+ */
+#define StringEqual(str1, str2) (0 == strcmp(str1, str2))
+
+/**
  * @brief Mender error codes
  */
 typedef enum {

@@ -528,7 +528,7 @@ mender_utils_key_value_list_append_unique(mender_key_value_list_t **list1, mende
         bool unique = true;
         /* Check if the item2 key is unique in list1 */
         for (mender_key_value_list_t *item1 = *list1; item1 != NULL; item1 = item1->next) {
-            if (0 == strcmp(item1->key, item2->key)) {
+            if (StringEqual(item1->key, item2->key)) {
                 unique = false;
                 break;
             }
@@ -573,7 +573,7 @@ mender_utils_key_value_list_delete_node(mender_key_value_list_t **list, const ch
     mender_key_value_list_t *prev    = NULL;
     mender_key_value_list_t *item    = *list;
     while (NULL != item) {
-        if (0 == strcmp(item->key, key)) {
+        if (StringEqual(item->key, key)) {
             to_free = item;
             if (NULL == prev) {
                 *list = item->next;
@@ -607,7 +607,7 @@ mender_utils_compare_wildcard(const char *str, const char *wildcard_str, bool *m
 
     /* Check if the wildcard contains wildcard, else compare strings */
     if (NULL == ptr) {
-        *match = (0 == strcmp(str, wildcard_str));
+        *match = (StringEqual(str, wildcard_str));
         return MENDER_OK;
     }
 

@@ -211,18 +211,18 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
         } else if (MENDER_ARTIFACT_STREAM_STATE_PARSING_DATA == ctx->stream_state) {
 
             /* Treatment depending of the file name */
-            if (!strcmp(ctx->file.name, "version")) {
+            if (StringEqual(ctx->file.name, "version")) {
 
                 /* Validate artifact version */
                 ret = mender_artifact_read_version(ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-            } else if (!strcmp(ctx->file.name, "manifest")) {
+            } else if (StringEqual(ctx->file.name, "manifest")) {
 
                 /* Read manifest file */
                 ret = mender_artifact_read_manifest(ctx);
 #endif
-            } else if (!strcmp(ctx->file.name, "header.tar/header-info")) {
+            } else if (StringEqual(ctx->file.name, "header.tar/header-info")) {
 
                 /* Read header-info file */
                 ret = mender_artifact_read_header_info(ctx);
@@ -426,7 +426,7 @@ mender_artifact_read_version(mender_artifact_ctx_t *ctx) {
     }
     cJSON *json_format = cJSON_GetObjectItemCaseSensitive(object, "format");
     if (true == cJSON_IsString(json_format)) {
-        if (strcmp(cJSON_GetStringValue(json_format), MENDER_ARTIFACT_SUPPORTED_FORMAT)) {
+        if (!StringEqual(cJSON_GetStringValue(json_format), MENDER_ARTIFACT_SUPPORTED_FORMAT)) {
             mender_log_error("Invalid version format");
             ret = MENDER_FAIL;
             goto END;
@@ -477,7 +477,7 @@ mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const char **device_
     mender_key_value_list_t *item = ctx->artifact_info.depends;
     while (NULL != item) {
         if (NULL != item->key) {
-            if (0 == strcmp(MENDER_ARTIFACT_DEVICE_TYPE_KEY, item->key)) {
+            if (StringEqual(MENDER_ARTIFACT_DEVICE_TYPE_KEY, item->key)) {
                 *device_type = item->value;
                 return MENDER_OK;
             }

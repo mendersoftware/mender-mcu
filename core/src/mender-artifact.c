@@ -505,7 +505,7 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 
     /* Read data line by line */
     char *line = ctx->input.data;
-    char *end  = ctx->input.data + ctx->input.length;
+    char *end  = line + ctx->input.length;
     while (line < end) {
         char *next = strchr(line, '\n');
         if (NULL == next) {

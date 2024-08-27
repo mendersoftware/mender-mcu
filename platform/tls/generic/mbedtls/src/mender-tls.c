@@ -445,9 +445,11 @@ mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, con
 
     /* Load and parse the private key buffer */
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
-    if (0 != (ret = mbedtls_pk_parse_key(pk_context, user_provided_key, user_provided_key_length, NULL, 0, mbedtls_ctr_drbg_random, ctr_drbg))) {
+    if (0
+        != (ret = mbedtls_pk_parse_key(
+                pk_context, (const unsigned char *)user_provided_key, user_provided_key_length, NULL, 0, mbedtls_ctr_drbg_random, ctr_drbg))) {
 #else
-    if (0 != (ret = mbedtls_pk_parse_key(pk_context, user_provided_key, user_provided_key_length, NULL, 0))) {
+    if (0 != (ret = mbedtls_pk_parse_key(pk_context, (const unsigned char *)user_provided_key, user_provided_key_length, NULL, 0))) {
 #endif /* MBEDTLS_VERSION_NUMBER >= 0x03000000 */
         LOG_MBEDTLS_ERROR("Unable to parse private key", ret);
         goto END;

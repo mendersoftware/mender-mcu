@@ -185,6 +185,12 @@ static mender_err_t mender_filter_provides(mender_artifact_ctx_t    *mender_arti
  */
 static mender_err_t mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **provides);
 
+/**
+ * @brief Determine the compatiblity of the deployment by: comparing artifact's depend with the stored provides
+ * @param mender_artifact_ctx Mender artifact context
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t mender_check_device_compatibility(mender_artifact_ctx_t *mender_artifact_ctx);
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
@@ -861,9 +867,9 @@ mender_client_authentication_work_function(void) {
         cJSON_ArrayForEach(json_type, json_types) {
             if (NULL != mender_client_artifact_types_list) {
                 for (size_t artifact_type_index = 0; artifact_type_index < mender_client_artifact_types_count; artifact_type_index++) {
-                    if (!strcmp(mender_client_artifact_types_list[artifact_type_index]->type, cJSON_GetStringValue(json_type))) {
+                    if (StringEqual(mender_client_artifact_types_list[artifact_type_index]->type, cJSON_GetStringValue(json_type))) {
                         if (NULL != mender_client_artifact_types_list[artifact_type_index]->artifact_name) {
-                            if (strcmp(mender_client_artifact_types_list[artifact_type_index]->artifact_name, artifact_name)) {
+                            if (!StringEqual(mender_client_artifact_types_list[artifact_type_index]->artifact_name, artifact_name)) {
                                 /* Deployment status failure */
                                 success = false;
                             }
@@ -924,7 +930,6 @@ RELEASE:
 
     /* Release mutex used to protect access to the add-ons management list */
     mender_scheduler_mutex_give(mender_client_addons_mutex);
-    mender_storage_delete_deployment_data();
 
     return MENDER_DONE;
 
@@ -965,14 +970,14 @@ mender_compare_device_types(const char  *device_type_artifact,
     assert(NULL != device_type_device);
     assert(0 < device_type_deployment_size);
 
-    if (0 != strcmp(device_type_artifact, device_type_device)) {
+    if (!StringEqual(device_type_artifact, device_type_device)) {
         mender_log_error("Device type from artifact '%s' is not compatible with device '%s'", device_type_artifact, device_type_device);
         return MENDER_FAIL;
     }
 
     /* Return MENDER_OK if one of the devices in the deployment are compatible with the device */
     for (size_t i = 0; i < device_type_deployment_size; i++) {
-        if (0 == strcmp(device_type_deployment[i], device_type_device)) {
+        if (StringEqual(device_type_deployment[i], device_type_device)) {
             return MENDER_OK;
         }
     }
@@ -1049,6 +1054,56 @@ mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **n
     }
 
     return MENDER_OK;
+}
+
+static mender_err_t
+mender_check_device_compatibility(mender_artifact_ctx_t *mender_artifact_ctx) {
+
+    /* We need to load the stored provides */
+    mender_key_value_list_t *stored_provides = NULL;
+    if (MENDER_FAIL == mender_storage_get_provides(&stored_provides)) {
+        return MENDER_FAIL;
+    }
+
+    mender_err_t ret = MENDER_FAIL;
+
+    /* Get depends */
+    mender_key_value_list_t *depends = NULL;
+    for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
+        if (MENDER_OK != mender_utils_append_list(&depends, &mender_artifact_ctx->payloads.values[i].depends)) {
+            mender_log_error("Unable to append depends");
+            goto END;
+        }
+    }
+
+    /* Match depends from artifact with device's provides */
+    for (mender_key_value_list_t *depends_item = depends; NULL != depends_item; depends_item = depends_item->next) {
+        bool matches = false;
+        for (mender_key_value_list_t *provides_item = stored_provides; NULL != provides_item; provides_item = provides_item->next) {
+            /* Match key-value from depends with provides */
+            if (StringEqual(depends_item->key, provides_item->key)) {
+                if (!StringEqual(depends_item->value, provides_item->value)) {
+                    mender_log_error("Value mismatch for key '%s': depends-value '%s' does not match provides-value '%s'",
+                                     depends_item->key,
+                                     depends_item->value,
+                                     provides_item->value);
+                    break;
+                }
+                matches = true;
+                break;
+            }
+        }
+        if (!matches) {
+            mender_log_error("Missing '%s:%s' in provides, required by artifact depends", depends_item->key, depends_item->value);
+            goto END;
+        }
+    }
+
+    ret = MENDER_OK;
+
+END:
+    mender_utils_free_linked_list(stored_provides);
+    return ret;
 }
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
@@ -1139,6 +1194,16 @@ mender_client_update_work_function(void) {
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+    /* Compare Artifact's depends with the stored provides */
+    if (MENDER_OK != mender_check_device_compatibility(mender_artifact_ctx)) {
+        /* Errors logged by function */
+        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        if (mender_client_deployment_needs_set_pending_image) {
+            mender_flash_abort_deployment(mender_client_flash_handle);
+        }
+        goto END;
+    }
+
     /* Add the new provides to the deployment data (we need the artifact context)*/
     char *new_provides = NULL;
     if (MENDER_OK != mender_prepare_new_provides(mender_artifact_ctx, &new_provides)) {
@@ -1150,8 +1215,8 @@ mender_client_update_work_function(void) {
         goto END;
     }
     cJSON_AddStringToObject(mender_client_deployment_data, "provides", new_provides);
-#endif
-#endif
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 
     /* Set boot partition */
     mender_log_info("Download done, installing artifact");
@@ -1255,7 +1320,7 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
         for (size_t artifact_type_index = 0; artifact_type_index < mender_client_artifact_types_count; artifact_type_index++) {
 
             /* Check artifact type */
-            if (!strcmp(type, mender_client_artifact_types_list[artifact_type_index]->type)) {
+            if (StringEqual(type, mender_client_artifact_types_list[artifact_type_index]->type)) {
 
                 /* Retrieve ID and artifact name */
                 cJSON *json_id = NULL;
@@ -1299,7 +1364,7 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
                     bool   found     = false;
                     cJSON *json_type = NULL;
                     cJSON_ArrayForEach(json_type, json_types) {
-                        if (!strcmp(type, cJSON_GetStringValue(json_type))) {
+                        if (StringEqual(type, cJSON_GetStringValue(json_type))) {
                             found = true;
                         }
                     }
@@ -1367,6 +1432,7 @@ mender_client_download_artifact_flash_callback(
                 mender_log_error("Unable to close flash handle");
                 goto END;
             }
+            mender_client_flash_handle = NULL;
         }
     }
 

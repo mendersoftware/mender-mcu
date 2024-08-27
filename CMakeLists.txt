@@ -21,6 +21,11 @@ cmake_minimum_required(VERSION 3.16.3)
 # Library project
 project(mender-mcu-client LANGUAGES C)
 
+# Compiler options
+if (CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS)
+    add_compile_options(-Wall -Wextra -Werror -Wpointer-arith)
+endif()
+
 # Creation of the library
 add_library(mender-mcu-client STATIC)
 

@@ -40,7 +40,7 @@ mender_flash_open(char *name, size_t size, void **handle) {
     }
 
     /* Begin deployment with sequential writes */
-    if ((result = flash_img_init((struct flash_img_context *)*handle)) != 0) {
+    if (0 != (result = flash_img_init((struct flash_img_context *)*handle))) {
         mender_log_error("flash_img_init failed (%d)", -result);
         return MENDER_FAIL;
     }
@@ -61,7 +61,7 @@ mender_flash_write(void *handle, void *data, size_t index, size_t length) {
     }
 
     /* Write data received to the update partition */
-    if ((result = flash_img_buffered_write((struct flash_img_context *)handle, (const uint8_t *)data, length, false)) != 0) {
+    if (0 != (result = flash_img_buffered_write((struct flash_img_context *)handle, (const uint8_t *)data, length, false))) {
         mender_log_error("flash_img_buffered_write failed (%d)", -result);
         return MENDER_FAIL;
     }
@@ -81,7 +81,7 @@ mender_flash_close(void *handle) {
     }
 
     /* Flush data received to the update partition */
-    if ((result = flash_img_buffered_write((struct flash_img_context *)handle, NULL, 0, true)) != 0) {
+    if (0 != (result = flash_img_buffered_write((struct flash_img_context *)handle, NULL, 0, true))) {
         mender_log_error("flash_img_buffered_write failed (%d)", -result);
         return MENDER_FAIL;
     }
@@ -98,7 +98,7 @@ mender_flash_set_pending_image(void *handle) {
     if (NULL != handle) {
 
         /* Set new boot partition */
-        if ((result = boot_request_upgrade(BOOT_UPGRADE_TEST)) != 0) {
+        if (0 != (result = boot_request_upgrade(BOOT_UPGRADE_TEST))) {
             mender_log_error("boot_request_upgrade failed (%d)", -result);
             return MENDER_FAIL;
         }
@@ -132,7 +132,7 @@ mender_flash_confirm_image(void) {
          * image has already been confirmed. The check above is primarily to
          * control when the info message below is logged. */
         int result;
-        if ((result = boot_write_img_confirmed()) != 0) {
+        if (0 != (result = boot_write_img_confirmed())) {
             mender_log_error("Unable to mark application valid, application will rollback (%d)", -result);
             return MENDER_FAIL;
         }

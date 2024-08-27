@@ -10,3 +10,10 @@ CMakeFiles/
 Makefile
 cmake_install.cmake
 libmender-mcu-client.a
+
+# This file specifies folder icon positions, and other visual information in the
+# macOS Finder app (i.e., the file explorer). The file is created automatically
+# and is one of those annoying files that shows up as an untracked file in Git.
+# It is possible to disable it, although I'm guessing most macOS users don't
+# want to do that. Hence, we'll do them a service and list it here.
+.DS_Store

@@ -924,7 +924,6 @@ RELEASE:
 
     /* Release mutex used to protect access to the add-ons management list */
     mender_scheduler_mutex_give(mender_client_addons_mutex);
-    mender_storage_delete_deployment_data();
 
     return MENDER_DONE;
 

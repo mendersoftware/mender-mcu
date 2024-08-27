@@ -553,44 +553,6 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-mender_create_provides_depends_node(const char *type, const char *value, mender_key_value_list_t **provides_depends) {
-
-    assert(NULL != type);
-    assert(NULL != value);
-    assert(NULL != provides_depends);
-
-    mender_key_value_list_t *item = (mender_key_value_list_t *)calloc(1, sizeof(mender_key_value_list_t));
-    if (NULL == item) {
-        mender_log_error("Unable to allocate memory for linked list node");
-        return MENDER_FAIL;
-    }
-
-    item->key = strdup(type);
-    if (NULL == item->key) {
-        mender_log_error("Unable to allocate memory for type");
-        goto ERROR;
-    }
-
-    item->value = strdup(value);
-    if (NULL == item->value) {
-        mender_log_error("Unable to allocate memory for value");
-        goto ERROR;
-    }
-
-    item->next        = *provides_depends;
-    *provides_depends = item;
-
-    return MENDER_OK;
-
-ERROR:
-    free(item->key);
-    free(item->value);
-    free(item);
-
-    return MENDER_FAIL;
-}
-
-static mender_err_t
 mender_artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_list_t **provides_depends) {
 
     assert(NULL != json_provides_depends);

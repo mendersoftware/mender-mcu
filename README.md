@@ -32,6 +32,53 @@ Since the project is under active development, we recommend watching the reposit
 regularly for updates. Detailed documentation and usage instructions will be provided as the project
 progresses.
 
+## Testing the Mender MCU Client (POSIX)
+
+### Dependencies
+- CMake
+- libcurl
+- cJSON
+- mbedTLS
+
+Example for Ubuntu/Debian:
+```
+apt install cmake libcurl4-openssl-dev libmbedtls-dev
+```
+### Building the Client
+
+1. Configure the build:
+```
+cmake -C CMake_posix_defaults.txt -B build tests
+```
+
+2. Build the client:
+```
+cmake --build build --parallel $(nproc --all)
+```
+
+### Running the Client
+You can now run and connect the client to e.g. hosted Mender:
+```
+export MAC_ADDRESS=<mac_address>
+export DEVICE_TYPE=<device_type>
+export TENANT_TOKEN=<tenant_token>
+export ARTIFACT_NAME=<artifact_name>
+
+./build/mender-mcu-client.elf --mac_address=$MAC_ADDRESS --device_type=$DEVICE_TYPE --tenant_token=$TENANT_TOKEN --artifact_name=$ARTIFACT_NAME
+```
+The mac address is an arbitrary identifier. You can use anything as long as it is unique for each device.
+
+The tenant token can be found under `My organization` in hosted Mender, where it's called `Organization token`.
+
+### Creating an Artifact
+Create an artifact (remember to disable compression):
+```
+./mender-artifact write rootfs-image --compression none --artifact-name <artifact_name> --device-type <device_type> --file <file_name>
+```
+The `device_type` in the artifact has to match the `device_type` used when running the client.
+
+### Deployment
+After creating and uploading the artifact to the server, you should be able to deploy it to the device.
 
 ## Contributing
 

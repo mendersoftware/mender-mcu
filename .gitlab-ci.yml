@@ -33,19 +33,6 @@ test:smoke-build:
   before_script:
     - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev
   script:
-    - cmake -B build tests
-      -DCONFIG_MENDER_PLATFORM_FLASH_TYPE="posix"
-      -DCONFIG_MENDER_PLATFORM_LOG_TYPE="posix"
-      -DCONFIG_MENDER_PLATFORM_NET_TYPE="generic/curl"
-      -DCONFIG_MENDER_PLATFORM_SCHEDULER_TYPE="posix"
-      -DCONFIG_MENDER_PLATFORM_STORAGE_TYPE="posix"
-      -DCONFIG_MENDER_PLATFORM_TLS_TYPE="generic/mbedtls"
-      -DCONFIG_MENDER_CLIENT_ADD_ON_INVENTORY=ON
-      -DCONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE=OFF
-      -DCONFIG_MENDER_CLIENT_CONFIGURE_STORAGE=OFF
-      -DCONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT=OFF
-      -DCONFIG_MENDER_FULL_PARSE_ARTIFACT=ON
-      -DCONFIG_MENDER_PROVIDES_DEPENDS=ON
-      -DCONFIG_MENDER_ALL_WARNINGS_AS_ERRORS=ON
+    - cmake -C CMake_posix_defaults.txt -B build tests
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help

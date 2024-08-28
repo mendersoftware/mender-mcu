@@ -18,6 +18,9 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE // asprintf
+#include <stdio.h>  // asprintf
+
 #include "mender-api.h"
 #include "mender-artifact.h"
 #include "mender-http.h"

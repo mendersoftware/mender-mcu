@@ -58,6 +58,11 @@
 #endif /* CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL */
 
 /**
+ * @brief Deployment data version number (allows us to add/remove/modify fields in the future)
+ */
+#define MENDER_CLIENT_DEPLOYMENT_DATA_VERSION 1
+
+/**
  * @brief Mender client configuration
  */
 static mender_client_config_t mender_client_config;
@@ -784,6 +789,20 @@ mender_client_initialization_work_function(void) {
             goto REBOOT;
         }
         free(storage_deployment_data);
+
+        /* Check deployment data version compatibility */
+        int          version = -1;
+        const cJSON *json_number;
+        if (NULL != (json_number = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "version"))) {
+            /* numbers are stored as double, hence we need typecast to int */
+            version = (int)cJSON_GetNumberValue(json_number);
+        }
+
+        if (MENDER_CLIENT_DEPLOYMENT_DATA_VERSION != version) {
+            mender_log_error("Unsupported deployment data version");
+            ret = MENDER_FAIL;
+            goto REBOOT;
+        }
     }
 
     return MENDER_DONE;
@@ -1230,6 +1249,7 @@ mender_client_update_work_function(void) {
             ret = MENDER_FAIL;
             goto END;
         }
+        cJSON_AddNumberToObject(mender_client_deployment_data, "version", (double)MENDER_CLIENT_DEPLOYMENT_DATA_VERSION);
         cJSON_AddStringToObject(mender_client_deployment_data, "id", deployment->id);
         cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", deployment->artifact_name);
         cJSON_AddArrayToObject(mender_client_deployment_data, "types");

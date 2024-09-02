@@ -192,8 +192,6 @@ menu "Mender Firmware Over-the-Air support"
 
             config MENDER_PLATFORM_TLS_TYPE_MBEDTLS
                 bool "mbedtls"
-            config MENDER_PLATFORM_TLS_TYPE_CRYPTOAUTHLIB
-                bool "cryptoauthlib"
             config MENDER_PLATFORM_TLS_TYPE_WEAK
                 bool "weak"
         endchoice
@@ -201,7 +199,6 @@ menu "Mender Firmware Over-the-Air support"
         config MENDER_PLATFORM_TLS_TYPE
             string
             default "generic/mbedtls" if MENDER_PLATFORM_TLS_TYPE_MBEDTLS
-            default "generic/cryptoauthlib" if MENDER_PLATFORM_TLS_TYPE_CRYPTOAUTHLIB
             default "generic/weak" if MENDER_PLATFORM_TLS_TYPE_WEAK
 
     endmenu

@@ -234,7 +234,7 @@ mender_storage_save_update_state(mender_update_state_t state, const char *artifa
 
     size_t artifact_type_len;
 
-    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, state, sizeof(state)) {
+    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, state, sizeof(state))) {
         mender_log_error("Unable to save update state");
         return MENDER_FAIL;
     }

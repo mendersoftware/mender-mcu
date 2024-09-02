@@ -1361,8 +1361,6 @@ mender_client_update_work_function(void) {
                 mender_log_info("Artifact installation done, rebooting");
                 mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
 
-                /* TODO: check and respect ret here and below */
-
                 /* Save deployment data to publish deployment status after rebooting */
                 if (NULL == (storage_deployment_data = cJSON_PrintUnformatted(mender_client_deployment_data))) {
                     mender_log_error("Unable to serialize deployment data for saving");
@@ -1370,7 +1368,7 @@ mender_client_update_work_function(void) {
                 } else if (MENDER_OK != (ret = mender_storage_set_deployment_data(storage_deployment_data))) {
                     mender_log_error("Unable to save deployment data");
                 }
-                if (NULL != mender_update_module->callbacks[update_state]) {
+                if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     /* Save the next state before running the reboot callback --
                      * if there is an interrupt (power, crash,...) right after,
                      * it will reboot anyway so after the new boot, reboot

@@ -842,13 +842,6 @@ mender_client_authentication_work_function(void) {
         }
     }
 
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
-    /* New provides to be written on success */
-    mender_key_value_list_t *new_provides = NULL;
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
-#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
-
     /* Check if deployment is pending */
     if (NULL != mender_client_deployment_data) {
 
@@ -878,19 +871,6 @@ mender_client_authentication_work_function(void) {
             mender_log_error("Unable to get types from the deployment data");
             goto RELEASE;
         }
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
-        cJSON *provides = NULL;
-        if (NULL == (provides = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "provides"))) {
-            mender_log_error("Unable to get new_provides from the deployment data");
-            goto RELEASE;
-        }
-        if (MENDER_OK != mender_utils_string_to_key_value_list(provides->valuestring, &new_provides)) {
-            mender_log_error("Unable to parse provides from the deployment data");
-            goto RELEASE;
-        }
-#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
         /* Take mutex used to protect access to the update modules management list */
         if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_update_modules_mutex, -1))) {
@@ -919,20 +899,8 @@ mender_client_authentication_work_function(void) {
         mender_scheduler_mutex_give(mender_update_modules_mutex);
 
         /* Publish deployment status */
-        if (true == success) {
-
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
-            /* Replace the stored provides with the new provides */
-            if (MENDER_OK != mender_storage_set_provides(new_provides)) {
-                mender_log_error("Unable to set provides");
-                mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
-                goto RELEASE;
-            }
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
-#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+        if (success) {
             mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
-
         } else {
             mender_log_error("Artifact type not supported by any of the available update modules");
             mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);

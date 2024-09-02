@@ -25,7 +25,6 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-addon.h"
 #include "mender-utils.h"
 #include "mender-update-module.h"
 
@@ -75,15 +74,6 @@ char *mender_client_version(void);
 mender_err_t mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks);
 
 /**
- * @brief Register add-on
- * @param addon Add-on
- * @param config Add-on configuration
- * @param callbacks Add-on callbacks
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_client_register_addon(mender_addon_instance_t *addon, void *config, void *callbacks);
-
-/**
  * @brief Register update module
  * @param update_module The update module to register
  * @return MENDER_OK if the function succeeds, error code otherwise
@@ -113,13 +103,13 @@ mender_err_t mender_client_deactivate(void);
 mender_err_t mender_client_execute(void);
 
 /**
- * @brief Function to be called from add-ons to request network access
+ * @brief Function to request network access
  * @return MENDER_OK if network is connected following the request, error code otherwise
  */
 mender_err_t mender_client_network_connect(void);
 
 /**
- * @brief Function to be called from add-ons to release network access
+ * @brief Function to release network access
  * @return MENDER_OK if network is released following the request, error code otherwise
  */
 mender_err_t mender_client_network_release(void);

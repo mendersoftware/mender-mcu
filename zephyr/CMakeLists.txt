@@ -33,14 +33,6 @@ if(CONFIG_MENDER_MCU_CLIENT)
     zephyr_library_sources_ifdef(CONFIG_MENDER_CLIENT_INVENTORY
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-inventory.c"
     )
-    zephyr_library_sources_ifdef(CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-        "${CMAKE_CURRENT_LIST_DIR}/../add-ons/src/mender-configure.c"
-    )
-    zephyr_library_sources_ifdef(CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-        "${CMAKE_CURRENT_LIST_DIR}/../add-ons/src/mender-troubleshoot.c"
-        "${CMAKE_CURRENT_LIST_DIR}/../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-websocket.c"
-        "${CMAKE_CURRENT_LIST_DIR}/../platform/shell/zephyr/src/mender-shell.c"
-    )
     zephyr_include_directories("${CMAKE_CURRENT_LIST_DIR}/../include")
     zephyr_include_directories("${CMAKE_CURRENT_LIST_DIR}/../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/include")
     file (STRINGS "${CMAKE_CURRENT_LIST_DIR}/../VERSION" MENDER_CLIENT_VERSION)

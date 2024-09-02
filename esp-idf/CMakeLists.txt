@@ -33,17 +33,6 @@ if(CONFIG_MENDER_CLIENT_INVENTORY)
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-inventory.c"
     )
 endif()
-if(CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
-    list(APPEND srcs
-        "${CMAKE_CURRENT_LIST_DIR}/../add-ons/src/mender-configure.c"
-    )
-endif()
-if(CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    list(APPEND srcs
-        "${CMAKE_CURRENT_LIST_DIR}/../add-ons/src/mender-troubleshoot.c"
-        "${CMAKE_CURRENT_LIST_DIR}/../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-websocket.c"
-    )
-endif()
 
 # Register mender-mcu-client component
 idf_component_register(
@@ -51,9 +40,6 @@ idf_component_register(
     INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/../include"
     REQUIRES app_update esp_http_client json mbedtls nvs_flash
 )
-if (CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    idf_component_optional_requires(PRIVATE espressif__esp_websocket_client esp_event msgpack-c)
-endif()
 
 # Retrieve mender-mcu-client version
 file (STRINGS "${CMAKE_CURRENT_LIST_DIR}/../VERSION" MENDER_CLIENT_VERSION)

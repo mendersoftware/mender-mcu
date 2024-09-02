@@ -74,80 +74,26 @@ menu "Mender Firmware Over-the-Air support"
 
     endmenu
 
-    menu "Addons integration"
+    menu "Inventory configuration"
 
-        menu "Configure Addon configuration"
+        config MENDER_CLIENT_INVENTORY
+            bool "Mender client Inventory"
+            default y
+            help
+                Inventory permits to send inventory key-value pairs to the Mender server.
+                It is particularly used to send artifact name and device type, and it permits to see the last check-in time of the device.
 
-            config MENDER_CLIENT_ADD_ON_CONFIGURE
-                bool "Mender client Configure"
-                default n
+        if MENDER_CLIENT_INVENTORY
+
+            config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
+                int "Mender client Inventory refresh interval (seconds)"
+                range 0 86400
+                default 28800
                 help
-                    Configure add-on permits to get/set configuration key-value pairs to/from the Mender server.
+                    Interval used to periodically send inventory to the Mender server.
+                    Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
-            if MENDER_CLIENT_ADD_ON_CONFIGURE
-
-                config MENDER_CLIENT_CONFIGURE_STORAGE
-                    bool "Mender client Configure storage"
-                    default y
-                    help
-                        Activate this option to save the configuration from the Mender server in the storage area of the device.
-
-                config MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL
-                    int "Mender client Configure refresh interval (seconds)"
-                    range 0 86400
-                    default 28800
-                    help
-                        Interval used to periodically refresh configuration to/from the Mender server.
-                        Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
-            endif
-
-        endmenu
-
-        menu "Inventory configuration"
-
-            config MENDER_CLIENT_INVENTORY
-                bool "Mender client Inventory"
-                default y
-                help
-                    Inventory permits to send inventory key-value pairs to the Mender server.
-                    It is particularly used to send artifact name and device type, and it permits to see the last check-in time of the device.
-
-            if MENDER_CLIENT_INVENTORY
-
-                config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
-                    int "Mender client Inventory refresh interval (seconds)"
-                    range 0 86400
-                    default 28800
-                    help
-                        Interval used to periodically send inventory to the Mender server.
-                        Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
-            endif
-
-        endmenu
-
-        menu "Troubleshoot Addon configuration"
-
-            config MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-                bool "Mender client Troubleshoot (EXPERIMENTAL)"
-                default n
-                help
-                    Troubleshoot add-on permits to perform debugging on the target from the Mender server.
-                    It is particularly used to connect to the remote terminal of the device.
-
-            if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-
-                config MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL
-                    int "Mender client Troubleshoot healthcheck interval (seconds)"
-                    range 10 60
-                    default 30
-                    help
-                        Interval used to periodically perform healthcheck with the Mender server.
-
-            endif
-
-        endmenu
+        endif
 
     endmenu
 
@@ -259,46 +205,6 @@ menu "Mender Firmware Over-the-Air support"
             default "generic/weak" if MENDER_PLATFORM_TLS_TYPE_WEAK
 
     endmenu
-
-    if MENDER_PLATFORM_NET_TYPE_DEFAULT
-
-        menu "Network options (ADVANCED)"
-
-            if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-
-                config MENDER_WEBSOCKET_RECONNECT_TIMEOUT
-                    int "Mender WebSocket client reconnect timeout (milliseconds)"
-                    range 0 60000
-                    default 3000
-                    help
-                        Mender WebSocket client reconnect timeout. Default value is suitable for most applications.
-
-                config MENDER_WEBSOCKET_NETWORK_TIMEOUT
-                    int "Mender WebSocket client network timeout (milliseconds)"
-                    range 0 60000
-                    default 3000
-                    help
-                        Mender WebSocket client network timeout. Default value is suitable for most applications.
-
-                config MENDER_WEBSOCKET_REQUEST_TIMEOUT
-                    int "Mender WebSocket client request timeout (milliseconds)"
-                    range 0 60000
-                    default 3000
-                    help
-                        Mender WebSocket client request timeout. Default value is suitable for most applications.
-
-                config MENDER_WEBSOCKET_PING_INTERVAL
-                    int "Mender WebSocket client ping interval (seconds)"
-                    range 0 60
-                    default 60
-                    help
-                        Mender WebSocket client ping interval. Default value is suitable for most applications.
-
-            endif
-
-        endmenu
-
-    endif
 
     if MENDER_PLATFORM_SCHEDULER_TYPE_DEFAULT
 

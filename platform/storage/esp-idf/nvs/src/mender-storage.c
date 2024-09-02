@@ -27,7 +27,6 @@
 #define MENDER_STORAGE_NVS_PRIVATE_KEY     "key.der"
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      "pubkey.der"
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA "deployment-data.json"
-#define MENDER_STORAGE_NVS_DEVICE_CONFIG   "config.json"
 
 /**
  * @brief NVS storage handle
@@ -184,72 +183,6 @@ mender_storage_delete_deployment_data(void) {
 
     return MENDER_OK;
 }
-
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-
-mender_err_t
-mender_storage_set_device_config(char *device_config) {
-
-    assert(NULL != device_config);
-
-    /* Write device configuration */
-    if (ESP_OK != nvs_set_str(mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, device_config)) {
-        mender_log_error("Unable to write device configuration");
-        return MENDER_FAIL;
-    }
-    if (ESP_OK != nvs_commit(mender_storage_nvs_handle)) {
-        mender_log_error("Unable to write device configuration");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_get_device_config(char **device_config) {
-
-    assert(NULL != device_config);
-    size_t device_config_length = 0;
-
-    /* Retrieve length of the device configuration */
-    nvs_get_str(mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, NULL, &device_config_length);
-    if (0 == device_config_length) {
-        mender_log_info("Device configuration not available");
-        return MENDER_NOT_FOUND;
-    }
-
-    /* Allocate memory to copy device configuration */
-    if (NULL == (*device_config = (char *)malloc(device_config_length + 1))) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
-    }
-
-    /* Read device configuration */
-    if (ESP_OK != nvs_get_str(mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, *device_config, &device_config_length)) {
-        mender_log_error("Unable to read device configuration");
-        free(*device_config);
-        *device_config = NULL;
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_delete_device_config(void) {
-
-    /* Delete device configuration */
-    if (ESP_OK != nvs_erase_key(mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG)) {
-        mender_log_error("Unable to delete device configuration");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
 
 mender_err_t
 mender_storage_exit(void) {

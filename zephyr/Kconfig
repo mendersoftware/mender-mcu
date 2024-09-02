@@ -27,13 +27,11 @@ menuconfig MENDER_MCU_CLIENT
     select IMG_ERASE_PROGRESSIVELY
     select IMG_MANAGER
     select MPU_ALLOW_FLASH_WRITE
-    select MSGPACK_C if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
     select NETWORKING
     select NET_TCP
     select NET_SOCKETS
     select REBOOT
     select STREAM_FLASH
-    select WEBSOCKET_CLIENT if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
     help
         Secure, risk tolerant and efficient over-the-air updates for all device software.
 
@@ -75,80 +73,26 @@ if MENDER_MCU_CLIENT
 
     endmenu
 
-    menu "Add-ons integration"
+    menu "Inventory configuration"
 
-        menu "Configure Add-on configuration"
+        config MENDER_CLIENT_INVENTORY
+            bool "Mender client Inventory"
+            default y
+            help
+                Inventory permits to send inventory key-value pairs to the Mender server.
+                It is particularly used to send artifact name and device type, and it permits to see the last check-in time of the device.
 
-            config MENDER_CLIENT_ADD_ON_CONFIGURE
-                bool "Mender client Configure"
-                default n
+        if MENDER_CLIENT_INVENTORY
+
+            config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
+                int "Mender client Inventory refresh interval (seconds)"
+                range 0 86400
+                default 28800
                 help
-                    Configure add-on permits to get/set configuration key-value pairs to/from the Mender server.
+                    Interval used to periodically send inventory to the Mender server.
+                    Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
-            if MENDER_CLIENT_ADD_ON_CONFIGURE
-
-                config MENDER_CLIENT_CONFIGURE_STORAGE
-                    bool "Mender client Configure storage"
-                    default y
-                    help
-                        Activate this option to save the configuration from the Mender server in the storage area of the device.
-
-                config MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL
-                    int "Mender client Configure refresh interval (seconds)"
-                    range 0 86400
-                    default 28800
-                    help
-                        Interval used to periodically refresh configuration to/from the Mender server.
-                        Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
-            endif
-
-        endmenu
-
-        menu "Inventory configuration"
-
-            config MENDER_CLIENT_INVENTORY
-                bool "Mender client Inventory"
-                default y
-                help
-                    Inventory permits to send inventory key-value pairs to the Mender server.
-                    It is particularly used to send artifact name and device type, and it permits to see the last check-in time of the device.
-
-            if MENDER_CLIENT_INVENTORY
-
-                config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
-                    int "Mender client Inventory refresh interval (seconds)"
-                    range 0 86400
-                    default 28800
-                    help
-                        Interval used to periodically send inventory to the Mender server.
-                        Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
-            endif
-
-        endmenu
-
-        menu "Troubleshoot Add-on configuration"
-
-            config MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-                bool "Mender client Troubleshoot (EXPERIMENTAL)"
-                default n
-                help
-                    Troubleshoot add-on permits to perform debugging on the target from the Mender server.
-                    It is particularly used to connect to the remote terminal of the device.
-
-            if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-
-                config MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL
-                    int "Mender client Troubleshoot healthcheck interval (seconds)"
-                    range 10 60
-                    default 30
-                    help
-                        Interval used to periodically perform healthcheck with the Mender server.
-
-            endif
-
-        endmenu
+        endif
 
     endmenu
 
@@ -281,38 +225,6 @@ if MENDER_MCU_CLIENT
                 help
                     Peer verification level for TLS connection.
 
-            if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-
-                config MENDER_WEBSOCKET_THREAD_STACK_SIZE
-                    int "Mender WebSocket client Thread Stack Size (kB)"
-                    range 0 64
-                    default 4
-                    help
-                        Mender WebSocket client thread stack size, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
-
-                config MENDER_WEBSOCKET_THREAD_PRIORITY
-                    int "Mender WebSocket client Thread Priority"
-                    range 0 128
-                    default 5
-                    help
-                        Mender WebSocket client thread priority, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
-
-                config MENDER_WEBSOCKET_CONNECT_TIMEOUT
-                    int "Mender WebSocket client connect timeout (milliseconds)"
-                    range 0 60000
-                    default 3000
-                    help
-                        Mender WebSocket client connect timeout. Default value is suitable for most applications.
-
-                config MENDER_WEBSOCKET_REQUEST_TIMEOUT
-                    int "Mender WebSocket client request timeout (milliseconds)"
-                    range 0 60000
-                    default 3000
-                    help
-                        Mender WebSocket client request timeout. Default value is suitable for most applications.
-
-            endif
-
         endmenu
 
     endif
@@ -334,76 +246,6 @@ if MENDER_MCU_CLIENT
                 default 5
                 help
                     Mender scheduler work queue priority, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
-
-        endmenu
-
-    endif
-
-    if MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-
-        menu "Shell options (ADVANCED)"
-
-            config MENDER_SHELL_PROMPT
-                string "Mender Shell prompt"
-                default "~$ "
-                help
-                    Mender Shell prompt to be dislayed on the Mender server Troubleshoot add-on interface.
-
-            config MENDER_SHELL_RX_RING_BUFFER_SIZE
-                int "Mender Shell RX ring buffer size (bytes)"
-                range 0 512
-                default 64
-                help
-                    Mender Shell RX ring buffer size. Default value is suitable for most applications.
-
-            config MENDER_SHELL_TX_RING_BUFFER_SIZE
-                int "Mender Shell TX ring buffer size (bytes)"
-                range 0 2048
-                default 512
-                help
-                    Mender Shell TX ring buffer size. Default value is suitable for most applications.
-
-            config MENDER_SHELL_TX_WORK_QUEUE_STACK_SIZE
-                int "Mender Shell TX Work Queue Stack Size (kB)"
-                range 0 64
-                default 2
-                help
-                    Mender Shell TX work queue stack size, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
-
-            config MENDER_SHELL_TX_WORK_QUEUE_PRIORITY
-                int "Mender Shell TX Work Queue Priority"
-                range 0 128
-                default 5
-                help
-                    Mender Shell TX work queue priority, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
-
-            config MENDER_SHELL_TX_WORK_DELAY
-                int "Mender Shell TX Work Delay (milliseconds)"
-                range 0 1000
-                default 100
-                help
-                    Mender Shell TX work delay, used to flush data of the TX work queue. Default value is suitable for most applications.
-
-            config MENDER_SHELL_LOG_BACKEND_LEVEL
-                int "Mender Shell Log Backend Level"
-                range 0 4
-                default 0
-                help
-                    Mender Shell log backend level. Default value is no log (log backend disabled).
-
-            config MENDER_SHELL_LOG_BACKEND_MESSAGE_QUEUE_SIZE
-                int "Mender Shell Log Backend Message Queue Size (bytes)"
-                range 0 2048
-                default 512
-                help
-                    Mender Shell log backend message queue size. Default value is suitable for most applications.
-
-            config MENDER_SHELL_LOG_BACKEND_MESSAGE_QUEUE_TIMEOUT
-                int "Mender Shell Log Backend Message Queue Timeout (milliseconds)"
-                range 0 1000
-                default 100
-                help
-                    Mender Shell log backend message queue timeout. Default value is suitable for most applications.
 
         endmenu
 

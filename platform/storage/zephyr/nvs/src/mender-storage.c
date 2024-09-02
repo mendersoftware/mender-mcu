@@ -40,7 +40,6 @@
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA 3
 #define MENDER_STORAGE_NVS_UPDATE_STATE    4
 #define MENDER_STORAGE_NVS_ARTIFACT_TYPE   5
-#define MENDER_STORAGE_NVS_DEVICE_CONFIG   6
 #define MENDER_STORAGE_NVS_PROVIDES        7
 
 /**
@@ -225,122 +224,8 @@ mender_storage_delete_deployment_data(void) {
     return MENDER_OK;
 }
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-
-mender_err_t
-mender_storage_save_update_state(mender_update_state_t state, const char *artifact_type) {
-    assert(NULL != artifact_type);
-
-    size_t artifact_type_len;
-
-    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, state, sizeof(state))) {
-        mender_log_error("Unable to save update state");
-        return MENDER_FAIL;
-    }
-
-    artifact_type_size = strlen(artifact_type) + 1;
-    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE, artifact_type, artifact_type_size)) {
-        mender_log_error("Unable to save update state");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type) {
-    assert(NULL != *artifact_type);
-
-    size_t       artifact_type_size;
-    ssize_t      n_read;
-    mender_err_t ret;
-
-    n_read = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, NULL, 0);
-    if (0 == n_read) {
-        mender_log_debug("Update state record empty or unavailable");
-        return MENDER_NOT_FOUND;
-    } else if (n_read < 0) {
-        mender_log_error("Failed to retrieve saved update state");
-        return MENDER_FAIL;
-    }
-
-    n_read = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, state, sizeof(*state));
-    if (n_read < sizeof(*state)) {
-        mender_log_error("Incomplete or invalid update state, ignoring");
-        return MENDER_FAIL;
-    }
-
-    *artifact_type = NULL;
-    ret            = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE, artifact_type, &artifact_type_size);
-    if (MENDER_OK != ret) {
-        if (MENDER_NOT_FOUND == ret) {
-            mender_log_error("Failed to read saved update state, ignoring");
-            return MENDER_FAIL;
-        }
-    } else {
-        if (artifact_type_size < 2) {
-            mender_log_error("Incomplete or invalid update state, ignoring");
-            free(artifact_type);
-            return MENDER_FAIL;
-        }
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_set_device_config(char *device_config) {
-
-    assert(NULL != device_config);
-
-    /* Write device configuration */
-    if (nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, device_config, strlen(device_config) + 1) < 0) {
-        mender_log_error("Unable to write device configuration");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_get_device_config(char **device_config) {
-
-    assert(NULL != device_config);
-    size_t device_config_length = 0;
-
-    /* Retrieve length of the device configuration */
-    /* Read  device configuration */
-    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG, (void **)device_config, &device_config_length);
-    if (MENDER_OK != ret) {
-        if (MENDER_NOT_FOUND == ret) {
-            mender_log_info("Device configuration not available");
-        } else {
-            mender_log_error("Unable to read device configuration");
-        }
-        return ret;
-    }
-
-    return MENDER_OK;
-}
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
-
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
-mender_err_t
-mender_storage_delete_device_config(void) {
-
-    /* Delete device configuration */
-    if (0 != nvs_delete(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEVICE_CONFIG)) {
-        mender_log_error("Unable to delete device configuration");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
 mender_err_t
 mender_storage_set_provides(mender_key_value_list_t *provides) {
 

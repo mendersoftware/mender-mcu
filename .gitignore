@@ -1,7 +1,6 @@
 build
 tests/build
 tests/mocks/cjson/cjson
-tests/mocks/freertos/freertos
 tests/mocks/mbedtls/mbedtls
 
 CMakeCache.txt

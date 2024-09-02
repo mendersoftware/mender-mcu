@@ -1,8 +1,9 @@
 /**
  * @file      mender-inventory.c
- * @brief     Mender MCU Inventory add-on implementation
+ * @brief     Mender MCU Inventory implementation
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@
 #include "mender-log.h"
 #include "mender-scheduler.h"
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 /**
  * @brief Default inventory refresh interval (seconds)
@@ -31,17 +32,6 @@
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
 #define CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL (28800)
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL */
-
-/**
- * @brief Mender inventory instance
- */
-const mender_addon_instance_t mender_inventory_addon_instance
-    = { .init = mender_inventory_init, .activate = mender_inventory_activate, .deactivate = mender_inventory_deactivate, .exit = mender_inventory_exit };
-
-/**
- * @brief Mender inventory configuration
- */
-static mender_inventory_config_t mender_inventory_config;
 
 /**
  * @brief Mender inventory keystore
@@ -61,18 +51,8 @@ static void *mender_inventory_work_handle = NULL;
 static mender_err_t mender_inventory_work_function(void);
 
 mender_err_t
-mender_inventory_init(void *config, void *callbacks) {
-
-    assert(NULL != config);
-    (void)callbacks;
+mender_inventory_init(uint32_t interval) {
     mender_err_t ret;
-
-    /* Save configuration */
-    if (0 != ((mender_inventory_config_t *)config)->refresh_interval) {
-        mender_inventory_config.refresh_interval = ((mender_inventory_config_t *)config)->refresh_interval;
-    } else {
-        mender_inventory_config.refresh_interval = CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL;
-    }
 
     /* Create inventory mutex */
     if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_inventory_mutex))) {
@@ -83,7 +63,7 @@ mender_inventory_init(void *config, void *callbacks) {
     /* Create mender inventory work */
     mender_scheduler_work_params_t inventory_work_params;
     inventory_work_params.function = mender_inventory_work_function;
-    inventory_work_params.period   = mender_inventory_config.refresh_interval;
+    inventory_work_params.period   = (0 != interval ? interval : CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL);
     inventory_work_params.name     = "mender_inventory";
     if (MENDER_OK != (ret = mender_scheduler_work_create(&inventory_work_params, &mender_inventory_work_handle))) {
         mender_log_error("Unable to create inventory work");
@@ -177,7 +157,6 @@ mender_inventory_exit(void) {
     }
 
     /* Release memory */
-    mender_inventory_config.refresh_interval = 0;
     mender_utils_keystore_delete(mender_inventory_keystore);
     mender_inventory_keystore = NULL;
     mender_scheduler_mutex_give(mender_inventory_mutex);
@@ -220,4 +199,4 @@ END:
     return ret;
 }
 
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */

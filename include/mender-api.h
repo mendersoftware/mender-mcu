@@ -134,7 +134,7 @@ mender_err_t mender_api_troubleshoot_disconnect(void *handle);
 
 #endif /* CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT */
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 /**
  * @brief Publish inventory data of the device to the mender-server
@@ -143,7 +143,7 @@ mender_err_t mender_api_troubleshoot_disconnect(void *handle);
  */
 mender_err_t mender_api_publish_inventory_data(mender_keystore_t *inventory);
 
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 /**
  * @brief Release mender API

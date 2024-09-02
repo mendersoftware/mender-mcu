@@ -63,9 +63,9 @@ if (CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
         message(STATUS "Using custom '${CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL}' configure refresh interval")
     endif()
 endif()
-option(CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY "Mender client Inventory" ON)
-if (CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    message(STATUS "Using mender-inventory add-on")
+option(CONFIG_MENDER_CLIENT_INVENTORY "Mender client Inventory" ON)
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+    message(STATUS "Using mender-inventory")
     if (NOT CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL)
         message(STATUS "Using default inventory refresh interval")
     else()
@@ -162,8 +162,8 @@ if (CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
         target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL=${CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL})
     endif()
 endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_INVENTORY)
     if (CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL)
         target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL=${CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL})
     endif()
@@ -197,6 +197,11 @@ file(GLOB SOURCES_TEMP
     "${CMAKE_CURRENT_LIST_DIR}/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
 )
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+    list(APPEND SOURCES_TEMP
+        "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-inventory.c"
+    )
+endif()
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     list(APPEND SOURCES_TEMP
         "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-net.c"
@@ -205,11 +210,6 @@ endif()
 if (CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
     list(APPEND SOURCES_TEMP
         "${CMAKE_CURRENT_LIST_DIR}/add-ons/src/mender-configure.c"
-    )
-endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/add-ons/src/mender-inventory.c"
     )
 endif()
 if (CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)

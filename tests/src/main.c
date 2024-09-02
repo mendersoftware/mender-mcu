@@ -26,7 +26,6 @@
 #include "mender-client.h"
 #include "mender-configure.h"
 #include "mender-flash.h"
-#include "mender-inventory.h"
 #include "mender-log.h"
 #include "mender-troubleshoot.h"
 
@@ -594,14 +593,6 @@ main(int argc, char **argv) {
         goto RELEASE;
     }
 #endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
-    mender_inventory_config_t mender_inventory_config = { .refresh_interval = 0 };
-    if (MENDER_OK != mender_client_register_addon((mender_addon_instance_t *)&mender_inventory_addon_instance, (void *)&mender_inventory_config, NULL)) {
-        mender_log_error("Unable to register mender-inventory add-on");
-        ret = EXIT_FAILURE;
-        goto RELEASE;
-    }
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY */
 #ifdef CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT
     mender_troubleshoot_config_t    mender_troubleshoot_config = { .healthcheck_interval = 0 };
     mender_troubleshoot_callbacks_t mender_troubleshoot_callbacks

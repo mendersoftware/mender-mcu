@@ -105,16 +105,16 @@ if MENDER_MCU_CLIENT
 
         endmenu
 
-        menu "Inventory Add-on configuration"
+        menu "Inventory configuration"
 
-            config MENDER_CLIENT_ADD_ON_INVENTORY
+            config MENDER_CLIENT_INVENTORY
                 bool "Mender client Inventory"
                 default y
                 help
-                    Inventory add-on permits to send inventory key-value pairs to the Mender server.
+                    Inventory permits to send inventory key-value pairs to the Mender server.
                     It is particularly used to send artifact name and device type, and it permits to see the last check-in time of the device.
 
-            if MENDER_CLIENT_ADD_ON_INVENTORY
+            if MENDER_CLIENT_INVENTORY
 
                 config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
                     int "Mender client Inventory refresh interval (seconds)"

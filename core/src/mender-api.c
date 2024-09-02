@@ -722,7 +722,7 @@ END:
 
 #endif /* CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT */
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 mender_err_t
 mender_api_publish_inventory_data(mender_keystore_t *inventory) {
@@ -825,7 +825,7 @@ END:
     return ret;
 }
 
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 mender_err_t
 mender_api_exit(void) {

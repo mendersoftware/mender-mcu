@@ -39,7 +39,10 @@ typedef struct {
     char   *tenant_token;                 /**< Tenant token used to authenticate on the mender server (optional) */
     int32_t authentication_poll_interval; /**< Authentication poll interval, default is 60 seconds, -1 permits to disable periodic execution */
     int32_t update_poll_interval;         /**< Update poll interval, default is 1800 seconds, -1 permits to disable periodic execution */
-    bool    recommissioning;              /**< Used to force creation of new authentication keys */
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
+#endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY */
+    bool recommissioning;               /**< Used to force creation of new authentication keys */
 } mender_client_config_t;
 
 /**

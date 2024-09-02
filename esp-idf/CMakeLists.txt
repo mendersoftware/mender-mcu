@@ -28,14 +28,14 @@ list(APPEND srcs
     "${CMAKE_CURRENT_LIST_DIR}/../platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
     "${CMAKE_CURRENT_LIST_DIR}/../platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
 )
+if(CONFIG_MENDER_CLIENT_INVENTORY)
+    list(APPEND srcs
+        "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-inventory.c"
+    )
+endif()
 if(CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
     list(APPEND srcs
         "${CMAKE_CURRENT_LIST_DIR}/../add-ons/src/mender-configure.c"
-    )
-endif()
-if(CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    list(APPEND srcs
-        "${CMAKE_CURRENT_LIST_DIR}/../add-ons/src/mender-inventory.c"
     )
 endif()
 if(CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)

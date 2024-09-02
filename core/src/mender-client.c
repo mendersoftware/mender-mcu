@@ -29,6 +29,10 @@
 #include "mender-update-module.h"
 #include "mender-utils.h"
 
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#include "mender-inventory.h"
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
 /**
  * @brief Default host
  */
@@ -403,6 +407,13 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
 
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval))) {
+        mender_log_error("Failed to initialize the inventory functionality");
+        goto END;
+    }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
 END:
 
     return ret;
@@ -514,6 +525,13 @@ mender_err_t
 mender_client_deactivate(void) {
 
     mender_err_t ret;
+
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_deactivate())) {
+        mender_log_error("Unable to deactivate the inventory functionality");
+        /* keep going on, we want to do as much cleanup as possible */
+    }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Take mutex used to protect access to the add-ons management list */
     if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
@@ -627,6 +645,13 @@ mender_err_t
 mender_client_exit(void) {
 
     mender_err_t ret;
+
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_exit())) {
+        mender_log_error("Unable to cleanup after the inventory functionality");
+        /* keep going on, we want to do as much cleanup as possible */
+    }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Take mutex used to protect access to the add-ons management list */
     if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
@@ -917,6 +942,13 @@ RELEASE:
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
     }
+
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_activate())) {
+        mender_log_error("Unable to activate the inventory functionality");
+        return ret;
+    }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Take mutex used to protect access to the add-ons management list */
     if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {

@@ -36,7 +36,7 @@ check_header() {
 result=""
 
 # Check source, header, ASM and linker files
-for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.c$|.*\.h$|.*\.cpp$|.*\.hpp$|.*\.s$|.*\.ld$)' | grep -vFf .clang-format-ignore | grep -vF .gitlab-ci.yml`
+for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.c$|.*\.h$|.*\.cpp$|.*\.hpp$|.*\.s$|.*\.ld$)' | grep -vFf .clang-format-ignore | grep -vFf .check-headers-ignore`
 do
     check_header ${source_file} "/\*\*" " \*" " \*/"
     if [[ ! $? -eq 0 ]]; then
@@ -45,7 +45,7 @@ do
 done
 
 # Check YAML, Python, CMake and configuration files
-for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.yml$|.*\.py$|CMakeLists.*\.txt$|.*\.cmake$|.*\.cfg$|.*\.conf$|.clang-format$)' | grep -vFf .clang-format-ignore | grep -vF .gitlab-ci.yml`
+for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.yml$|.*\.py$|CMakeLists.*\.txt$|.*\.cmake$|.*\.cfg$|.*\.conf$|.clang-format$)' | grep -vFf .clang-format-ignore | grep -vFf .check-headers-ignore`
 do
     check_header ${source_file} "" "#" ""
     if [[ ! $? -eq 0 ]]; then
@@ -54,7 +54,7 @@ do
 done
 
 # Check bash files
-for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.sh$)' | grep -vFf .clang-format-ignore | grep -vF .gitlab-ci.yml`
+for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.sh$)' | grep -vFf .clang-format-ignore | grep -vFf .check-headers-ignore`
 do
     check_header ${source_file} "#!/bin/bash" "#" ""
     if [[ ! $? -eq 0 ]]; then

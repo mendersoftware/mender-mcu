@@ -17,6 +17,8 @@
  * limitations under the License.
  */
 
+#include <errno.h>
+
 #include "mender-artifact.h"
 #include "mender-log.h"
 
@@ -392,7 +394,17 @@ mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
     ctx->file.name = tmp;
 
     /* Retrieve file size */
-    sscanf(tar_header->size, "%o", (unsigned int *)&(ctx->file.size));
+    assert(sizeof(size_t) >= sizeof(unsigned long long));
+    char *end_ptr;
+    errno = 0; /* to distinguish between success/failure */
+
+    ctx->file.size = strtoull(tar_header->size, &end_ptr, 8);
+    if ((end_ptr == tar_header->size) /* no conversion */
+        || (0 != errno)) {            /* out of range (for unsigned long) */
+        mender_log_error("Unable to retrieve file size");
+        return MENDER_FAIL;
+    }
+
     ctx->file.index = 0;
 
     /* Shift data in the buffer */
@@ -781,17 +793,30 @@ static mender_err_t
 mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
-    size_t index = 0;
 
-    /* Retrieve payload index */
-    if (1 != sscanf(ctx->file.name, "header.tar/headers/%u/meta-data", (unsigned int *)&index)) {
+    /* Retrieve payload index. We expect "header.tar/headers/%u/meta-data" where
+     * %u is the index. Yes sscanf(3) would be nice, but we've experienced
+     * unexplained segmentation faults on some hardware when using it. */
+    const char *const prefix = "header.tar/headers/";
+    if (!mender_utils_strbeginwith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
-    if (index >= ctx->payloads.size) {
+
+    assert(sizeof(size_t) >= sizeof(unsigned long));
+    const char *start_ptr = ctx->file.name + strlen(prefix);
+    char       *end_ptr;
+    errno = 0; /* to distinguish between success/failure */
+
+    const size_t index = strtoul(start_ptr, &end_ptr, 10);
+    if ((end_ptr == start_ptr)              /* no conversion */
+        || (0 != errno)                     /* out of range (for unsigned long) */
+        || (index >= ctx->payloads.size)) { /* index out of bounds */
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
+
+    assert(StringEqual(end_ptr, "/meta-data")); /* just one last sanity check */
 
     /* Check size of the meta-data */
     if (0 == mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
@@ -824,18 +849,31 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
 
     assert(NULL != ctx);
     assert(NULL != callback);
-    size_t       index = 0;
     mender_err_t ret;
 
-    /* Retrieve payload index */
-    if (1 != sscanf(ctx->file.name, "data/%u.tar", (unsigned int *)&index)) {
+    /* Retrieve payload index. We expect "data/%u.tar" where %u is the index.
+     * Yes sscanf(3) would be nice, but we've experienced unexplained
+     * segmentation faults on some hardware when using it. */
+    const char *const prefix = "data/";
+    if (!mender_utils_strbeginwith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
-    if (index >= ctx->payloads.size) {
+
+    assert(sizeof(size_t) >= sizeof(unsigned long));
+    const char *start_ptr = ctx->file.name + strlen(prefix);
+    char       *end_ptr;
+    errno = 0; /* to distinguish between success/failure */
+
+    const size_t index = strtoul(start_ptr, &end_ptr, 10);
+    if ((end_ptr == start_ptr)              /* no conversion */
+        || (0 != errno)                     /* out of range (for unsigned long) */
+        || (index >= ctx->payloads.size)) { /* index out of bounds */
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
+
+    assert(StringEqual(end_ptr, ".tar")); /* just one last sanity check */
 
     /* Check if a file name is provided (we don't check the extension because we don't know it) */
     if (strlen("data/xxxx.tar") == strlen(ctx->file.name)) {

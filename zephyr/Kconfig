@@ -424,4 +424,21 @@ if MENDER_MCU_CLIENT
 
     endif
 
+    menu "Optional functionality (ADVANCED)"
+
+        config MENDER_FULL_PARSE_ARTIFACT
+            bool "Full Mender Artifact parse"
+            default y
+            help
+                Do full parsing of the Artifacts allowing for robustness feature of matching the device type
+
+        config MENDER_PROVIDES_DEPENDS
+            bool "Provides and depends functionality"
+            default y
+            help
+                Opt-out to remove compatibility with v2 deployments/next API call and related functionality
+            select MENDER_FULL_PARSE_ARTIFACT
+
+    endmenu
+
 endif

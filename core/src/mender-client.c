@@ -1172,6 +1172,46 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
 static mender_err_t
+mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
+
+    assert(NULL != deployment_data);
+
+    if (NULL == (*deployment_data = calloc(1, sizeof(mender_api_deployment_data_t)))) {
+        mender_log_error("Unable to allocate memory for deployment data");
+        return MENDER_FAIL;
+    }
+
+    mender_api_deployment_data_t *deployment = *deployment_data;
+
+    mender_log_info("Checking for deployment...");
+    if (MENDER_OK != mender_api_check_for_deployment(deployment)) {
+        mender_log_error("Unable to check for deployment");
+        return MENDER_FAIL;
+    }
+
+    /* Check if deployment is available */
+    if ((NULL == deployment->id) || (NULL == deployment->artifact_name) || (NULL == deployment->uri) || (NULL == deployment->device_types_compatible)) {
+        mender_log_info("No deployment available");
+        return MENDER_DONE;
+    }
+
+    /* Create deployment data */
+    if (NULL != mender_client_deployment_data) {
+        mender_log_warning("Unexpected stale deployment data");
+        cJSON_Delete(mender_client_deployment_data);
+    }
+    if (NULL == (mender_client_deployment_data = cJSON_CreateObject())) {
+        mender_log_error("Unable to allocate memory");
+        return MENDER_FAIL;
+    }
+    cJSON_AddStringToObject(mender_client_deployment_data, "id", deployment->id);
+    cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", deployment->artifact_name);
+    cJSON_AddArrayToObject(mender_client_deployment_data, "types");
+
+    return MENDER_OK;
+}
+
+static mender_err_t
 mender_client_update_work_function(void) {
     mender_err_t ret = MENDER_OK;
 
@@ -1179,7 +1219,7 @@ mender_client_update_work_function(void) {
     mender_artifact_ctx_t *mender_artifact_ctx = NULL;
 
     /* Check for deployment */
-    mender_api_deployment_data_t *deployment;
+    mender_api_deployment_data_t *deployment              = NULL;
     char                         *storage_deployment_data = NULL;
     mender_update_state_t         update_state            = MENDER_UPDATE_STATE_DOWNLOAD;
     const char                   *deployment_id           = NULL;
@@ -1187,10 +1227,8 @@ mender_client_update_work_function(void) {
     /* reset the currently used update module */
     mender_update_module = NULL;
 
-    if (NULL == (deployment = calloc(1, sizeof(mender_api_deployment_data_t)))) {
-        mender_log_error("Unable to allocate memory for deployment data");
-        goto END;
-    }
+    /* Reset flags */
+    mender_client_deployment_needs_set_pending_image = false;
 
     {
         char *artifact_type;
@@ -1202,38 +1240,6 @@ mender_client_update_work_function(void) {
     }
 
     /* Skip the block below if we just resume from a saved state. */
-    /* TODO: move this into the state code */
-    if (MENDER_UPDATE_STATE_DOWNLOAD == update_state) {
-        mender_log_info("Checking for deployment...");
-        if (MENDER_OK != (ret = mender_api_check_for_deployment(deployment))) {
-            mender_log_error("Unable to check for deployment");
-            goto END;
-        }
-
-        /* Check if deployment is available */
-        if ((NULL == deployment->id) || (NULL == deployment->artifact_name) || (NULL == deployment->uri) || (NULL == deployment->device_types_compatible)) {
-            mender_log_info("No deployment available");
-            ret = MENDER_DONE;
-            goto END;
-        }
-
-        /* Reset flags */
-        mender_client_deployment_needs_set_pending_image = false;
-
-        /* Create deployment data */
-        if (NULL != mender_client_deployment_data) {
-            mender_log_warning("Unexpected stale deployment data");
-            cJSON_Delete(mender_client_deployment_data);
-        }
-        if (NULL == (mender_client_deployment_data = cJSON_CreateObject())) {
-            mender_log_error("Unable to allocate memory");
-            ret = MENDER_FAIL;
-            goto END;
-        }
-        cJSON_AddStringToObject(mender_client_deployment_data, "id", deployment->id);
-        cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", deployment->artifact_name);
-        cJSON_AddArrayToObject(mender_client_deployment_data, "types");
-    }
 
 /* A macro to advance to the next state -- on success we just keep going to the
  * code below the macro invocation (fallthrough to the next case), on error we
@@ -1268,11 +1274,21 @@ mender_client_update_work_function(void) {
     while (MENDER_UPDATE_STATE_END != update_state) {
         switch (update_state) {
             case MENDER_UPDATE_STATE_DOWNLOAD:
+
+                /* Check for deployment */
+                if (MENDER_OK != (ret = mender_client_check_deployment(&deployment))) {
+                    /* No deployment available */
+                    goto END;
+                }
+
                 mender_log_info("Downloading deployment artifact with id '%s', artifact name '%s' and uri '%s'",
                                 deployment->id,
                                 deployment->artifact_name,
                                 deployment->uri);
-                mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
+                mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
+
+                /* Set deployment_id */
+                deployment_id = deployment->id;
 
                 /* mender_client_download_artifact_callback() sets
                  * mender_update_module if there is enough data to get

@@ -25,6 +25,9 @@
 #include <stdio.h>
 #include "mender-client.h"
 #include "mender-flash.h"
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#include "mender-inventory.h"
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 #include "mender-log.h"
 
 /**
@@ -330,14 +333,17 @@ main(int argc, char **argv) {
     key_path = private_key;
 
     /* Initialize mender-client */
-    mender_identity.value                             = mac_address;
-    mender_client_config_t    mender_client_config    = { .artifact_name                = artifact_name,
-                                                          .device_type                  = device_type,
-                                                          .host                         = NULL,
-                                                          .tenant_token                 = tenant_token,
-                                                          .authentication_poll_interval = 0,
-                                                          .update_poll_interval         = 0,
-                                                          .recommissioning              = false };
+    mender_identity.value                       = mac_address;
+    mender_client_config_t mender_client_config = { .artifact_name                = artifact_name,
+                                                    .device_type                  = device_type,
+                                                    .host                         = NULL,
+                                                    .tenant_token                 = tenant_token,
+                                                    .authentication_poll_interval = 0,
+                                                    .update_poll_interval         = 0,
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+                                                    .inventory_update_interval = 0,
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+                                                    .recommissioning = false };
     mender_client_callbacks_t mender_client_callbacks = { .network_connect        = network_connect_cb,
                                                           .network_release        = network_release_cb,
                                                           .authentication_success = authentication_success_cb,
@@ -351,6 +357,12 @@ main(int argc, char **argv) {
         ret = EXIT_FAILURE;
         goto END;
     }
+
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "var" }, { .name = NULL, .value = NULL } };
+    assert(MENDER_OK == mender_inventory_set(inventory));
+    mender_log_info("Mender inventory set");
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Finally activate mender client */
     if (MENDER_OK != mender_client_activate()) {

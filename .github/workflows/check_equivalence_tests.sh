@@ -30,6 +30,7 @@ do
     # Any number of spaces before and after "==" / "!=" is catched
     lines=$(grep "[])a-z][ ]*[!=]=[ ]*[A-Z0-9]" ${source_file} | wc -l)
     if [[ ! $lines -eq 0 ]]; then
+        grep -H -n "[])a-z][ ]*[!=]=[ ]*[A-Z0-9]" ${source_file}
         result="${result}\n${source_file}"
     fi
 done

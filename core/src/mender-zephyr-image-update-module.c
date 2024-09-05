@@ -35,7 +35,7 @@ mender_zephyr_image_register_update_module(void) {
     mender_update_module_t *zephyr_image_umod;
 
     /* Register the zephyr-image update module */
-    if (NULL == (zephyr_image_umod = malloc(sizeof(mender_update_module_t)))) {
+    if (NULL == (zephyr_image_umod = calloc(1, sizeof(mender_update_module_t)))) {
         mender_log_error("Unable to allocate memory for the 'zephyr-image' update module");
         return MENDER_FAIL;
     }

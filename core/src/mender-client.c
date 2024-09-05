@@ -721,8 +721,6 @@ END:
 static mender_err_t
 mender_client_initialization_work_function(void) {
 
-    assert(NULL != mender_client_callbacks.get_user_provided_keys);
-
     char        *storage_deployment_data = NULL;
     mender_err_t ret;
 

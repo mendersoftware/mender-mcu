@@ -40,9 +40,9 @@ mender_zephyr_image_register_update_module(void) {
         return MENDER_FAIL;
     }
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD] = &mender_zephyr_image_download_artifact_flash_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]  = &mender_zephyr_image_ensure_pending_image;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]  = &mender_zephyr_image_set_pending_image;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]   = &mender_zephyr_image_reboot_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]  = &mender_zephyr_image_ensure_abort_deployment;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]  = &mender_zephyr_image_abort_deployment;
     zephyr_image_umod->artifact_type                           = "zephyr-image";
     zephyr_image_umod->requires_reboot                         = true;
     zephyr_image_umod->supports_rollback                       = false; /* TODO: support rollback */
@@ -92,38 +92,31 @@ mender_zephyr_image_download_artifact_flash_callback(NDEBUG_UNUSED mender_update
         }
     }
 
-    /* Set flags */
-    mender_client_deployment_needs_set_pending_image = true;
-
 END:
 
     return ret;
 }
 
 mender_err_t
-mender_zephyr_image_ensure_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_INSTALL == state);
     mender_err_t ret;
 
-    if (mender_client_deployment_needs_set_pending_image) {
-        if (MENDER_OK != (ret = mender_flash_set_pending_image(mcu_boot_flash_handle))) {
-            mender_log_error("Unable to set boot partition");
-            return ret;
-        }
+    if (MENDER_OK != (ret = mender_flash_set_pending_image(mcu_boot_flash_handle))) {
+        mender_log_error("Unable to set boot partition");
+        return ret;
     }
     return MENDER_OK;
 }
 
 mender_err_t
-mender_zephyr_image_ensure_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_FAILURE == state);
     mender_err_t ret;
 
-    if (mender_client_deployment_needs_set_pending_image) {
-        if (MENDER_OK != (ret = mender_flash_abort_deployment(mcu_boot_flash_handle))) {
-            mender_log_error("Unable to abort deployment");
-            return ret;
-        }
+    if (MENDER_OK != (ret = mender_flash_abort_deployment(mcu_boot_flash_handle))) {
+        mender_log_error("Unable to abort deployment");
+        return ret;
     }
     return MENDER_OK;
 }

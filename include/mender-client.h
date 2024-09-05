@@ -60,7 +60,6 @@ typedef struct {
 } mender_client_callbacks_t;
 
 extern mender_client_callbacks_t mender_client_callbacks;
-extern bool                      mender_client_deployment_needs_set_pending_image;
 
 /**
  * @brief Return mender client version

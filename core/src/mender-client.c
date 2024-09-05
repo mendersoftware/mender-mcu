@@ -149,11 +149,6 @@ static mender_update_module_t *mender_update_module = NULL;
 static void *mender_client_work_handle = NULL;
 
 /**
- * @brief Flag to indicate if the deployment needs to set pending image status
- */
-bool mender_client_deployment_needs_set_pending_image = false;
-
-/**
  * @brief Mender client work function
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
@@ -1089,9 +1084,6 @@ mender_client_update_work_function(void) {
 
     /* reset the currently used update module */
     mender_update_module = NULL;
-
-    /* Reset flags */
-    mender_client_deployment_needs_set_pending_image = false;
 
     {
         char *artifact_type;

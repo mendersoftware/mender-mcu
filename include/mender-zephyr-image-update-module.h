@@ -43,12 +43,12 @@ mender_err_t mender_zephyr_image_download_artifact_flash_callback(mender_update_
 /**
  * @brief Artifact installation callback to make sure MCUboot is set to switch to the new image
  */
-mender_err_t mender_zephyr_image_ensure_pending_image(mender_update_state_t state, mender_update_state_data_t callback_data);
+mender_err_t mender_zephyr_image_set_pending_image(mender_update_state_t state, mender_update_state_data_t callback_data);
 
 /**
  * @brief Update failure callback
  */
-mender_err_t mender_zephyr_image_ensure_abort_deployment(mender_update_state_t state, mender_update_state_data_t callback_data);
+mender_err_t mender_zephyr_image_abort_deployment(mender_update_state_t state, mender_update_state_data_t callback_data);
 
 /**
  * @brief Reboot callback

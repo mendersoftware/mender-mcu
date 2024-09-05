@@ -235,7 +235,7 @@ mender_storage_get_update_state(mender_update_state_t *state, char **artifact_ty
     }
     fseek(f, 0, SEEK_SET);
     n_read = fread(state, sizeof(*state), 1, f);
-    if (n_read < sizeof(*state)) {
+    if (n_read < 1) {
         mender_log_error("Failed to read saved update state, ignoring");
         ret = MENDER_FAIL;
         goto END;

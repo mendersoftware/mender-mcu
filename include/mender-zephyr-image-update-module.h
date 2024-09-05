@@ -26,6 +26,14 @@ extern "C" {
 
 #include "mender-update-module.h"
 
+#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
+
+/**
+ * @brief  Register the 'zephyr-image' update module
+ * @return MENDER_OK if successfully registered, error code otherwise
+ */
+mender_err_t mender_zephyr_image_register_update_module(void);
+
 /**
  * @brief Callback function to be invoked to perform the treatment of the data from the artifact type "zephyr-image"
  * @return MENDER_OK if the function succeeds, error code if an error occurred
@@ -46,6 +54,8 @@ mender_err_t mender_zephyr_image_ensure_abort_deployment(mender_update_state_t s
  * @brief Reboot callback
  */
 mender_err_t mender_zephyr_image_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
 #ifdef __cplusplus
 }

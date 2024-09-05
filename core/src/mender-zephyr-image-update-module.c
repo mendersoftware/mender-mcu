@@ -22,11 +22,40 @@
 #include "mender-flash.h"
 #include "mender-log.h"
 #include "mender-update-module.h"
+#include "mender-zephyr-image-update-module.h"
 
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data
  */
 static void *mcu_boot_flash_handle = NULL;
+
+mender_err_t
+mender_zephyr_image_register_update_module(void) {
+    mender_err_t            ret;
+    mender_update_module_t *zephyr_image_umod;
+
+    /* Register the zephyr-image update module */
+    if (NULL == (zephyr_image_umod = malloc(sizeof(mender_update_module_t)))) {
+        mender_log_error("Unable to allocate memory for the 'zephyr-image' update module");
+        return MENDER_FAIL;
+    }
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD] = &mender_zephyr_image_download_artifact_flash_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]  = &mender_zephyr_image_ensure_pending_image;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]   = &mender_zephyr_image_reboot_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]  = &mender_zephyr_image_ensure_abort_deployment;
+    zephyr_image_umod->artifact_type                           = "zephyr-image";
+    zephyr_image_umod->requires_reboot                         = true;
+    zephyr_image_umod->supports_rollback                       = false; /* TODO: support rollback */
+
+    if (MENDER_OK != (ret = mender_client_register_update_module(zephyr_image_umod))) {
+        mender_log_error("Unable to register the 'zephyr-image' update module");
+        /* mender_client_register_update_module() takes ownership if it succeeds */
+        free(zephyr_image_umod);
+        return ret;
+    }
+
+    return MENDER_OK;
+}
 
 mender_err_t
 mender_zephyr_image_download_artifact_flash_callback(NDEBUG_UNUSED mender_update_state_t state, mender_update_state_data_t callback_data) {

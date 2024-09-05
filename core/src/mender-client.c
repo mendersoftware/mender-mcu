@@ -27,11 +27,14 @@
 #include "mender-tls.h"
 #include "mender-update-module.h"
 #include "mender-utils.h"
-#include "mender-zephyr-image-update-module.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #include "mender-inventory.h"
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
+#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
+#include "mender-zephyr-image-update-module.h"
+#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
 /**
  * @brief Default host
@@ -254,8 +257,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     assert(NULL != config->device_type);
     assert(NULL != callbacks);
     assert(NULL != callbacks->restart);
-    mender_err_t            ret;
-    mender_update_module_t *zephyr_image_umod;
+    mender_err_t ret;
 
     mender_client_config.artifact_name = config->artifact_name;
     mender_client_config.device_type   = config->device_type;
@@ -337,26 +339,12 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         return ret;
     }
 
-    /* Register the zephyr-image update module */
-    if (NULL == (zephyr_image_umod = malloc(sizeof(mender_update_module_t)))) {
-        mender_log_error("Unable to allocate memory for the 'zephyr-image' update module");
-        ret = MENDER_FAIL;
+#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
+    if (MENDER_OK != (ret = mender_zephyr_image_register_update_module())) {
+        /* error already logged */
         goto END;
     }
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD] = &mender_zephyr_image_download_artifact_flash_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]  = &mender_zephyr_image_ensure_pending_image;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]   = &mender_zephyr_image_reboot_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]  = &mender_zephyr_image_ensure_abort_deployment;
-    zephyr_image_umod->artifact_type                           = "zephyr-image";
-    zephyr_image_umod->requires_reboot                         = true;
-    zephyr_image_umod->supports_rollback                       = false; /* TODO: support rollback */
-
-    if (MENDER_OK != (ret = mender_client_register_update_module(zephyr_image_umod))) {
-        mender_log_error("Unable to register the 'rootfs-image' update module");
-        /* mender_client_register_update_module() takes ownership if it succeeds */
-        free(zephyr_image_umod);
-        goto END;
-    }
+#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
     /* Create mender client work */
     mender_scheduler_work_params_t update_work_params;

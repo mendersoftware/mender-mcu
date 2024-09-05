@@ -24,11 +24,11 @@
 #include <signal.h>
 #include <stdio.h>
 #include "mender-client.h"
-#include "mender-configure.h"
 #include "mender-flash.h"
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #include "mender-inventory.h"
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 #include "mender-log.h"
-#include "mender-troubleshoot.h"
 
 /**
  * @brief Mender client options
@@ -99,14 +99,6 @@ authentication_success_cb(void) {
     mender_err_t ret;
 
     mender_log_info("Mender client authenticated");
-
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-    /* Activate troubleshoot add-on (deactivated by default) */
-    if (MENDER_OK != (ret = mender_troubleshoot_activate())) {
-        mender_log_error("Unable to activate troubleshoot add-on");
-        return ret;
-    }
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT */
 
     /* Validate the image if it is still pending */
     /* Note it is possible to do multiple diagnostic tests before validating the image */
@@ -217,221 +209,6 @@ get_user_provided_keys_cb(char **user_provided_key, size_t *user_provided_key_le
 
     return MENDER_OK;
 }
-
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifndef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-
-/**
- * @brief Device configuration updated
- * @param configuration Device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t
-config_updated_cb(mender_keystore_t *configuration) {
-
-    /* Application can use the new device configuration now */
-    if (NULL != configuration) {
-        size_t index = 0;
-        mender_log_info("Device configuration received from the server");
-        while ((NULL != configuration[index].name) && (NULL != configuration[index].value)) {
-            mender_log_info("Key=%s, value=%s", configuration[index].name, configuration[index].value);
-            index++;
-        }
-    }
-
-    return MENDER_OK;
-}
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
-
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-
-/**
- * @brief Shell begin callback
- * @param terminal_width Terminal width
- * @param terminal_height Terminal height
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t
-shell_begin_cb(uint16_t terminal_width, uint16_t terminal_height) {
-
-    /* Just print terminal size */
-    mender_log_info("Shell connected with width=%d and height=%d", terminal_width, terminal_height);
-
-    return MENDER_OK;
-}
-
-/**
- * @brief Shell resize callback
- * @param terminal_width Terminal width
- * @param terminal_height Terminal height
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t
-shell_resize_cb(uint16_t terminal_width, uint16_t terminal_height) {
-
-    /* Just print terminal size */
-    mender_log_info("Shell resized with width=%d and height=%d", terminal_width, terminal_height);
-
-    return MENDER_OK;
-}
-
-/**
- * @brief Function used to replace a string in the input buffer
- * @param input Input buffer
- * @param search String to be replaced or regex expression
- * @param replace Replacement string
- * @return New string with replacements if the function succeeds, NULL otherwise
- */
-static char *
-str_replace(char *input, char *search, char *replace) {
-
-    assert(NULL != input);
-    assert(NULL != search);
-    assert(NULL != replace);
-
-    regex_t    regex;
-    regmatch_t match;
-    char      *str                   = input;
-    char      *output                = NULL;
-    size_t     index                 = 0;
-    int        previous_match_finish = 0;
-
-    /* Compile expression */
-    if (0 != regcomp(&regex, search, REG_EXTENDED)) {
-        /* Unable to compile expression */
-        mender_log_error("Unable to compile expression '%s'", search);
-        return NULL;
-    }
-
-    /* Loop until all search string are replaced */
-    bool loop = true;
-    while (true == loop) {
-
-        /* Search wanted string */
-        if (0 != regexec(&regex, str, 1, &match, 0)) {
-            /* No more string to be replaced */
-            loop = false;
-        } else {
-            if (match.rm_so != -1) {
-
-                /* Beginning and ending offset of the match */
-                int current_match_start  = (int)(match.rm_so + (str - input));
-                int current_match_finish = (int)(match.rm_eo + (str - input));
-
-                /* Reallocate output memory */
-                char *tmp = (char *)realloc(output, index + (current_match_start - previous_match_finish) + 1);
-                if (NULL == tmp) {
-                    mender_log_error("Unable to allocate memory");
-                    regfree(&regex);
-                    free(output);
-                    return NULL;
-                }
-                output = tmp;
-
-                /* Copy string from previous match to the beginning of the current match */
-                memcpy(&output[index], &input[previous_match_finish], current_match_start - previous_match_finish);
-                index += (current_match_start - previous_match_finish);
-                output[index] = 0;
-
-                /* Reallocate output memory */
-                if (NULL == (tmp = (char *)realloc(output, index + strlen(replace) + 1))) {
-                    mender_log_error("Unable to allocate memory");
-                    regfree(&regex);
-                    free(output);
-                    return NULL;
-                }
-                output = tmp;
-
-                /* Copy replace string to the output */
-                strcat(output, replace);
-                index += strlen(replace);
-
-                /* Update previous match ending value */
-                previous_match_finish = current_match_finish;
-            }
-            str += match.rm_eo;
-        }
-    }
-
-    /* Reallocate output memory */
-    char *tmp = (char *)realloc(output, index + (strlen(input) - previous_match_finish) + 1);
-    if (NULL == tmp) {
-        mender_log_error("Unable to allocate memory");
-        regfree(&regex);
-        free(output);
-        return NULL;
-    }
-    output = tmp;
-
-    /* Copy the end of the string after the latest match */
-    memcpy(&output[index], &input[previous_match_finish], strlen(input) - previous_match_finish);
-    index += (strlen(input) - previous_match_finish);
-    output[index] = 0;
-
-    /* Release regex */
-    regfree(&regex);
-
-    return output;
-}
-
-/**
- * @brief Shell write data callback
- * @param data Shell data received
- * @param length Length of the data received
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t
-shell_write_cb(uint8_t *data, size_t length) {
-
-    mender_err_t ret = MENDER_OK;
-    char        *buffer, *tmp;
-
-    /* Ensure new line is "\r\n" to have a proper display of the data in the shell */
-    if (NULL == (buffer = strndup((char *)data, length))) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    if (NULL == (tmp = str_replace(buffer, "\r|\n", "\r\n"))) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    buffer = tmp;
-
-    /* Send back the data received */
-    if (MENDER_OK != (ret = mender_troubleshoot_shell_print((uint8_t *)buffer, strlen(buffer)))) {
-        mender_log_error("Unable to print data to the sehll");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-
-END:
-
-    /* Release memory */
-    if (NULL != buffer) {
-        free(buffer);
-    }
-
-    return ret;
-}
-
-/**
- * @brief Shell end callback
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t
-shell_end_cb(void) {
-
-    /* Just print disconnected */
-    mender_log_info("Shell disconnected");
-
-    return MENDER_OK;
-}
-
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT */
 
 /**
  * @brief Signal handler
@@ -556,14 +333,17 @@ main(int argc, char **argv) {
     key_path = private_key;
 
     /* Initialize mender-client */
-    mender_identity.value                             = mac_address;
-    mender_client_config_t    mender_client_config    = { .artifact_name                = artifact_name,
-                                                          .device_type                  = device_type,
-                                                          .host                         = NULL,
-                                                          .tenant_token                 = tenant_token,
-                                                          .authentication_poll_interval = 0,
-                                                          .update_poll_interval         = 0,
-                                                          .recommissioning              = false };
+    mender_identity.value                       = mac_address;
+    mender_client_config_t mender_client_config = { .artifact_name                = artifact_name,
+                                                    .device_type                  = device_type,
+                                                    .host                         = NULL,
+                                                    .tenant_token                 = tenant_token,
+                                                    .authentication_poll_interval = 0,
+                                                    .update_poll_interval         = 0,
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+                                                    .inventory_update_interval = 0,
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+                                                    .recommissioning = false };
     mender_client_callbacks_t mender_client_callbacks = { .network_connect        = network_connect_cb,
                                                           .network_release        = network_release_cb,
                                                           .authentication_success = authentication_success_cb,
@@ -578,42 +358,11 @@ main(int argc, char **argv) {
         goto END;
     }
 
-    /* Initialize mender add-ons */
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-    mender_configure_config_t    mender_configure_config    = { .refresh_interval = 0 };
-    mender_configure_callbacks_t mender_configure_callbacks = {
-#ifndef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-        .config_updated = config_updated_cb,
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-    };
-    if (MENDER_OK
-        != mender_client_register_addon(
-            (mender_addon_instance_t *)&mender_configure_addon_instance, (void *)&mender_configure_config, (void *)&mender_configure_callbacks)) {
-        mender_log_error("Unable to register mender-configure add-on");
-        ret = EXIT_FAILURE;
-        goto RELEASE;
-    }
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
-    mender_inventory_config_t mender_inventory_config = { .refresh_interval = 0 };
-    if (MENDER_OK != mender_client_register_addon((mender_addon_instance_t *)&mender_inventory_addon_instance, (void *)&mender_inventory_config, NULL)) {
-        mender_log_error("Unable to register mender-inventory add-on");
-        ret = EXIT_FAILURE;
-        goto RELEASE;
-    }
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY */
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT
-    mender_troubleshoot_config_t    mender_troubleshoot_config = { .healthcheck_interval = 0 };
-    mender_troubleshoot_callbacks_t mender_troubleshoot_callbacks
-        = { .shell_begin = shell_begin_cb, .shell_resize = shell_resize_cb, .shell_write = shell_write_cb, .shell_end = shell_end_cb };
-    if (MENDER_OK
-        != mender_client_register_addon(
-            (mender_addon_instance_t *)&mender_troubleshoot_addon_instance, (void *)&mender_troubleshoot_config, (void *)&mender_troubleshoot_callbacks)) {
-        mender_log_error("Unable to register mender-troubleshoot add-on");
-        ret = EXIT_FAILURE;
-        goto RELEASE;
-    }
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT */
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "var" }, { .name = NULL, .value = NULL } };
+    assert(MENDER_OK == mender_inventory_set(inventory));
+    mender_log_info("Mender inventory set");
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Finally activate mender client */
     if (MENDER_OK != mender_client_activate()) {

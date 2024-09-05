@@ -35,7 +35,6 @@
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      CONFIG_MENDER_STORAGE_PATH "pubkey.der"
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA CONFIG_MENDER_STORAGE_PATH "deployment-data.json"
 #define MENDER_STORAGE_NVS_UPDATE_STATE    CONFIG_MENDER_STORAGE_PATH "um_state.dat"
-#define MENDER_STORAGE_NVS_DEVICE_CONFIG   CONFIG_MENDER_STORAGE_PATH "config.json"
 #define MENDER_STORAGE_NVS_PROVIDES        CONFIG_MENDER_STORAGE_PATH "provides.txt"
 
 mender_err_t
@@ -259,48 +258,6 @@ END:
     fclose(f);
     return ret;
 }
-
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-mender_err_t
-mender_storage_set_device_config(char *device_config) {
-
-    assert(NULL != device_config);
-
-    size_t device_config_length = strlen(device_config);
-
-    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_DEVICE_CONFIG, device_config, device_config_length)) {
-        return MENDER_FAIL;
-    }
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_get_device_config(char **device_config) {
-
-    assert(NULL != device_config);
-
-    size_t device_config_length;
-    if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_DEVICE_CONFIG, (void **)device_config, &device_config_length)) {
-        return MENDER_NOT_FOUND;
-    }
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_delete_device_config(void) {
-
-    /* Delete device configuration */
-    if (0 != unlink(MENDER_STORAGE_NVS_DEVICE_CONFIG)) {
-        mender_log_error("Unable to delete device configuration");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS

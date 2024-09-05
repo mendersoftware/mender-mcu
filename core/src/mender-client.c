@@ -29,6 +29,10 @@
 #include "mender-update-module.h"
 #include "mender-utils.h"
 
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#include "mender-inventory.h"
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
 /**
  * @brief Default host
  */
@@ -123,13 +127,6 @@ static void   *mender_client_network_mutex = NULL;
  * @brief Deployment data (ID, artifact name and payload types), used to report deployment status after rebooting
  */
 static cJSON *mender_client_deployment_data = NULL;
-
-/**
- * @brief Mender client add-ons list and mutex
- */
-static mender_addon_instance_t **mender_client_addons_list  = NULL;
-static size_t                    mender_client_addons_count = 0;
-static void                     *mender_client_addons_mutex = NULL;
 
 /**
  * @brief Mender client update modules list and mutex
@@ -360,12 +357,6 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         return ret;
     }
 
-    /* Create add-ons management mutex */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_client_addons_mutex))) {
-        mender_log_error("Unable to create add-ons management mutex");
-        return ret;
-    }
-
     /* Create update modules management mutex */
     if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_update_modules_mutex))) {
         mender_log_error("Unable to create update modules management mutex");
@@ -403,62 +394,14 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
 
-END:
-
-    return ret;
-}
-
-mender_err_t
-mender_client_register_addon(mender_addon_instance_t *addon, void *config, void *callbacks) {
-
-    assert(NULL != addon);
-    mender_addon_instance_t **tmp;
-    mender_err_t              ret;
-
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
-
-    /* Initialization of the add-on */
-    if (NULL != addon->init) {
-        if (MENDER_OK != (ret = addon->init(config, callbacks))) {
-            mender_log_error("Unable to initialize add-on");
-            goto END;
-        }
-    }
-
-    /* Activate add-on if authentication is already done */
-    if (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) {
-        if (NULL != addon->activate) {
-            if (MENDER_OK != (ret = addon->activate())) {
-                mender_log_error("Unable to activate add-on");
-                if (NULL != addon->exit) {
-                    addon->exit();
-                }
-                goto END;
-            }
-        }
-    }
-
-    /* Add add-on to the list */
-    if (NULL == (tmp = (mender_addon_instance_t **)realloc(mender_client_addons_list, (mender_client_addons_count + 1) * sizeof(mender_addon_instance_t *)))) {
-        mender_log_error("Unable to allocate memory");
-        if (NULL != addon->exit) {
-            addon->exit();
-        }
-        ret = MENDER_FAIL;
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval))) {
+        mender_log_error("Failed to initialize the inventory functionality");
         goto END;
     }
-    mender_client_addons_list                             = tmp;
-    mender_client_addons_list[mender_client_addons_count] = addon;
-    mender_client_addons_count++;
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 END:
-
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
 
     return ret;
 }
@@ -515,23 +458,12 @@ mender_client_deactivate(void) {
 
     mender_err_t ret;
 
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_deactivate())) {
+        mender_log_error("Unable to deactivate the inventory functionality");
+        /* keep going on, we want to do as much cleanup as possible */
     }
-
-    /* Deactivate add-ons */
-    if (NULL != mender_client_addons_list) {
-        for (size_t index = 0; index < mender_client_addons_count; index++) {
-            if (NULL != mender_client_addons_list[index]->deactivate) {
-                mender_client_addons_list[index]->deactivate();
-            }
-        }
-    }
-
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Deactivate mender client work */
     mender_scheduler_work_deactivate(mender_client_work_handle);
@@ -628,23 +560,12 @@ mender_client_exit(void) {
 
     mender_err_t ret;
 
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_exit())) {
+        mender_log_error("Unable to cleanup after the inventory functionality");
+        /* keep going on, we want to do as much cleanup as possible */
     }
-
-    /* Release add-ons */
-    if (NULL != mender_client_addons_list) {
-        for (size_t index = 0; index < mender_client_addons_count; index++) {
-            if (NULL != mender_client_addons_list[index]->exit) {
-                mender_client_addons_list[index]->exit();
-            }
-        }
-    }
-
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Delete mender client work */
     mender_scheduler_work_delete(mender_client_work_handle);
@@ -672,15 +593,6 @@ mender_client_exit(void) {
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
     }
-
-    if (NULL != mender_client_addons_list) {
-        free(mender_client_addons_list);
-        mender_client_addons_list = NULL;
-    }
-    mender_client_addons_count = 0;
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
-    mender_scheduler_mutex_delete(mender_client_addons_mutex);
-    mender_client_addons_mutex = NULL;
 
     if (NULL != mender_update_modules_list) {
         for (size_t update_module_index = 0; update_module_index < mender_update_modules_count; update_module_index++) {
@@ -918,23 +830,12 @@ RELEASE:
         mender_client_deployment_data = NULL;
     }
 
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_activate())) {
+        mender_log_error("Unable to activate the inventory functionality");
         return ret;
     }
-
-    /* Activate add-ons */
-    if (NULL != mender_client_addons_list) {
-        for (size_t index = 0; index < mender_client_addons_count; index++) {
-            if (NULL != mender_client_addons_list[index]->activate) {
-                mender_client_addons_list[index]->activate();
-            }
-        }
-    }
-
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     return MENDER_DONE;
 

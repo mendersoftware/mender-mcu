@@ -95,32 +95,6 @@ mender_err_t mender_storage_get_update_state(mender_update_state_t *state, char 
  */
 mender_err_t mender_storage_delete_deployment_data(void);
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-
-/**
- * @brief Set device configuration
- * @param device_config Device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_storage_set_device_config(char *device_config);
-
-/**
- * @brief Get device configuration
- * @param device_config Device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_storage_get_device_config(char **device_config);
-
-/**
- * @brief Delete device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_storage_delete_device_config(void);
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
-
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 /**

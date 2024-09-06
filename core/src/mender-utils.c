@@ -587,9 +587,11 @@ mender_utils_key_value_list_delete_node(mender_key_value_list_t **list, const ch
         item = item->next;
     }
 
-    free(to_free->key);
-    free(to_free->value);
-    free(to_free);
+    if (NULL != to_free) {
+        free(to_free->key);
+        free(to_free->value);
+        free(to_free);
+    }
     return MENDER_OK;
 }
 

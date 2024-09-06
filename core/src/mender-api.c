@@ -23,6 +23,7 @@
 
 #include "mender-api.h"
 #include "mender-artifact.h"
+#include "mender-storage.h"
 #include "mender-http.h"
 #include "mender-log.h"
 #include "mender-tls.h"
@@ -248,6 +249,22 @@ api_check_for_deployment_v2(int *status, void *response) {
         goto END;
     }
 
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    /* Add provides from storage */
+    mender_key_value_list_t *provides = NULL;
+    if (MENDER_FAIL == mender_storage_get_provides(&provides)) {
+        mender_log_error("Unable to get provides");
+        goto END;
+    }
+    for (mender_key_value_list_t *item = provides; NULL != item; item = item->next) {
+        if (NULL == cJSON_AddStringToObject(json_provides, item->key, item->value)) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+    }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
     /* TODO: Retrieve artifact name from store (see ticket MEN-7479) */
     if (NULL == cJSON_AddStringToObject(json_provides, "artifact_name", mender_api_config.artifact_name)) {
         mender_log_error("Unable to allocate memory");
@@ -277,6 +294,11 @@ api_check_for_deployment_v2(int *status, void *response) {
 
 END:
 
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    mender_utils_free_linked_list(provides);
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
     cJSON_Delete(json_payload);
     free(payload);
     return ret;

@@ -23,6 +23,7 @@
 
 #include "mender-api.h"
 #include "mender-artifact.h"
+#include "mender-storage.h"
 #include "mender-http.h"
 #include "mender-log.h"
 #include "mender-tls.h"
@@ -70,6 +71,11 @@ static mender_err_t mender_api_http_text_callback(mender_http_client_event_t eve
 static mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
 
 /**
+ * @brief Artifact name variable
+ */
+static char *artifact_name = NULL;
+
+/**
  * @brief Print response error
  * @param response HTTP response, NULL if not available
  * @param status HTTP status
@@ -80,11 +86,15 @@ mender_err_t
 mender_api_init(mender_api_config_t *config) {
 
     assert(NULL != config);
-    assert(NULL != config->artifact_name);
     assert(NULL != config->device_type);
     assert(NULL != config->host);
     mender_err_t ret;
 
+    /* Load and set artifact_name here */
+    if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
+        mender_log_error("Unable to get artifact name");
+        return MENDER_FAIL;
+    }
     /* Save configuration */
     memcpy(&mender_api_config, config, sizeof(mender_api_config_t));
 
@@ -225,6 +235,7 @@ static mender_err_t
 api_check_for_deployment_v2(int *status, void *response) {
     assert(NULL != status);
     assert(NULL != response);
+    assert(NULL != artifact_name);
 
     mender_err_t ret          = MENDER_FAIL;
     cJSON       *json_payload = NULL;
@@ -248,8 +259,24 @@ api_check_for_deployment_v2(int *status, void *response) {
         goto END;
     }
 
-    /* TODO: Retrieve artifact name from store (see ticket MEN-7479) */
-    if (NULL == cJSON_AddStringToObject(json_provides, "artifact_name", mender_api_config.artifact_name)) {
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    /* Add provides from storage */
+    mender_key_value_list_t *provides = NULL;
+    if (MENDER_FAIL == mender_storage_get_provides(&provides)) {
+        mender_log_error("Unable to get provides");
+        goto END;
+    }
+    for (mender_key_value_list_t *item = provides; NULL != item; item = item->next) {
+        if (NULL == cJSON_AddStringToObject(json_provides, item->key, item->value)) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+    }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+
+    if (NULL == cJSON_AddStringToObject(json_provides, "artifact_name", artifact_name)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -277,6 +304,11 @@ api_check_for_deployment_v2(int *status, void *response) {
 
 END:
 
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    mender_utils_free_linked_list(provides);
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
     cJSON_Delete(json_payload);
     free(payload);
     return ret;
@@ -284,17 +316,16 @@ END:
 
 static mender_err_t
 api_check_for_deployment_v1(int *status, void *response) {
+
     assert(NULL != status);
     assert(NULL != response);
+    assert(NULL != artifact_name);
 
     mender_err_t ret  = MENDER_FAIL;
     char        *path = NULL;
 
     /* Compute path */
-    /* TODO: Retrieve artifact name from store (see ticket MEN-7479) */
-    if (-1
-        == asprintf(
-            &path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", mender_api_config.artifact_name, mender_api_config.device_type)) {
+    if (-1 == asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, mender_api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -535,6 +566,8 @@ END:
 mender_err_t
 mender_api_publish_inventory_data(mender_keystore_t *inventory) {
 
+    assert(NULL != artifact_name);
+
     mender_err_t ret;
     char        *payload  = NULL;
     char        *response = NULL;
@@ -554,7 +587,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
         goto END;
     }
     cJSON_AddStringToObject(item, "name", "artifact_name");
-    cJSON_AddStringToObject(item, "value", mender_api_config.artifact_name);
+    cJSON_AddStringToObject(item, "value", artifact_name);
     cJSON_AddItemToArray(object, item);
     item = cJSON_CreateObject();
     if (NULL == item) {
@@ -563,7 +596,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
         goto END;
     }
     cJSON_AddStringToObject(item, "name", "rootfs-image.version");
-    cJSON_AddStringToObject(item, "value", mender_api_config.artifact_name);
+    cJSON_AddStringToObject(item, "value", artifact_name);
     cJSON_AddItemToArray(object, item);
     item = cJSON_CreateObject();
     if (NULL == item) {
@@ -646,6 +679,8 @@ mender_api_exit(void) {
         free(mender_api_jwt);
         mender_api_jwt = NULL;
     }
+    free(artifact_name);
+    artifact_name = NULL;
 
     return MENDER_OK;
 }

@@ -203,7 +203,7 @@ static mender_err_t mender_filter_provides(mender_artifact_ctx_t    *mender_arti
  * @param provides Provies data to be written
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-static mender_err_t mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **provides);
+static mender_err_t mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **provides, const char **artifact_name);
 
 /**
  * @brief Determine the compatiblity of the deployment by: comparing artifact's depend with the stored provides
@@ -276,15 +276,13 @@ mender_err_t
 mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks) {
 
     assert(NULL != config);
-    assert(NULL != config->artifact_name);
     assert(NULL != config->device_type);
     assert(NULL != callbacks);
     assert(NULL != callbacks->restart);
     mender_err_t            ret;
     mender_update_module_t *rootfs_image_umod;
 
-    mender_client_config.artifact_name = config->artifact_name;
-    mender_client_config.device_type   = config->device_type;
+    mender_client_config.device_type = config->device_type;
     if ((NULL != config->host) && (strlen(config->host) > 0)) {
         mender_client_config.host = config->host;
     } else {
@@ -341,10 +339,9 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
     mender_api_config_t mender_api_config = {
-        .artifact_name = mender_client_config.artifact_name,
-        .device_type   = mender_client_config.device_type,
-        .host          = mender_client_config.host,
-        .tenant_token  = mender_client_config.tenant_token,
+        .device_type  = mender_client_config.device_type,
+        .host         = mender_client_config.host,
+        .tenant_token = mender_client_config.tenant_token,
     };
     if (MENDER_OK != (ret = mender_api_init(&mender_api_config))) {
         mender_log_error("Unable to initialize API");
@@ -579,7 +576,6 @@ mender_client_exit(void) {
     mender_scheduler_exit();
 
     /* Release memory */
-    mender_client_config.artifact_name                = NULL;
     mender_client_config.device_type                  = NULL;
     mender_client_config.host                         = NULL;
     mender_client_config.tenant_token                 = NULL;
@@ -715,6 +711,48 @@ REBOOT:
     }
 
     return ret;
+}
+
+static mender_err_t
+mender_commit_artifact_data(void) {
+
+    cJSON *json_artifact_name = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "artifact_name");
+    if (NULL == json_artifact_name) {
+        mender_log_error("Unable to get artifact name from the deployment data");
+        return MENDER_FAIL;
+    }
+
+    if (MENDER_OK != mender_storage_set_artifact_name(json_artifact_name->valuestring)) {
+        mender_log_error("Unable to set artifact name");
+        return MENDER_FAIL;
+    }
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+    /* Get provides from the deployment data */
+    cJSON *provides = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "provides");
+    if (NULL == provides) {
+        mender_log_error("Unable to get new_provides from the deployment data");
+        return MENDER_FAIL;
+    }
+
+    /* Parse provides */
+    mender_key_value_list_t *new_provides = NULL;
+    if (MENDER_OK != mender_utils_string_to_key_value_list(provides->valuestring, &new_provides)) {
+        mender_log_error("Unable to parse provides from the deployment data");
+        return MENDER_FAIL;
+    }
+    /* Replace the stored provides with the new provides */
+    if (MENDER_OK != mender_storage_set_provides(new_provides)) {
+        mender_log_error("Unable to set provides");
+        mender_utils_free_linked_list(new_provides);
+        return MENDER_FAIL;
+    }
+    mender_utils_free_linked_list(new_provides);
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
+    return MENDER_OK;
 }
 
 static mender_err_t
@@ -920,6 +958,12 @@ mender_filter_provides(mender_artifact_ctx_t *mender_artifact_ctx, mender_key_va
         goto END;
     }
 
+    /* Make sure the artifact name is not in the new provides */
+    if (MENDER_OK != mender_utils_key_value_list_delete_node(new_provides, "artifact_name")) {
+        mender_log_error("Unable to delete node containing key 'artifact_name'");
+        goto END;
+    }
+
     ret = MENDER_OK;
 
 END:
@@ -929,8 +973,9 @@ END:
 }
 
 static mender_err_t
-mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **new_provides) {
+mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **new_provides, const char **artifact_name) {
 
+    assert(NULL != artifact_name);
     assert(NULL != mender_artifact_ctx);
 
     /* Load the currently stored provides */
@@ -940,8 +985,7 @@ mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **n
         return MENDER_FAIL;
     }
 
-    /* Combine the provides from the header-info and from the payloads */
-    mender_key_value_list_t *provides = mender_artifact_ctx->artifact_info.provides;
+    mender_key_value_list_t *provides = NULL;
     for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
         if (MENDER_OK != mender_utils_append_list(&provides, &mender_artifact_ctx->payloads.values[i].provides)) {
             mender_log_error("Unable to merge provides");
@@ -950,7 +994,22 @@ mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **n
         }
     }
 
+    /* Get artifact name from provides */
+    for (mender_key_value_list_t *item = mender_artifact_ctx->artifact_info.provides; NULL != item; item = item->next) {
+        if (StringEqual("artifact_name", item->key)) {
+            *artifact_name = item->value;
+            break;
+        }
+    }
+
+    if (NULL == *artifact_name) {
+        mender_log_error("No artifact name found in provides");
+        mender_utils_free_linked_list(stored_provides);
+        return MENDER_FAIL;
+    }
+
     /* Filter provides */
+    /* `stored_provides` is freed in `mender_filter_provides` */
     if (MENDER_OK != mender_filter_provides(mender_artifact_ctx, &provides, &stored_provides)) {
         return MENDER_FAIL;
     }
@@ -1206,9 +1265,12 @@ mender_client_update_work_function(void) {
                         if (MENDER_OK == (ret = mender_check_artifact_requirements(mender_artifact_ctx, deployment))) {
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
                             /* Add the new provides to the deployment data (we need the artifact context) */
-                            char *new_provides = NULL;
-                            if (MENDER_OK == (ret = mender_prepare_new_provides(mender_artifact_ctx, &new_provides))) {
+                            char       *new_provides  = NULL;
+                            const char *artifact_name = NULL;
+                            if (MENDER_OK == (ret = mender_prepare_new_provides(mender_artifact_ctx, &new_provides, &artifact_name))) {
                                 cJSON_AddStringToObject(mender_client_deployment_data, "provides", new_provides);
+                                /* Replace artifact_name with the one from provides */
+                                cJSON_ReplaceItemInObject(mender_client_deployment_data, "artifact_name", cJSON_CreateString(artifact_name));
                                 free(new_provides);
                             } else {
                                 mender_log_error("Unable to prepare new provides");
@@ -1284,27 +1346,10 @@ mender_client_update_work_function(void) {
                 /* fallthrough */
 
             case MENDER_UPDATE_STATE_COMMIT:
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
-                /* Store provides */
-                cJSON *provides_j = cJSON_GetObjectItem(mender_client_deployment_data, "provides");
-                if (NULL != provides_j) {
-                    /* Convert 'new_provides' to key value list */
-                    mender_key_value_list_t *provides = NULL;
-                    if (MENDER_OK == mender_utils_string_to_key_value_list(provides_j->valuestring, &provides)) {
-                        /* Write new_provides directly to provides store */
-                        if (MENDER_OK != (ret = mender_storage_set_provides(provides))) {
-                            mender_log_error("Unable to store provides during update commit");
-                        }
-                    } else {
-                        mender_log_error("Unable to store provides during update commit");
-                    }
-                } else {
-                    mender_log_error("Missing provides data for update commit");
+                if (MENDER_OK != mender_commit_artifact_data()) {
+                    mender_log_error("Unable to commit artifact data");
                     ret = MENDER_FAIL;
                 }
-#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
                 if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }

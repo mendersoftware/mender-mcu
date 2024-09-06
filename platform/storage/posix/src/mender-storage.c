@@ -36,6 +36,7 @@
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA CONFIG_MENDER_STORAGE_PATH "deployment-data.json"
 #define MENDER_STORAGE_NVS_UPDATE_STATE    CONFIG_MENDER_STORAGE_PATH "um_state.dat"
 #define MENDER_STORAGE_NVS_PROVIDES        CONFIG_MENDER_STORAGE_PATH "provides.txt"
+#define MENDER_STORAGE_NVS_ARTICACT_NAME   CONFIG_MENDER_STORAGE_PATH "artifact_name.txt"
 
 mender_err_t
 mender_storage_init(void) {
@@ -314,6 +315,38 @@ mender_storage_delete_provides(void) {
 
 #endif /*CONFIG_MENDER_FULL_PARSE_ARTIFACT*/
 #endif /*CONFIG_MENDER_PROVIDES_DEPENDS*/
+
+mender_err_t
+mender_storage_set_artifact_name(const char *artifact_name) {
+
+    assert(NULL != artifact_name);
+
+    size_t artifact_name_str_length = strlen(artifact_name);
+
+    if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_ARTICACT_NAME, artifact_name, artifact_name_str_length)) {
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_storage_get_artifact_name(char **artifact_name) {
+
+    assert(NULL != artifact_name);
+
+    size_t       artifact_name_length;
+    mender_err_t ret = mender_storage_read_file(MENDER_STORAGE_NVS_ARTICACT_NAME, (void **)artifact_name, &artifact_name_length);
+    if (MENDER_OK != ret) {
+        if (MENDER_NOT_FOUND == ret) {
+            *artifact_name = strdup("unknown");
+            return MENDER_OK;
+        } else {
+            mender_log_error("Unable to read artifact_name");
+        }
+    }
+
+    return ret;
+}
 
 mender_err_t
 mender_storage_exit(void) {

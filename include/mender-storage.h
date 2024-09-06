@@ -119,6 +119,18 @@ mender_err_t mender_storage_delete_provides(void);
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
 /**
+ * @brief Set artifact name
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_set_artifact_name(const char *artifact_name);
+
+/**
+ * @brief Get artifact name
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_get_artifact_name(char **artifact_name);
+
+/**
  * @brief Release mender storage
  * @return MENDER_OK if the function succeeds, error code otherwise
  */

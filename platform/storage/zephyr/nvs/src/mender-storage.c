@@ -41,6 +41,7 @@
 #define MENDER_STORAGE_NVS_UPDATE_STATE    4
 #define MENDER_STORAGE_NVS_ARTIFACT_TYPE   5
 #define MENDER_STORAGE_NVS_PROVIDES        7
+#define MENDER_STORAGE_NVS_ARTICACT_NAME   8
 
 /**
  * @brief NVS storage handle
@@ -285,6 +286,41 @@ mender_storage_delete_provides(void) {
 }
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
+mender_err_t
+mender_storage_set_artifact_name(const char *artifact_name) {
+
+    assert(NULL != artifact_name);
+
+    /* Write artifact_name */
+    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES, artifact_name, strlen(artifact_name) + 1)) {
+        mender_log_error("Unable to write artifact_name");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_storage_get_artifact_name(char **artifact_name) {
+
+    assert(NULL != artifact_name);
+    size_t artifact_name_length;
+
+    /* Read artifact_name */
+    mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES, (void **)artifact_name, &artifact_name_length);
+    if (MENDER_OK != ret) {
+        if (MENDER_NOT_FOUND == ret) {
+            *artifact_name = strdup("unknown");
+            return MENDER_OK;
+
+        } else {
+            mender_log_error("Unable to read artifact_name");
+        }
+    }
+
+    return ret;
+}
 
 mender_err_t
 mender_storage_exit(void) {

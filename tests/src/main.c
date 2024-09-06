@@ -33,13 +33,8 @@
 /**
  * @brief Mender client options
  */
-static const struct option mender_client_options[] = { { "help", 0, NULL, 'h' },
-                                                       { "mac_address", 1, NULL, 'm' },
-                                                       { "artifact_name", 1, NULL, 'a' },
-                                                       { "device_type", 1, NULL, 'd' },
-                                                       { "tenant_token", 1, NULL, 't' },
-                                                       { "private_key", 1, NULL, 'p' },
-                                                       { NULL, 0, NULL, 0 } };
+static const struct option mender_client_options[] = { { "help", 0, NULL, 'h' },         { "mac_address", 1, NULL, 'm' }, { "device_type", 1, NULL, 'd' },
+                                                       { "tenant_token", 1, NULL, 't' }, { "private_key", 1, NULL, 'p' }, { NULL, 0, NULL, 0 } };
 
 /**
  * @brief Mender client identity
@@ -240,7 +235,6 @@ print_usage(const char *argv0) {
     printf("usage: %s [options]\n", (strrchr(argv0, '/') ? strrchr(argv0, '/') + 1 : argv0));
     printf("\t--help, -h: Print this help\n");
     printf("\t--mac_address, -m: MAC address\n");
-    printf("\t--artifact_name, -a: Artifact name\n");
     printf("\t--device_type, -d: Device type\n");
     printf("\t--tenant_token, -t: Tenant token (optional)\n");
     printf("\t--private_key, -p: Key path (optional)\n");
@@ -255,12 +249,11 @@ print_usage(const char *argv0) {
 int
 main(int argc, char **argv) {
 
-    int   ret           = EXIT_SUCCESS;
-    char *mac_address   = NULL;
-    char *artifact_name = NULL;
-    char *device_type   = NULL;
-    char *tenant_token  = NULL;
-    char *private_key   = NULL;
+    int   ret          = EXIT_SUCCESS;
+    char *mac_address  = NULL;
+    char *device_type  = NULL;
+    char *tenant_token = NULL;
+    char *private_key  = NULL;
 
     /* Initialize sig handler */
     struct sigaction action;
@@ -282,10 +275,6 @@ main(int argc, char **argv) {
             case 'm':
                 /* MAC address */
                 mac_address = strdup(optarg);
-                break;
-            case 'a':
-                /* Artifact name */
-                artifact_name = strdup(optarg);
                 break;
             case 'd':
                 /* Device type */
@@ -309,7 +298,7 @@ main(int argc, char **argv) {
     }
 
     /* Verify mandatory options */
-    if ((NULL == mac_address) || (NULL == artifact_name) || (NULL == device_type)) {
+    if ((NULL == mac_address) || (NULL == device_type)) {
         ret = EXIT_FAILURE;
         printf("Missing MAC address, Artifact name, or Device type\n");
         print_usage(argv[0]);
@@ -334,8 +323,7 @@ main(int argc, char **argv) {
 
     /* Initialize mender-client */
     mender_identity.value                       = mac_address;
-    mender_client_config_t mender_client_config = { .artifact_name                = artifact_name,
-                                                    .device_type                  = device_type,
+    mender_client_config_t mender_client_config = { .device_type                  = device_type,
                                                     .host                         = NULL,
                                                     .tenant_token                 = tenant_token,
                                                     .authentication_poll_interval = 0,
@@ -387,9 +375,6 @@ END:
     /* Release memory */
     if (NULL != mac_address) {
         free(mac_address);
-    }
-    if (NULL != artifact_name) {
-        free(artifact_name);
     }
     if (NULL != device_type) {
         free(device_type);

@@ -1092,6 +1092,10 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
     cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", deployment->artifact_name);
     cJSON_AddArrayToObject(mender_client_deployment_data, "types");
 
+    assert(NULL != cJSON_GetObjectItem(mender_client_deployment_data, "id"));
+    assert(NULL != cJSON_GetObjectItem(mender_client_deployment_data, "artifact_name"));
+    assert(NULL != cJSON_GetObjectItem(mender_client_deployment_data, "types"));
+
     return MENDER_OK;
 }
 

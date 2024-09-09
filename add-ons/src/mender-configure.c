@@ -25,6 +25,7 @@
 #include "mender-storage.h"
 
 #ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
+#error This stable branch does not work with Configure add-on
 
 /**
  * @brief Default configure refresh interval (seconds)

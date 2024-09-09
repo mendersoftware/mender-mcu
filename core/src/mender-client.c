@@ -792,82 +792,6 @@ mender_client_authentication_work_function(void) {
         }
     }
 
-    /* Check if deployment is pending */
-    if (NULL != mender_client_deployment_data) {
-
-        /* Retrieve deployment data */
-        cJSON *json_id = NULL;
-        if (NULL == (json_id = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "id"))) {
-            mender_log_error("Unable to get ID from the deployment data");
-            goto RELEASE;
-        }
-        char *id;
-        if (NULL == (id = cJSON_GetStringValue(json_id))) {
-            mender_log_error("Unable to get ID from the deployment data");
-            goto RELEASE;
-        }
-        cJSON *json_artifact_name = NULL;
-        if (NULL == (json_artifact_name = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "artifact_name"))) {
-            mender_log_error("Unable to get artifact name from the deployment data");
-            goto RELEASE;
-        }
-        char *artifact_name;
-        if (NULL == (artifact_name = cJSON_GetStringValue(json_artifact_name))) {
-            mender_log_error("Unable to get artifact name from the deployment data");
-            goto RELEASE;
-        }
-        cJSON *json_types = NULL;
-        if (NULL == (json_types = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "types"))) {
-            mender_log_error("Unable to get types from the deployment data");
-            goto RELEASE;
-        }
-
-        /* Take mutex used to protect access to the update modules management list */
-        if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_update_modules_mutex, -1))) {
-            mender_log_error("Unable to take mutex for update modules");
-            goto RELEASE;
-        }
-
-        /* Check if the artifact is of a supported type */
-        bool   success   = false;
-        cJSON *json_type = NULL;
-        if (NULL != mender_update_modules_list) {
-            cJSON_ArrayForEach(json_type, json_types) {
-                for (size_t update_module_index = 0; update_module_index < mender_update_modules_count; update_module_index++) {
-                    if (StringEqual(mender_update_modules_list[update_module_index]->artifact_type, cJSON_GetStringValue(json_type))) {
-                        success = true;
-                        break;
-                    }
-                }
-                if (success) {
-                    break;
-                }
-            }
-        }
-
-        /* Release mutex used to protect access to the update modules management list */
-        mender_scheduler_mutex_give(mender_update_modules_mutex);
-
-        /* Publish deployment status */
-        if (success) {
-            mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
-        } else {
-            mender_log_error("Artifact type not supported by any of the available update modules");
-            mender_client_publish_deployment_status(id, MENDER_DEPLOYMENT_STATUS_FAILURE);
-        }
-
-        /* Delete pending deployment */
-        mender_storage_delete_deployment_data();
-    }
-
-RELEASE:
-
-    /* Release memory */
-    if (NULL != mender_client_deployment_data) {
-        cJSON_Delete(mender_client_deployment_data);
-        mender_client_deployment_data = NULL;
-    }
-
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     if (MENDER_OK != (ret = mender_inventory_activate())) {
         mender_log_error("Unable to activate the inventory functionality");
@@ -1346,6 +1270,13 @@ mender_client_update_work_function(void) {
                 /* fallthrough */
 
             case MENDER_UPDATE_STATE_COMMIT:
+                /* Check for pending deployment */
+                if (NULL == mender_client_deployment_data) {
+                    mender_log_error("No deployment data found on commit");
+                    mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                    goto END;
+                }
+                mender_storage_delete_deployment_data();
                 if (MENDER_OK != mender_commit_artifact_data()) {
                     mender_log_error("Unable to commit artifact data");
                     ret = MENDER_FAIL;

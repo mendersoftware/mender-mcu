@@ -1530,7 +1530,7 @@ mender_client_publish_deployment_status(const char *id, mender_deployment_status
     mender_err_t ret;
 
     if (NULL == id) {
-        mender_log_error("Cannot publish deployment status: uknown status");
+        mender_log_error("Cannot publish deployment status: unknown status");
         return MENDER_FAIL;
     }
 

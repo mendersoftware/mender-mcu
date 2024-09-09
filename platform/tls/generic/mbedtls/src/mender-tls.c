@@ -26,7 +26,7 @@
 #include <mbedtls/error.h>
 #endif /* MBEDTLS_ERROR_C */
 #include <mbedtls/pk.h>
-#include <mbedtls/rsa.h>
+#include <mbedtls/ecdsa.h>
 #include <mbedtls/x509.h>
 #include "mender-log.h"
 #include "mender-storage.h"
@@ -381,9 +381,10 @@ mender_tls_exit(void) {
 static mender_err_t
 mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
 
-    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
-    mbedtls_entropy_context  *entropy  = NULL;
-    int                       ret;
+    mbedtls_ctr_drbg_context     *ctr_drbg   = NULL;
+    mbedtls_entropy_context      *entropy    = NULL;
+    const mbedtls_ecp_curve_info *curve_info = NULL;
+    int                           ret;
     MBEDTLS_ERR_BUF;
 
     if (NULL == (ctr_drbg = (mbedtls_ctr_drbg_context *)malloc(sizeof(mbedtls_ctr_drbg_context)))) {
@@ -406,13 +407,25 @@ mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
     }
 
     /* PK setup */
-    if (0 != (ret = mbedtls_pk_setup(pk_context, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA)))) {
+    if (0 != (ret = mbedtls_pk_setup(pk_context, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)))) {
         LOG_MBEDTLS_ERROR("Unable to setup pk", ret);
         goto END;
     }
 
+    /* Find a supported curve */
+    for (curve_info = mbedtls_ecp_curve_list(); MBEDTLS_ECP_DP_NONE != curve_info->grp_id; curve_info++) {
+        if (1 == mbedtls_ecdsa_can_do(curve_info->grp_id)) {
+            mender_log_debug("Found supported ECDSA curve: %s", curve_info->name);
+            break;
+        }
+    }
+    if (MBEDTLS_ECP_DP_NONE == curve_info->grp_id) {
+        mender_log_error("Unable to find a ECDSA valid curve");
+        goto END;
+    }
+
     /* Generate key pair */
-    if (0 != (ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(*pk_context), mbedtls_ctr_drbg_random, ctr_drbg, 3072, 65537))) {
+    if (0 != (ret = mbedtls_ecdsa_genkey(mbedtls_pk_ec(*pk_context), curve_info->grp_id, mbedtls_ctr_drbg_random, ctr_drbg))) {
         LOG_MBEDTLS_ERROR("Unable to generate key", ret);
         goto END;
     }

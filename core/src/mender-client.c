@@ -32,10 +32,6 @@
 #include "mender-inventory.h"
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
-#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
-#include "mender-zephyr-image-update-module.h"
-#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
-
 /**
  * @brief Default host
  */
@@ -333,13 +329,6 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         mender_log_error("Unable to create update modules management mutex");
         return ret;
     }
-
-#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
-    if (MENDER_OK != (ret = mender_zephyr_image_register_update_module())) {
-        /* error already logged */
-        goto END;
-    }
-#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
     /* Create mender client work */
     mender_scheduler_work_params_t update_work_params;

@@ -1067,16 +1067,21 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
 
     mender_api_deployment_data_t *deployment = *deployment_data;
 
+    mender_err_t ret = MENDER_OK;
+
     mender_log_info("Checking for deployment...");
-    if (MENDER_OK != mender_api_check_for_deployment(deployment)) {
+    if (MENDER_NOT_FOUND == (ret = mender_api_check_for_deployment(deployment))) {
+        mender_log_info("No deployment available");
+        return MENDER_DONE;
+    } else if (MENDER_OK != ret) {
         mender_log_error("Unable to check for deployment");
         return MENDER_FAIL;
     }
 
-    /* Check if deployment is available */
+    /* Check if deployment is valid */
     if ((NULL == deployment->id) || (NULL == deployment->artifact_name) || (NULL == deployment->uri) || (NULL == deployment->device_types_compatible)) {
-        mender_log_info("No deployment available");
-        return MENDER_DONE;
+        mender_log_error("Invalid deployment data");
+        return MENDER_FAIL;
     }
 
     /* Create deployment data */

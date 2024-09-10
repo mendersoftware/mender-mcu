@@ -441,7 +441,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
         }
     } else if (204 == status) {
         /* No response expected */
-        ret = MENDER_OK;
+        ret = MENDER_NOT_FOUND;
     } else {
         mender_api_print_response_error(response, status);
         ret = MENDER_FAIL;

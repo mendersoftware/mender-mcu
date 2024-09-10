@@ -1406,6 +1406,9 @@ mender_client_download_artifact_flash_callback(
     /* Check if the filename is provided */
     if (NULL != filename) {
 
+        // TODO remove (here and below) in favor of debug logging once the logging is under control
+        printf(".");
+
         /* Check if the flash handle must be opened */
         if (0 == index) {
 
@@ -1425,6 +1428,7 @@ mender_client_download_artifact_flash_callback(
         /* Check if the flash handle must be closed */
         if (index + length >= size) {
 
+            printf("DONE\n");
             /* Close the flash handle */
             if (MENDER_OK != (ret = mender_flash_close(mender_client_flash_handle))) {
                 mender_log_error("Unable to close flash handle");

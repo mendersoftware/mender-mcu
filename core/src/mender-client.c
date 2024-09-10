@@ -21,7 +21,6 @@
 #include "mender-api.h"
 #include "mender-client.h"
 #include "mender-artifact.h"
-#include "mender-flash.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"
 #include "mender-storage.h"
@@ -69,7 +68,7 @@ static mender_client_config_t mender_client_config;
 /**
  * @brief Mender client callbacks
  */
-static mender_client_callbacks_t mender_client_callbacks;
+mender_client_callbacks_t mender_client_callbacks = { 0 };
 
 /**
  * @brief Mender client states
@@ -144,16 +143,6 @@ static mender_update_module_t *mender_update_module = NULL;
  * @brief Mender client work handle
  */
 static void *mender_client_work_handle = NULL;
-
-/**
- * @brief Flash handle used to store temporary reference to write rootfs-image data
- */
-static void *mender_client_flash_handle = NULL;
-
-/**
- * @brief Flag to indicate if the deployment needs to set pending image status
- */
-static bool mender_client_deployment_needs_set_pending_image = false;
 
 /**
  * @brief Mender client work function
@@ -237,27 +226,6 @@ static mender_err_t mender_client_download_artifact_callback(
     char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length);
 
 /**
- * @brief Callback function to be invoked to perform the treatment of the data from the artifact type "rootfs-image"
- * @return MENDER_OK if the function succeeds, error code if an error occurred
- */
-static mender_err_t rootfs_img_download_artifact_flash_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
-
-/**
- * @brief Artifact installation callback to make sure bootloader is set to switch to the new image
- */
-static mender_err_t rootfs_img_ensure_pending_image(mender_update_state_t state, mender_update_state_data_t callback_data);
-
-/**
- * @brief Update failure callback
- */
-static mender_err_t rootfs_img_ensure_abort_deployment(mender_update_state_t state, mender_update_state_data_t callback_data);
-
-/**
- * @brief Reboot callback
- */
-static mender_err_t rootfs_img_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
-
-/**
  * @brief Publish deployment status of the device to the mender-server and invoke deployment status callback
  * @param id ID of the deployment
  * @param deployment_status Deployment status
@@ -279,8 +247,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     assert(NULL != config->device_type);
     assert(NULL != callbacks);
     assert(NULL != callbacks->restart);
-    mender_err_t            ret;
-    mender_update_module_t *rootfs_image_umod;
+    mender_err_t ret;
 
     mender_client_config.device_type = config->device_type;
     if ((NULL != config->host) && (strlen(config->host) > 0)) {
@@ -358,27 +325,6 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_update_modules_mutex))) {
         mender_log_error("Unable to create update modules management mutex");
         return ret;
-    }
-
-    /* Register the rootfs-image update module */
-    if (NULL == (rootfs_image_umod = malloc(sizeof(mender_update_module_t)))) {
-        mender_log_error("Unable to allocate memory for the 'rootfs-image' update module");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    rootfs_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD] = &rootfs_img_download_artifact_flash_callback;
-    rootfs_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]  = &rootfs_img_ensure_pending_image;
-    rootfs_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]   = &rootfs_img_reboot_callback;
-    rootfs_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]  = &rootfs_img_ensure_abort_deployment;
-    rootfs_image_umod->artifact_type                           = "rootfs-image";
-    rootfs_image_umod->requires_reboot                         = true;
-    rootfs_image_umod->supports_rollback                       = false; /* TODO: support rollback */
-
-    if (MENDER_OK != (ret = mender_client_register_update_module(rootfs_image_umod))) {
-        mender_log_error("Unable to register the 'rootfs-image' update module");
-        /* mender_client_register_update_module() takes ownership if it succeeds */
-        free(rootfs_image_umod);
-        goto END;
     }
 
     /* Create mender client work */
@@ -1120,9 +1066,6 @@ mender_client_update_work_function(void) {
     /* reset the currently used update module */
     mender_update_module = NULL;
 
-    /* Reset flags */
-    mender_client_deployment_needs_set_pending_image = false;
-
     {
         char *artifact_type;
         if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state, &artifact_type))) {
@@ -1441,93 +1384,6 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
 
 END:
     return ret;
-}
-
-static mender_err_t
-rootfs_img_download_artifact_flash_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
-    assert(MENDER_UPDATE_STATE_DOWNLOAD == state);
-
-    struct mender_update_download_state_data_s *dl_data = callback_data.download_state_data;
-    mender_err_t                                ret     = MENDER_OK;
-
-    /* Check if the filename is provided */
-    if (NULL != dl_data->filename) {
-
-        /* Check if the flash handle must be opened */
-        if (0 == dl_data->offset) {
-
-            /* Open the flash handle */
-            if (MENDER_OK != (ret = mender_flash_open(dl_data->filename, dl_data->size, &mender_client_flash_handle))) {
-                mender_log_error("Unable to open flash handle");
-                goto END;
-            }
-        }
-
-        /* Write data */
-        if (MENDER_OK != (ret = mender_flash_write(mender_client_flash_handle, dl_data->data, dl_data->offset, dl_data->length))) {
-            mender_log_error("Unable to write data to flash");
-            goto END;
-        }
-
-        /* Check if the flash handle must be closed */
-        if (dl_data->offset + dl_data->length >= dl_data->size) {
-
-            /* Close the flash handle */
-            if (MENDER_OK != (ret = mender_flash_close(mender_client_flash_handle))) {
-                mender_log_error("Unable to close flash handle");
-                goto END;
-            }
-            mender_client_flash_handle = NULL;
-        }
-    }
-
-    /* Set flags */
-    mender_client_deployment_needs_set_pending_image = true;
-
-END:
-
-    return ret;
-}
-
-static mender_err_t
-rootfs_img_ensure_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
-    assert(MENDER_UPDATE_STATE_INSTALL == state);
-    mender_err_t ret;
-
-    if (mender_client_deployment_needs_set_pending_image) {
-        if (MENDER_OK != (ret = mender_flash_set_pending_image(mender_client_flash_handle))) {
-            mender_log_error("Unable to set boot partition");
-            return ret;
-        }
-    }
-    return MENDER_OK;
-}
-
-static mender_err_t
-rootfs_img_ensure_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
-    assert(MENDER_UPDATE_STATE_FAILURE == state);
-    mender_err_t ret;
-
-    if (mender_client_deployment_needs_set_pending_image) {
-        if (MENDER_OK != (ret = mender_flash_abort_deployment(mender_client_flash_handle))) {
-            mender_log_error("Unable to abort deployment");
-            return ret;
-        }
-    }
-    return MENDER_OK;
-}
-
-static mender_err_t
-rootfs_img_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
-    assert(MENDER_UPDATE_STATE_REBOOT == state);
-    /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
-    if (NULL != mender_client_callbacks.restart) {
-        mender_client_callbacks.restart();
-        return MENDER_OK;
-    } else {
-        mender_log_error("Reboot requested, but no reboot support");
-        return MENDER_FAIL;
-    }
 }
 
 static mender_err_t

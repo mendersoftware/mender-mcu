@@ -58,6 +58,8 @@ typedef struct {
         char **user_provided_key, size_t *user_provided_key_length); /**< Invoked to retrieve buffer and buffer size of PEM encoded user-provided key */
 } mender_client_callbacks_t;
 
+extern mender_client_callbacks_t mender_client_callbacks;
+
 /**
  * @brief Return mender client version
  * @return Mender client version as string

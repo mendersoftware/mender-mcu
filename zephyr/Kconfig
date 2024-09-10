@@ -17,15 +17,11 @@
 
 menuconfig MENDER_MCU_CLIENT
     bool "Mender Firmware Over-the-Air support"
-    select BOOTLOADER_MCUBOOT
     select CJSON
     select DNS_RESOLVER
     select FLASH
     select FLASH_MAP
     select HTTP_CLIENT
-    select IMG_ENABLE_IMAGE_CHECK
-    select IMG_ERASE_PROGRESSIVELY
-    select IMG_MANAGER
     select MPU_ALLOW_FLASH_WRITE
     select NETWORKING
     select NET_TCP
@@ -93,6 +89,20 @@ if MENDER_MCU_CLIENT
                     Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
         endif
+
+    endmenu
+
+    menu "Update modules configuration"
+
+        config MENDER_CLIENT_ZEPHYR_IMAGE_UPDATE_MODULE
+            bool "The default Mender zephyr-image update module"
+            default y
+            select BOOTLOADER_MCUBOOT
+            select IMG_ENABLE_IMAGE_CHECK
+            select IMG_ERASE_PROGRESSIVELY
+            select IMG_MANAGER
+            help
+                The default zephyr-image update module handles full Zephyr images on MCUboot-based devices.
 
     endmenu
 

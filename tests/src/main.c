@@ -30,6 +30,10 @@
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 #include "mender-log.h"
 
+#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
+#include "mender-zephyr-image-update-module.h"
+#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
+
 /**
  * @brief Mender client options
  */
@@ -345,6 +349,13 @@ main(int argc, char **argv) {
         ret = EXIT_FAILURE;
         goto END;
     }
+
+#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
+    if (MENDER_OK != (ret = mender_zephyr_image_register_update_module())) {
+        /* error already logged */
+        goto END;
+    }
+#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "var" }, { .name = NULL, .value = NULL } };

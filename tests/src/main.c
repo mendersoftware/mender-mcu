@@ -95,18 +95,8 @@ network_release_cb(void) {
 static mender_err_t
 authentication_success_cb(void) {
 
-    mender_err_t ret;
-
     mender_log_info("Mender client authenticated");
-
-    /* Validate the image if it is still pending */
-    /* Note it is possible to do multiple diagnostic tests before validating the image */
-    if (MENDER_OK != (ret = mender_flash_confirm_image())) {
-        mender_log_error("Unable to validate the image");
-        return ret;
-    }
-
-    return ret;
+    return MENDER_OK;
 }
 
 /**
@@ -115,17 +105,8 @@ authentication_success_cb(void) {
  */
 static mender_err_t
 authentication_failure_cb(void) {
-
-    /* Check if confirmation of the image is still pending */
-    if (true == mender_flash_is_image_confirmed()) {
-        mender_log_info("Mender client authentication failed");
-        return MENDER_OK;
-    }
     mender_log_error("Mender client authentication failed");
 
-    /* Restart the application after authentication failure with the mender-server */
-    /* The image has not been confirmed and the system will now rollback to the previous working image */
-    /* Note it is possible to customize this depending of the wanted behavior */
     return MENDER_FAIL;
 }
 

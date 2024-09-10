@@ -29,6 +29,21 @@ extern "C" {
 #include "mender-update-module.h"
 
 /**
+ * @brief Mender client states
+ */
+typedef enum {
+    MENDER_CLIENT_STATE_INITIALIZATION, /**< Perform initialization */
+    MENDER_CLIENT_STATE_AUTHENTICATION, /**< Perform authentication with the server */
+    MENDER_CLIENT_STATE_AUTHENTICATED,  /**< Perform updates */
+    MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
+} mender_client_state_t;
+
+/**
+ * @brief Mender client state
+ */
+extern mender_client_state_t mender_client_state;
+
+/**
  * @brief Mender client configuration
  */
 typedef struct {

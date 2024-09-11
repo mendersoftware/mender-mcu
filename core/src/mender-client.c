@@ -579,11 +579,23 @@ mender_client_work_function(void) {
     if (MENDER_OK != (ret = mender_client_network_connect())) {
         goto END;
     }
+
+    /* Flag to allow deployment to continue in spite of a failed authentication */
+    bool allow_authentication_failure = false;
+
     /* Intentional pass-through */
     if (MENDER_CLIENT_STATE_AUTHENTICATION == mender_client_state) {
         /* Perform authentication with the server */
         if (MENDER_DONE != (ret = mender_client_authentication_work_function())) {
-            goto RELEASE;
+            /* Check if there is a deployment in progress */
+            if (NULL != mender_client_deployment_data) {
+                /* Authentication failed with pending deployment */
+                mender_log_info("Authentication failed, continuing with deployment");
+                allow_authentication_failure = true;
+            } else {
+                /* Authentication failed and no pending deployment */
+                goto RELEASE;
+            }
         }
         /* Update work period */
         if (MENDER_OK != (ret = mender_scheduler_work_set_period(mender_client_work_handle, mender_client_config.update_poll_interval))) {
@@ -591,10 +603,12 @@ mender_client_work_function(void) {
             goto RELEASE;
         }
         /* Update client state */
-        mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATED;
+        if (!allow_authentication_failure) {
+            mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATED;
+        }
     }
     /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) {
+    if (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state || allow_authentication_failure) {
         /* Perform updates */
         ret = mender_client_update_work_function();
     }

@@ -712,28 +712,14 @@ mender_commit_artifact_data(void) {
 
 static mender_err_t
 mender_client_authentication_work_function(void) {
-
     mender_err_t ret;
 
     /* Perform authentication with the mender server */
     if (MENDER_OK != (ret = mender_api_perform_authentication(mender_client_callbacks.get_identity))) {
-
-        /* Invoke authentication error callback */
-        if (NULL != mender_client_callbacks.authentication_failure) {
-            if (MENDER_OK != mender_client_callbacks.authentication_failure()) {
-                mender_log_error("Authentication error callback failed");
-            }
-        }
-
-        return ret;
+        mender_log_error("Authentication failed");
+        return MENDER_FAIL;
     }
-
-    /* Invoke authentication success callback */
-    if (NULL != mender_client_callbacks.authentication_success) {
-        if (MENDER_OK != mender_client_callbacks.authentication_success()) {
-            mender_log_error("Authentication success callback failed, rebooting");
-        }
-    }
+    mender_log_info("Authenticated successfully");
 
     return MENDER_DONE;
 }

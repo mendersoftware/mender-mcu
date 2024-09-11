@@ -64,8 +64,6 @@ typedef struct {
 typedef struct {
     mender_err_t (*network_connect)(void);                                 /**< Invoked when mender-client requests access to the network */
     mender_err_t (*network_release)(void);                                 /**< Invoked when mender-client releases access to the network */
-    mender_err_t (*authentication_success)(void);                          /**< Invoked when authentication with the mender server succeeded */
-    mender_err_t (*authentication_failure)(void);                          /**< Invoked when authentication with the mender server failed */
     mender_err_t (*deployment_status)(mender_deployment_status_t, char *); /**< Invoked on transition changes to inform of the new deployment status */
     mender_err_t (*restart)(void);                                         /**< Invoked to restart the device */
     mender_err_t (*get_identity)(mender_identity_t **identity);            /**< Invoked to retrieve identity */

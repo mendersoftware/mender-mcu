@@ -89,28 +89,6 @@ network_release_cb(void) {
 }
 
 /**
- * @brief Authentication success callback
- * @return MENDER_OK if application is marked valid and success deployment status should be reported to the server, error code otherwise
- */
-static mender_err_t
-authentication_success_cb(void) {
-
-    mender_log_info("Mender client authenticated");
-    return MENDER_OK;
-}
-
-/**
- * @brief Authentication failure callback
- * @return MENDER_OK if nothing to do, error code if the mender client should restart the application
- */
-static mender_err_t
-authentication_failure_cb(void) {
-    mender_log_error("Mender client authentication failed");
-
-    return MENDER_FAIL;
-}
-
-/**
  * @brief Deployment status callback
  * @param status Deployment status value
  * @param desc Deployment status description as string
@@ -319,8 +297,6 @@ main(int argc, char **argv) {
                                                     .recommissioning = false };
     mender_client_callbacks_t mender_client_callbacks = { .network_connect        = network_connect_cb,
                                                           .network_release        = network_release_cb,
-                                                          .authentication_success = authentication_success_cb,
-                                                          .authentication_failure = authentication_failure_cb,
                                                           .deployment_status      = deployment_status_cb,
                                                           .restart                = restart_cb,
                                                           .get_identity           = get_identity_cb,

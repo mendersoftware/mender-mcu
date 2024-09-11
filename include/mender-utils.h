@@ -41,6 +41,12 @@ extern "C" {
 #define StringEqual(str1, str2) (0 == strcmp(str1, str2))
 
 /**
+ * @brief Macro for comparing two strings up to N bytes
+ * @return true if the strings are equal, false otherwise
+ */
+#define StringEqualN(str1, str2, n) (0 == strncmp(str1, str2, n))
+
+/**
  * @brief Mender error codes
  */
 typedef enum {

@@ -394,13 +394,13 @@ mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
     ctx->file.name = tmp;
 
     /* Retrieve file size */
-    assert(sizeof(size_t) >= sizeof(unsigned long long));
+    assert(sizeof(size_t) >= sizeof(unsigned long));
     char *end_ptr;
     errno = 0; /* to distinguish between success/failure */
 
-    ctx->file.size = strtoull(tar_header->size, &end_ptr, 8);
+    ctx->file.size = strtoul(tar_header->size, &end_ptr, 8);
     if ((end_ptr == tar_header->size) /* no conversion */
-        || (0 != errno)) {            /* out of range (for unsigned long long) */
+        || (0 != errno)) {            /* out of range (for unsigned long) */
         mender_log_error("Unable to retrieve file size");
         return MENDER_FAIL;
     }
@@ -803,20 +803,21 @@ mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
         return MENDER_FAIL;
     }
 
-    assert(sizeof(size_t) >= sizeof(unsigned long long));
+    assert(sizeof(size_t) >= sizeof(unsigned long));
     const char *start_ptr = ctx->file.name + strlen(prefix);
     char       *end_ptr;
     errno = 0; /* to distinguish between success/failure */
 
-    const size_t index = strtoull(start_ptr, &end_ptr, 10);
+    const size_t index = strtoul(start_ptr, &end_ptr, 10);
     if ((end_ptr == start_ptr)              /* no conversion */
-        || (0 != errno)                     /* out of range (for unsigned long long) */
+        || (0 != errno)                     /* out of range (for unsigned long) */
         || (index >= ctx->payloads.size)) { /* index out of bounds */
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
 
-    assert(StringEqual(end_ptr, "/meta-data")); /* just one last sanity check */
+    assert(NULL != end_ptr);
+    assert(StringEqualN(end_ptr, "/meta-data", 10)); /* just one last sanity check */
 
     /* Check size of the meta-data */
     if (0 == mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
@@ -860,20 +861,21 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
         return MENDER_FAIL;
     }
 
-    assert(sizeof(size_t) >= sizeof(unsigned long long));
+    assert(sizeof(size_t) >= sizeof(unsigned long));
     const char *start_ptr = ctx->file.name + strlen(prefix);
     char       *end_ptr;
     errno = 0; /* to distinguish between success/failure */
 
-    const size_t index = strtoull(start_ptr, &end_ptr, 10);
+    const size_t index = strtoul(start_ptr, &end_ptr, 10);
     if ((end_ptr == start_ptr)              /* no conversion */
-        || (0 != errno)                     /* out of range (for unsigned long long) */
+        || (0 != errno)                     /* out of range (for unsigned long) */
         || (index >= ctx->payloads.size)) { /* index out of bounds */
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
 
-    assert(StringEqual(end_ptr, ".tar")); /* just one last sanity check */
+    assert(NULL != end_ptr);
+    assert(StringEqualN(end_ptr, ".tar", 4)); /* just one last sanity check */
 
     /* Check if a file name is provided (we don't check the extension because we don't know it) */
     if (strlen("data/xxxx.tar") == strlen(ctx->file.name)) {

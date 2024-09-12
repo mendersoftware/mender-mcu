@@ -29,6 +29,37 @@
  */
 static void *mcu_boot_flash_handle = NULL;
 
+/**
+ * @brief Callback function to be invoked to perform the treatment of the data from the artifact type "zephyr-image"
+ * @return MENDER_OK if the function succeeds, error code if an error occurred
+ */
+static mender_err_t mender_zephyr_image_download_artifact_flash_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
+ * @brief Artifact installation callback to make sure MCUboot is set to switch to the new image
+ */
+static mender_err_t mender_zephyr_image_set_pending_image(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
+ * @brief Update failure callback
+ */
+static mender_err_t mender_zephyr_image_abort_deployment(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
+ * @brief Reboot callback
+ */
+static mender_err_t mender_zephyr_image_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
+ * @brief New image verification callback
+ */
+static mender_err_t mender_zephyr_image_verify_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
+ * @brief Commit callback that confirms the booted image
+ */
+static mender_err_t mender_zephyr_image_confirm_image(mender_update_state_t state, mender_update_state_data_t callback_data);
+
 mender_err_t
 mender_zephyr_image_register_update_module(void) {
     mender_err_t            ret;
@@ -39,13 +70,16 @@ mender_zephyr_image_register_update_module(void) {
         mender_log_error("Unable to allocate memory for the 'zephyr-image' update module");
         return MENDER_FAIL;
     }
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD] = &mender_zephyr_image_download_artifact_flash_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]  = &mender_zephyr_image_set_pending_image;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]   = &mender_zephyr_image_reboot_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]  = &mender_zephyr_image_abort_deployment;
-    zephyr_image_umod->artifact_type                           = "zephyr-image";
-    zephyr_image_umod->requires_reboot                         = true;
-    zephyr_image_umod->supports_rollback                       = false; /* TODO: support rollback */
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD]      = &mender_zephyr_image_download_artifact_flash_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]       = &mender_zephyr_image_set_pending_image;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]        = &mender_zephyr_image_reboot_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_VERIFY_REBOOT] = &mender_zephyr_image_verify_reboot_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_COMMIT]        = &mender_zephyr_image_confirm_image;
+    /* no need for a rollback callback because a reboot without image confirmation is a rollback */
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE] = &mender_zephyr_image_abort_deployment;
+    zephyr_image_umod->artifact_type                          = "zephyr-image";
+    zephyr_image_umod->requires_reboot                        = true;
+    zephyr_image_umod->supports_rollback                      = true;
 
     if (MENDER_OK != (ret = mender_client_register_update_module(zephyr_image_umod))) {
         mender_log_error("Unable to register the 'zephyr-image' update module");
@@ -57,7 +91,7 @@ mender_zephyr_image_register_update_module(void) {
     return MENDER_OK;
 }
 
-mender_err_t
+static mender_err_t
 mender_zephyr_image_download_artifact_flash_callback(NDEBUG_UNUSED mender_update_state_t state, mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_DOWNLOAD == state);
 
@@ -97,7 +131,7 @@ END:
     return ret;
 }
 
-mender_err_t
+static mender_err_t
 mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_INSTALL == state);
     mender_err_t ret;
@@ -109,7 +143,7 @@ mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state,
     return MENDER_OK;
 }
 
-mender_err_t
+static mender_err_t
 mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_FAILURE == state);
     mender_err_t ret;
@@ -121,7 +155,7 @@ mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, 
     return MENDER_OK;
 }
 
-mender_err_t
+static mender_err_t
 mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_REBOOT == state);
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
@@ -132,4 +166,24 @@ mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, A
         mender_log_error("Reboot requested, but no reboot support");
         return MENDER_FAIL;
     }
+}
+
+static mender_err_t
+mender_zephyr_image_verify_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+    assert(MENDER_UPDATE_STATE_VERIFY_REBOOT == state);
+
+    /* TODO: how (else) should we verify the new image? */
+    return (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) ? MENDER_OK : MENDER_FAIL;
+}
+
+static mender_err_t
+mender_zephyr_image_confirm_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+    assert(MENDER_UPDATE_STATE_COMMIT == state);
+
+    mender_err_t ret = mender_flash_confirm_image();
+    if (MENDER_OK != ret) {
+        mender_log_error("Failed to confirm the new image");
+    }
+
+    return ret;
 }

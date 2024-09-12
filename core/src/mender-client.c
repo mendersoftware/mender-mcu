@@ -70,20 +70,7 @@ static mender_client_config_t mender_client_config;
  */
 mender_client_callbacks_t mender_client_callbacks = { 0 };
 
-/**
- * @brief Mender client states
- */
-typedef enum {
-    MENDER_CLIENT_STATE_INITIALIZATION, /**< Perform initialization */
-    MENDER_CLIENT_STATE_AUTHENTICATION, /**< Perform authentication with the server */
-    MENDER_CLIENT_STATE_AUTHENTICATED,  /**< Perform updates */
-    MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
-} mender_client_state_t;
-
-/**
- * @brief Mender client state
- */
-static mender_client_state_t mender_client_state = MENDER_CLIENT_STATE_INITIALIZATION;
+mender_client_state_t mender_client_state = MENDER_CLIENT_STATE_INITIALIZATION;
 
 struct mender_update_state_transition_s {
     mender_update_state_t success;
@@ -725,51 +712,16 @@ mender_commit_artifact_data(void) {
 
 static mender_err_t
 mender_client_authentication_work_function(void) {
-
     mender_err_t ret;
 
     /* Perform authentication with the mender server */
     if (MENDER_OK != (ret = mender_api_perform_authentication(mender_client_callbacks.get_identity))) {
-
-        /* Invoke authentication error callback */
-        if (NULL != mender_client_callbacks.authentication_failure) {
-            if (MENDER_OK != mender_client_callbacks.authentication_failure()) {
-
-                /* Check if deployment is pending */
-                if (NULL != mender_client_deployment_data) {
-                    /* Authentication error callback inform the reboot should be done, probably something is broken and it prefers to rollback */
-                    mender_log_error("Authentication error callback failed, rebooting");
-                    goto REBOOT;
-                }
-            }
-        }
-
-        return ret;
+        mender_log_error("Authentication failed");
+        return MENDER_FAIL;
     }
-
-    /* Invoke authentication success callback */
-    if (NULL != mender_client_callbacks.authentication_success) {
-        if (MENDER_OK != mender_client_callbacks.authentication_success()) {
-
-            /* Check if deployment is pending */
-            if (NULL != mender_client_deployment_data) {
-                /* Authentication success callback inform the reboot should be done, probably something is broken and it prefers to rollback */
-                mender_log_error("Authentication success callback failed, rebooting");
-                goto REBOOT;
-            }
-        }
-    }
+    mender_log_info("Authenticated successfully");
 
     return MENDER_DONE;
-
-REBOOT:
-
-    /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
-    if (NULL != mender_client_callbacks.restart) {
-        mender_client_callbacks.restart();
-    }
-
-    return ret;
 }
 
 static mender_err_t

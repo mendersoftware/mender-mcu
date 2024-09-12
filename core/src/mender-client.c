@@ -391,6 +391,14 @@ mender_client_activate(void) {
         goto END;
     }
 
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    /* Activate inventory work */
+    if (MENDER_OK != (ret = mender_inventory_activate())) {
+        mender_log_error("Unable to activate the inventory functionality");
+        return ret;
+    }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
 END:
 
     return ret;
@@ -751,13 +759,6 @@ mender_client_authentication_work_function(void) {
             }
         }
     }
-
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
-    if (MENDER_OK != (ret = mender_inventory_activate())) {
-        mender_log_error("Unable to activate the inventory functionality");
-        return ret;
-    }
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     return MENDER_DONE;
 

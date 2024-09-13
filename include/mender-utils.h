@@ -35,6 +35,18 @@ extern "C" {
 #include <cJSON.h>
 
 /**
+ * @brief Macro for releasing a resource followed by setting it to NULL.
+ */
+#define DESTROY_AND_NULL(destructor, resource) \
+    destructor(resource);                      \
+    resource = NULL
+
+/**
+ * @brief Macro for releasing a resource with free() followed by setting it to NULL.
+ */
+#define FREE_AND_NULL(resource) DESTROY_AND_NULL(free, resource)
+
+/**
  * @brief Macro for comparing two strings
  * @return true if the strings are equal, false otherwise
  */

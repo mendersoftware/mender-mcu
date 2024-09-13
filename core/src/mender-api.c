@@ -354,8 +354,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
     /* Yes, 404 still means MENDER_OK above */
     if (404 == status) {
         mender_log_debug("POST request to v2 version of the deployments API failed, falling back to v1 version and GET");
-        free(response);
-        response = NULL;
+        FREE_AND_NULL(response);
         if (MENDER_FAIL == (ret = api_check_for_deployment_v1(&status, (void *)&response))) {
             goto END;
         }
@@ -652,10 +651,8 @@ mender_api_exit(void) {
     mender_http_exit();
 
     /* Release memory */
-    free(mender_api_jwt);
-    mender_api_jwt = NULL;
-    free(artifact_name);
-    artifact_name = NULL;
+    FREE_AND_NULL(mender_api_jwt);
+    FREE_AND_NULL(artifact_name);
 
     return MENDER_OK;
 }

@@ -265,8 +265,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
                 if (NULL != substring) {
                     *(substring + strlen(".tar")) = '\0';
                 } else {
-                    free(ctx->file.name);
-                    ctx->file.name = NULL;
+                    FREE_AND_NULL(ctx->file.name);
                 }
                 ctx->file.size  = 0;
                 ctx->file.index = 0;
@@ -343,12 +342,10 @@ mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
                 if (NULL != substring) {
                     *(substring + strlen(".tar")) = '\0';
                 } else {
-                    free(ctx->file.name);
-                    ctx->file.name = NULL;
+                    FREE_AND_NULL(ctx->file.name);
                 }
             } else {
-                free(ctx->file.name);
-                ctx->file.name = NULL;
+                FREE_AND_NULL(ctx->file.name);
             }
         }
 
@@ -971,8 +968,7 @@ mender_artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length) {
             ctx->input.data = tmp;
             ctx->input.length -= length;
         } else {
-            free(ctx->input.data);
-            ctx->input.data   = NULL;
+            FREE_AND_NULL(ctx->input.data);
             ctx->input.length = 0;
         }
     }

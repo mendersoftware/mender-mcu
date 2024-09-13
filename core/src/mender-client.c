@@ -447,15 +447,13 @@ mender_client_exit(void) {
     mender_client_config.tenant_token                 = NULL;
     mender_client_config.authentication_poll_interval = 0;
     mender_client_config.update_poll_interval         = 0;
-    mender_delete_deployment_data(mender_client_deployment_data);
-    mender_client_deployment_data = NULL;
+    DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
 
     if (NULL != mender_update_modules_list) {
         for (size_t update_module_index = 0; update_module_index < mender_update_modules_count; update_module_index++) {
             free(mender_update_modules_list[update_module_index]);
         }
-        free(mender_update_modules_list);
-        mender_update_modules_list = NULL;
+        FREE_AND_NULL(mender_update_modules_list);
     }
     mender_update_modules_count = 0;
 
@@ -1150,8 +1148,7 @@ mender_client_update_work_function(void) {
 END:
     /* Release memory */
     deployment_destroy(deployment);
-    mender_delete_deployment_data(mender_client_deployment_data);
-    mender_client_deployment_data = NULL;
+    DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
     mender_artifact_release_ctx(mender_artifact_ctx);
 
     return ret;

@@ -157,11 +157,9 @@ mender_inventory_exit(void) {
     }
 
     /* Release memory */
-    mender_utils_keystore_delete(mender_inventory_keystore);
-    mender_inventory_keystore = NULL;
+    DESTROY_AND_NULL(mender_utils_keystore_delete, mender_inventory_keystore);
     mender_scheduler_mutex_give(mender_inventory_mutex);
-    mender_scheduler_mutex_delete(mender_inventory_mutex);
-    mender_inventory_mutex = NULL;
+    DESTROY_AND_NULL(mender_scheduler_mutex_delete, mender_inventory_mutex);
 
     return ret;
 }

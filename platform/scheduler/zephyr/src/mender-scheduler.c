@@ -25,6 +25,7 @@
 #include <zephyr/kernel.h>
 #include "mender-log.h"
 #include "mender-scheduler.h"
+#include "mender-utils.h"
 
 /**
  * @brief User parameters
@@ -304,8 +305,7 @@ mender_scheduler_mutex_create(void **handle) {
         return MENDER_FAIL;
     }
     if (0 != k_mutex_init((struct k_mutex *)(*handle))) {
-        free(*handle);
-        *handle = NULL;
+        FREE_AND_NULL(*handle);
         return MENDER_FAIL;
     }
 

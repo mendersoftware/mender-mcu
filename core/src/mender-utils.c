@@ -278,10 +278,8 @@ mender_utils_keystore_set_item(mender_keystore_t *keystore, size_t index, char *
     assert(NULL != keystore);
 
     /* Release memory */
-    free(keystore[index].name);
-    keystore[index].name = NULL;
-    free(keystore[index].value);
-    keystore[index].value = NULL;
+    FREE_AND_NULL(keystore[index].name);
+    FREE_AND_NULL(keystore[index].value);
 
     /* Copy name and value */
     if (NULL != name) {

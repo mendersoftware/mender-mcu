@@ -70,8 +70,7 @@ nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
     /* Read data */
     ret = nvs_read(nvs, id, *data, *length);
     if (ret < 0) {
-        free(*data);
-        *data = NULL;
+        FREE_AND_NULL(*data);
         return MENDER_FAIL;
     }
 
@@ -159,8 +158,7 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
         } else {
             mender_log_error("Unable to read public key");
         }
-        free(*private_key);
-        *private_key = NULL;
+        FREE_AND_NULL(*private_key);
         return ret;
     }
 

@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include "mender-log.h"
 #include "mender-scheduler.h"
+#include "mender-utils.h"
 
 /**
  * @brief Default work queue stack size (kB)
@@ -323,8 +324,7 @@ mender_scheduler_mutex_create(void **handle) {
         return MENDER_FAIL;
     }
     if (0 != pthread_mutex_init(*handle, NULL)) {
-        free(*handle);
-        *handle = NULL;
+        FREE_AND_NULL(*handle);
         return MENDER_FAIL;
     }
 

@@ -155,8 +155,7 @@ mender_get_deployment_data(mender_deployment_data_t **deployment_data) {
     /* Validate deployment data */
     if (!validate_deployment_data(*deployment_data)) {
         mender_log_error("Invalid deployment data");
-        cJSON_Delete(*deployment_data);
-        *deployment_data = NULL;
+        DESTROY_AND_NULL(cJSON_Delete, *deployment_data);
         return MENDER_FAIL;
     }
 

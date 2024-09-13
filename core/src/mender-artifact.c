@@ -285,17 +285,11 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 
     /* Release memory */
     if (NULL != ctx) {
-        if (NULL != ctx->input.data) {
-            free(ctx->input.data);
-        }
+        free(ctx->input.data);
         if (NULL != ctx->payloads.values) {
             for (size_t index = 0; index < ctx->payloads.size; index++) {
-                if (NULL != ctx->payloads.values[index].type) {
-                    free(ctx->payloads.values[index].type);
-                }
-                if (NULL != ctx->payloads.values[index].meta_data) {
-                    cJSON_Delete(ctx->payloads.values[index].meta_data);
-                }
+                free(ctx->payloads.values[index].type);
+                cJSON_Delete(ctx->payloads.values[index].meta_data);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
                 mender_utils_free_linked_list(ctx->payloads.values[index].provides);
@@ -308,9 +302,7 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
             }
             free(ctx->payloads.values);
         }
-        if (NULL != ctx->file.name) {
-            free(ctx->file.name);
-        }
+        free(ctx->file.name);
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         mender_utils_free_linked_list(ctx->artifact_info.provides);
         mender_utils_free_linked_list(ctx->artifact_info.depends);
@@ -472,9 +464,7 @@ mender_artifact_read_version(mender_artifact_ctx_t *ctx) {
 END:
 
     /* Release memory */
-    if (NULL != object) {
-        cJSON_Delete(object);
-    }
+    cJSON_Delete(object);
 
     return ret;
 }
@@ -687,9 +677,7 @@ mender_artifact_read_header_info(mender_artifact_ctx_t *ctx) {
 END:
 
     /* Release memory */
-    if (NULL != object) {
-        cJSON_Delete(object);
-    }
+    cJSON_Delete(object);
 
     return ret;
 }
@@ -781,9 +769,7 @@ mender_artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 END:
 
     /* Release memory */
-    if (NULL != object) {
-        cJSON_Delete(object);
-    }
+    cJSON_Delete(object);
 
     return ret;
 }

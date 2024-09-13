@@ -131,7 +131,6 @@ mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char 
     free(mender_tls_private_key);
     mender_tls_private_key        = NULL;
     mender_tls_private_key_length = 0;
-
     free(mender_tls_public_key);
     mender_tls_public_key        = NULL;
     mender_tls_public_key_length = 0;
@@ -339,23 +338,15 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
 END:
 
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
-    if (NULL != pk_context) {
-        mbedtls_pk_free(pk_context);
-        free(pk_context);
-    }
+    mbedtls_entropy_free(entropy);
+    free(entropy);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
+    mbedtls_pk_free(pk_context);
+    free(pk_context);
 
     /* Release memory */
-    if (NULL != sig) {
-        free(sig);
-    }
+    free(sig);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -364,15 +355,11 @@ mender_err_t
 mender_tls_exit(void) {
 
     /* Release memory */
-    if (NULL != mender_tls_private_key) {
-        free(mender_tls_private_key);
-        mender_tls_private_key = NULL;
-    }
+    free(mender_tls_private_key);
+    mender_tls_private_key        = NULL;
     mender_tls_private_key_length = 0;
-    if (NULL != mender_tls_public_key) {
-        free(mender_tls_public_key);
-        mender_tls_public_key = NULL;
-    }
+    free(mender_tls_public_key);
+    mender_tls_public_key        = NULL;
     mender_tls_public_key_length = 0;
 
     return MENDER_OK;
@@ -432,14 +419,10 @@ mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
 
 END:
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
+    mbedtls_entropy_free(entropy);
+    free(entropy);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -488,14 +471,10 @@ mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, con
 
 END:
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
+    mbedtls_entropy_free(entropy);
+    free(entropy);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -595,10 +574,8 @@ mender_tls_get_authentication_keys(unsigned char **private_key,
 END:
 
     /* Release mbedtls */
-    if (NULL != pk_context) {
-        mbedtls_pk_free(pk_context);
-        free(pk_context);
-    }
+    mbedtls_pk_free(pk_context);
+    free(pk_context);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -682,9 +659,7 @@ mender_tls_pem_write_buffer(const unsigned char *der_data, size_t der_len, char 
 END:
 
     /* Release memory */
-    if (NULL != encode_buf) {
-        free(encode_buf);
-    }
+    free(encode_buf);
 
     return ret;
 }

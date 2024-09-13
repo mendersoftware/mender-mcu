@@ -118,12 +118,8 @@ mender_flash_set_pending_image(void *handle) {
 mender_err_t
 mender_flash_abort_deployment(void *handle) {
 
-    /* Check flash handle */
-    if (NULL != handle) {
-
-        /* Release memory */
-        free(handle);
-    }
+    /* Release memory */
+    free(handle);
 
     return MENDER_OK;
 }

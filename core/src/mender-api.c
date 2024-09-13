@@ -214,24 +214,12 @@ END:
 
     /* Release memory */
     free(unformatted_identity);
-    if (NULL != response) {
-        free(response);
-    }
-    if (NULL != signature) {
-        free(signature);
-    }
-    if (NULL != payload) {
-        free(payload);
-    }
-    if (NULL != json_payload) {
-        cJSON_Delete(json_payload);
-    }
-    if (NULL != json_identity) {
-        cJSON_Delete(json_identity);
-    }
-    if (NULL != public_key_pem) {
-        free(public_key_pem);
-    }
+    free(response);
+    free(signature);
+    free(payload);
+    cJSON_Delete(json_payload);
+    cJSON_Delete(json_identity);
+    free(public_key_pem);
 
     return ret;
 }
@@ -455,9 +443,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
 END:
 
     /* Release memory */
-    if (NULL != response) {
-        free(response);
-    }
+    free(response);
 
     return ret;
 }
@@ -522,18 +508,10 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
 END:
 
     /* Release memory */
-    if (NULL != response) {
-        free(response);
-    }
-    if (NULL != path) {
-        free(path);
-    }
-    if (NULL != payload) {
-        free(payload);
-    }
-    if (NULL != json_payload) {
-        cJSON_Delete(json_payload);
-    }
+    free(response);
+    free(path);
+    free(payload);
+    cJSON_Delete(json_payload);
 
     return ret;
 }
@@ -658,15 +636,9 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
 END:
 
     /* Release memory */
-    if (NULL != response) {
-        free(response);
-    }
-    if (NULL != payload) {
-        free(payload);
-    }
-    if (NULL != object) {
-        cJSON_Delete(object);
-    }
+    free(response);
+    free(payload);
+    cJSON_Delete(object);
 
     return ret;
 }
@@ -680,10 +652,8 @@ mender_api_exit(void) {
     mender_http_exit();
 
     /* Release memory */
-    if (NULL != mender_api_jwt) {
-        free(mender_api_jwt);
-        mender_api_jwt = NULL;
-    }
+    free(mender_api_jwt);
+    mender_api_jwt = NULL;
     free(artifact_name);
     artifact_name = NULL;
 

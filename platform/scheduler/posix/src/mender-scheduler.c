@@ -178,9 +178,7 @@ FAIL:
     if (NULL != work_context) {
         timer_delete(work_context->timer_handle);
         pthread_mutex_destroy(&work_context->sem_handle);
-        if (NULL != work_context->params.name) {
-            free(work_context->params.name);
-        }
+        free(work_context->params.name);
         free(work_context);
     }
 
@@ -309,9 +307,7 @@ mender_scheduler_work_delete(void *handle) {
     /* Release memory */
     timer_delete(work_context->timer_handle);
     pthread_mutex_destroy(&work_context->sem_handle);
-    if (NULL != work_context->params.name) {
-        free(work_context->params.name);
-    }
+    free(work_context->params.name);
     free(work_context);
 
     return MENDER_OK;

@@ -188,9 +188,7 @@ FAIL:
 
     /* Release memory */
     if (NULL != work_context) {
-        if (NULL != work_context->params.name) {
-            free(work_context->params.name);
-        }
+        free(work_context->params.name);
         free(work_context);
     }
 

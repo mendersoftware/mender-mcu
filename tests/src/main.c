@@ -340,15 +340,9 @@ RELEASE:
 END:
 
     /* Release memory */
-    if (NULL != mac_address) {
-        free(mac_address);
-    }
-    if (NULL != device_type) {
-        free(device_type);
-    }
-    if (NULL != tenant_token) {
-        free(tenant_token);
-    }
+    free(mac_address);
+    free(device_type);
+    free(tenant_token);
     free(private_key);
 
     return ret;

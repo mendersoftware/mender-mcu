@@ -90,6 +90,12 @@ mender_err_t mender_storage_save_update_state(mender_update_state_t state, const
 mender_err_t mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type);
 
 /**
+ * @brief Delete update module state
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_delete_update_state(void);
+
+/**
  * @brief Delete deployment data
  * @return MENDER_OK if the function succeeds, error code otherwise
  */

@@ -225,6 +225,24 @@ mender_storage_delete_deployment_data(void) {
     return MENDER_OK;
 }
 
+mender_err_t
+mender_storage_delete_update_state(void) {
+
+    /* Delete update state */
+    if (0 != nvs_delete(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE)) {
+        mender_log_error("Unable to delete update state");
+        return MENDER_FAIL;
+    }
+
+    /* Delete artifact type */
+    if (0 != nvs_delete(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE)) {
+        mender_log_error("Unable to delete update state");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 mender_err_t

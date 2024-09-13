@@ -1034,10 +1034,26 @@ mender_client_update_work_function(void) {
     mender_update_module = NULL;
 
     {
+        cJSON *deployment_id_j = cJSON_GetObjectItem(mender_client_deployment_data, "id");
+        if (NULL != deployment_id_j) {
+            deployment_id = deployment_id_j->valuestring;
+        }
+    }
+
+    {
         char *artifact_type;
         if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state, &artifact_type))) {
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
             mender_update_module = mender_client_get_update_module(artifact_type);
+            if (NULL == mender_update_module) {
+                /* The artifact_type from the saved state does not match any update module */
+                mender_log_error("No update module found for artifact type '%s'", artifact_type);
+                mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                mender_storage_delete_deployment_data();
+                mender_storage_delete_update_state();
+                free(artifact_type);
+                goto END;
+            }
             free(artifact_type);
         }
     }
@@ -1068,12 +1084,6 @@ mender_client_update_work_function(void) {
         continue;                                                                                \
     }
 
-    {
-        cJSON *deployment_id_j = cJSON_GetObjectItem(mender_client_deployment_data, "id");
-        if (NULL != deployment_id_j) {
-            deployment_id = deployment_id_j->valuestring;
-        }
-    }
     while (MENDER_UPDATE_STATE_END != update_state) {
         switch (update_state) {
             case MENDER_UPDATE_STATE_DOWNLOAD:
@@ -1126,6 +1136,11 @@ mender_client_update_work_function(void) {
                     }
                 } else {
                     mender_log_error("Unable to download artifact");
+                    if (NULL == mender_update_module) {
+                        /* Error logged in mender_client_download_artifact_callback() */
+                        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                        goto END;
+                    }
                 }
                 NEXT_STATE;
                 /* fallthrough */

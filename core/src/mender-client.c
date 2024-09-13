@@ -80,12 +80,6 @@ typedef enum {
 static mender_client_state_t mender_client_state = MENDER_CLIENT_STATE_INITIALIZATION;
 
 /**
- * @brief Counter and mutex for the management of network connect/release callbacks
- */
-static uint8_t mender_client_network_count = 0;
-static void   *mender_client_network_mutex = NULL;
-
-/**
  * @brief Deployment data (ID, artifact name and payload types), used to report deployment status after rebooting
  */
 static cJSON *mender_client_deployment_data = NULL;
@@ -114,11 +108,6 @@ static void                           *mender_client_artifact_types_mutex = NULL
 static mender_addon_instance_t **mender_client_addons_list  = NULL;
 static size_t                    mender_client_addons_count = 0;
 static void                     *mender_client_addons_mutex = NULL;
-
-/**
- * @brief Mender client work handle
- */
-static void *mender_client_work_handle = NULL;
 
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data
@@ -259,6 +248,9 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
 
     mender_client_config.artifact_name = config->artifact_name;
     mender_client_config.device_type   = config->device_type;
+
+    mender_log_info("Artifact name: [%s]; device type: [%s]", mender_client_config.artifact_name, mender_client_config.device_type);
+
     if ((NULL != config->host) && (strlen(config->host) > 0)) {
         mender_client_config.host = config->host;
     } else {
@@ -298,7 +290,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     memcpy(&mender_client_callbacks, callbacks, sizeof(mender_client_callbacks_t));
 
     /* Initializations */
-    if (MENDER_OK != (ret = mender_scheduler_init())) {
+    if (MENDER_OK != (ret = mender_scheduler_alt_work_create(mender_client_work_function, mender_client_config.update_poll_interval))) {
         mender_log_error("Unable to initialize scheduler");
         goto END;
     }
@@ -325,38 +317,10 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
 
-    /* Create network management mutex */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_client_network_mutex))) {
-        mender_log_error("Unable to create network management mutex");
-        return ret;
-    }
-
-    /* Create artifact types management mutex */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_client_artifact_types_mutex))) {
-        mender_log_error("Unable to create artifact types management mutex");
-        return ret;
-    }
-
-    /* Create add-ons management mutex */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_client_addons_mutex))) {
-        mender_log_error("Unable to create add-ons management mutex");
-        return ret;
-    }
-
     /* Register rootfs-image artifact type */
     if (MENDER_OK
         != (ret = mender_client_register_artifact_type("rootfs-image", &mender_client_download_artifact_flash_callback, true, config->artifact_name))) {
         mender_log_error("Unable to register 'rootfs-image' artifact type");
-        goto END;
-    }
-
-    /* Create mender client work */
-    mender_scheduler_work_params_t update_work_params;
-    update_work_params.function = mender_client_work_function;
-    update_work_params.period   = mender_client_config.authentication_poll_interval;
-    update_work_params.name     = "mender_client_update";
-    if (MENDER_OK != (ret = mender_scheduler_work_create(&update_work_params, &mender_client_work_handle))) {
-        mender_log_error("Unable to create update work");
         goto END;
     }
 
@@ -374,13 +338,7 @@ mender_client_register_artifact_type(char *type,
     assert(NULL != type);
     mender_client_artifact_type_t  *artifact_type;
     mender_client_artifact_type_t **tmp;
-    mender_err_t                    ret;
-
-    /* Take mutex used to protect access to the artifact types management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_artifact_types_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
+    mender_err_t                    ret = MENDER_OK;
 
     /* Create mender artifact type */
     if (NULL == (artifact_type = (mender_client_artifact_type_t *)malloc(sizeof(mender_client_artifact_type_t)))) {
@@ -408,9 +366,6 @@ mender_client_register_artifact_type(char *type,
 
 END:
 
-    /* Release mutex used to protect access to the artifact types management list */
-    mender_scheduler_mutex_give(mender_client_artifact_types_mutex);
-
     return ret;
 }
 
@@ -419,13 +374,7 @@ mender_client_register_addon(mender_addon_instance_t *addon, void *config, void 
 
     assert(NULL != addon);
     mender_addon_instance_t **tmp;
-    mender_err_t              ret;
-
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
+    mender_err_t              ret = MENDER_OK;
 
     /* Initialization of the add-on */
     if (NULL != addon->init) {
@@ -463,38 +412,20 @@ mender_client_register_addon(mender_addon_instance_t *addon, void *config, void 
 
 END:
 
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
-
     return ret;
 }
 
 mender_err_t
 mender_client_activate(void) {
 
-    mender_err_t ret;
+    mender_scheduler_alt_work_start();
 
-    /* Activate update work */
-    if (MENDER_OK != (ret = mender_scheduler_work_activate(mender_client_work_handle))) {
-        mender_log_error("Unable to activate update work");
-        goto END;
-    }
-
-END:
-
-    return ret;
+    return MENDER_OK;
 }
 
+//TODO: Remove when removing the add-ons
 mender_err_t
 mender_client_deactivate(void) {
-
-    mender_err_t ret;
-
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
 
     /* Deactivate add-ons */
     if (NULL != mender_client_addons_list) {
@@ -505,61 +436,30 @@ mender_client_deactivate(void) {
         }
     }
 
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
-
-    /* Deactivate mender client work */
-    mender_scheduler_work_deactivate(mender_client_work_handle);
-
-    return ret;
+    return MENDER_OK;
 }
 
+//TODO: Remove when removing the add-ons
 mender_err_t
 mender_client_execute(void) {
 
-    mender_err_t ret;
-
-    /* Trigger execution of the work */
-    if (MENDER_OK != (ret = mender_scheduler_work_execute(mender_client_work_handle))) {
-        mender_log_error("Unable to trigger update work");
-        goto END;
-    }
-
-END:
-
-    return ret;
+    return MENDER_OK;
 }
 
 mender_err_t
 mender_client_network_connect(void) {
 
-    mender_err_t ret;
+    mender_err_t ret = MENDER_OK;
 
-    /* Take mutex used to protect access to the network management counter */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_network_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
-
-    /* Check the network management counter value */
-    if (0 == mender_client_network_count) {
-
-        /* Request network access */
-        if (NULL != mender_client_callbacks.network_connect) {
-            if (MENDER_OK != (ret = mender_client_callbacks.network_connect())) {
-                mender_log_error("Unable to connect network");
-                goto END;
-            }
+    /* Request network access */
+    if (NULL != mender_client_callbacks.network_connect) {
+        if (MENDER_OK != (ret = mender_client_callbacks.network_connect())) {
+            mender_log_error("Unable to connect network");
+            goto END;
         }
     }
 
-    /* Increment network management counter */
-    mender_client_network_count++;
-
 END:
-
-    /* Release mutex used to protect access to the network management counter */
-    mender_scheduler_mutex_give(mender_client_network_mutex);
 
     return ret;
 }
@@ -567,47 +467,23 @@ END:
 mender_err_t
 mender_client_network_release(void) {
 
-    mender_err_t ret;
+    mender_err_t ret = MENDER_OK;
 
-    /* Take mutex used to protect access to the network management counter */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_network_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
-
-    /* Decrement network management counter */
-    mender_client_network_count--;
-
-    /* Check the network management counter value */
-    if (0 == mender_client_network_count) {
-
-        /* Release network access */
-        if (NULL != mender_client_callbacks.network_release) {
-            if (MENDER_OK != (ret = mender_client_callbacks.network_release())) {
-                mender_log_error("Unable to release network");
-                goto END;
-            }
+    /* Release network access */
+    if (NULL != mender_client_callbacks.network_release) {
+        if (MENDER_OK != (ret = mender_client_callbacks.network_release())) {
+            mender_log_error("Unable to release network");
+            goto END;
         }
     }
 
 END:
-
-    /* Release mutex used to protect access to the network management counter */
-    mender_scheduler_mutex_give(mender_client_network_mutex);
 
     return ret;
 }
 
 mender_err_t
 mender_client_exit(void) {
-
-    mender_err_t ret;
-
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
 
     /* Release add-ons */
     if (NULL != mender_client_addons_list) {
@@ -618,19 +494,11 @@ mender_client_exit(void) {
         }
     }
 
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
-
-    /* Delete mender client work */
-    mender_scheduler_work_delete(mender_client_work_handle);
-    mender_client_work_handle = NULL;
-
     /* Release all modules */
     mender_api_exit();
     mender_tls_exit();
     mender_storage_exit();
     mender_log_exit();
-    mender_scheduler_exit();
 
     /* Release memory */
     mender_client_config.artifact_name                = NULL;
@@ -639,10 +507,6 @@ mender_client_exit(void) {
     mender_client_config.tenant_token                 = NULL;
     mender_client_config.authentication_poll_interval = 0;
     mender_client_config.update_poll_interval         = 0;
-    mender_client_network_count                       = 0;
-    mender_scheduler_mutex_give(mender_client_network_mutex);
-    mender_scheduler_mutex_delete(mender_client_network_mutex);
-    mender_client_network_mutex = NULL;
     if (NULL != mender_client_deployment_data) {
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
@@ -655,19 +519,15 @@ mender_client_exit(void) {
         mender_client_artifact_types_list = NULL;
     }
     mender_client_artifact_types_count = 0;
-    mender_scheduler_mutex_give(mender_client_artifact_types_mutex);
-    mender_scheduler_mutex_delete(mender_client_artifact_types_mutex);
     mender_client_artifact_types_mutex = NULL;
     if (NULL != mender_client_addons_list) {
         free(mender_client_addons_list);
         mender_client_addons_list = NULL;
     }
     mender_client_addons_count = 0;
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
-    mender_scheduler_mutex_delete(mender_client_addons_mutex);
     mender_client_addons_mutex = NULL;
 
-    return ret;
+    return MENDER_OK;
 }
 
 static mender_err_t
@@ -675,45 +535,29 @@ mender_client_work_function(void) {
 
     mender_err_t ret = MENDER_OK;
 
-    /* Work depending of the client state */
-    if (MENDER_CLIENT_STATE_INITIALIZATION == mender_client_state) {
-        /* Perform initialization of the client */
-        if (MENDER_DONE != (ret = mender_client_initialization_work_function())) {
-            goto END;
-        }
-        /* Update client state */
-        mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATION;
-    }
-    /* Request access to the network */
-    if (MENDER_OK != (ret = mender_client_network_connect())) {
-        goto END;
-    }
-    /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATION == mender_client_state) {
-        /* Perform authentication with the server */
-        if (MENDER_DONE != (ret = mender_client_authentication_work_function())) {
-            goto RELEASE;
-        }
-        /* Update work period */
-        if (MENDER_OK != (ret = mender_scheduler_work_set_period(mender_client_work_handle, mender_client_config.update_poll_interval))) {
-            mender_log_error("Unable to set work period");
-            goto RELEASE;
-        }
-        /* Update client state */
-        mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATED;
-    }
-    /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) {
-        /* Perform updates */
-        ret = mender_client_update_work_function();
-    }
+    mender_log_info("work function: %d", mender_client_state);
 
-RELEASE:
-
-    /* Release access to the network */
-    mender_client_network_release();
-
-END:
+    switch (mender_client_state) {
+        case MENDER_CLIENT_STATE_INITIALIZATION:
+            mender_log_info("work function; initialization");
+            if (MENDER_DONE != (ret = mender_client_initialization_work_function())) {
+                return ret;
+            }
+            mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATION;
+            /* fallthrough */
+        case MENDER_CLIENT_STATE_AUTHENTICATION:
+            mender_log_info("work function; authentication");
+            if (MENDER_DONE != (ret = mender_client_authentication_work_function())) {
+                mender_client_network_release();
+                return ret;
+            }
+            mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATED;
+            /* fallthrough */
+        case MENDER_CLIENT_STATE_AUTHENTICATED:
+            mender_log_info("work function; authenticated");
+            ret = mender_client_update_work_function();
+            break;
+    }
 
     return ret;
 }
@@ -722,13 +566,15 @@ static mender_err_t
 mender_client_initialization_work_function(void) {
 
     char        *storage_deployment_data = NULL;
-    mender_err_t ret;
+    mender_err_t ret                     = MENDER_DONE;
 
     /* Retrieve or generate authentication keys */
     if (MENDER_OK != (ret = mender_tls_init_authentication_keys(mender_client_callbacks.get_user_provided_keys, mender_client_config.recommissioning))) {
         mender_log_error("Unable to retrieve or generate authentication keys");
         goto END;
     }
+
+    mender_log_info("Keys initialized");
 
     /* Retrieve deployment data if it is found (following an update) */
     if (MENDER_OK != (ret = mender_storage_get_deployment_data(&storage_deployment_data))) {
@@ -737,6 +583,9 @@ mender_client_initialization_work_function(void) {
             goto REBOOT;
         }
     }
+
+    mender_log_info("Deployment data retrieved");
+
     if (NULL != storage_deployment_data) {
         if (NULL == (mender_client_deployment_data = cJSON_Parse(storage_deployment_data))) {
             mender_log_error("Unable to parse deployment data");
@@ -747,6 +596,8 @@ mender_client_initialization_work_function(void) {
         free(storage_deployment_data);
     }
 
+    mender_log_info("Initialization done");
+
     return MENDER_DONE;
 
 END:
@@ -754,6 +605,8 @@ END:
     return ret;
 
 REBOOT:
+
+    mender_log_info("Rebooting...");
 
     /* Delete pending deployment */
     mender_storage_delete_deployment_data();
@@ -853,12 +706,6 @@ mender_client_authentication_work_function(void) {
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
-        /* Take mutex used to protect access to the artifact types management list */
-        if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_artifact_types_mutex, -1))) {
-            mender_log_error("Unable to take mutex");
-            goto RELEASE;
-        }
-
         /* Check if artifact running is the pending one */
         bool   success   = true;
         cJSON *json_type = NULL;
@@ -876,9 +723,6 @@ mender_client_authentication_work_function(void) {
                 }
             }
         }
-
-        /* Release mutex used to protect access to the artifact types management list */
-        mender_scheduler_mutex_give(mender_client_artifact_types_mutex);
 
         /* Publish deployment status */
         if (true == success) {
@@ -911,12 +755,6 @@ RELEASE:
         mender_client_deployment_data = NULL;
     }
 
-    /* Take mutex used to protect access to the add-ons management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_addons_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
-
     /* Activate add-ons */
     if (NULL != mender_client_addons_list) {
         for (size_t index = 0; index < mender_client_addons_count; index++) {
@@ -925,9 +763,6 @@ RELEASE:
             }
         }
     }
-
-    /* Release mutex used to protect access to the add-ons management list */
-    mender_scheduler_mutex_give(mender_client_addons_mutex);
 
     return MENDER_DONE;
 
@@ -1156,6 +991,9 @@ mender_client_update_work_function(void) {
         }
         goto END;
     }
+
+    mender_log_info("Will be getting context");
+
     /* Artifact context */
     if (MENDER_OK != (ret = mender_artifact_get_ctx(&mender_artifact_ctx))) {
         mender_log_error("Unable to get artifact context");
@@ -1164,6 +1002,8 @@ mender_client_update_work_function(void) {
         }
         goto END;
     }
+
+    mender_log_info("Getting device type");
 
     /* Retrieve device type from artifact */
     const char *device_type_artifact = NULL;
@@ -1175,6 +1015,8 @@ mender_client_update_work_function(void) {
         }
         goto END;
     }
+
+    mender_log_info("Checking device type compatibility");
 
     /* Match device type  */
     if (MENDER_OK
@@ -1229,6 +1071,7 @@ mender_client_update_work_function(void) {
 
     /* Check if the system must restart following downloading the deployment */
     if (true == mender_client_deployment_needs_restart) {
+        mender_log_info("Needs restart");
         /* Save deployment data to publish deployment status after rebooting */
         if (NULL == (storage_deployment_data = cJSON_PrintUnformatted(mender_client_deployment_data))) {
             mender_log_error("Unable to save deployment data");
@@ -1241,6 +1084,7 @@ mender_client_update_work_function(void) {
             mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
             goto END;
         }
+        mender_log_info("Rebooting system");
         mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
     } else {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
@@ -1264,6 +1108,7 @@ mender_client_update_work_function(void) {
     }
 
     /* Release memory */
+    mender_log_info("Destroying deployment");
     deployment_destroy(deployment);
     if (NULL != storage_deployment_data) {
         free(storage_deployment_data);
@@ -1272,10 +1117,13 @@ mender_client_update_work_function(void) {
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
     }
-    mender_artifact_release_ctx(mender_artifact_ctx);
+    mender_log_info("Releasing artifact context");
+    // TODO We should check the context releasing (deinitialization; cleanup) before the restart.
+    // mender_artifact_release_ctx(mender_artifact_ctx);
 
     /* Check if the system must restart following downloading the deployment */
     if (true == mender_client_deployment_needs_restart) {
+        mender_log_info("All righty; get it done baby!");
         /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
         if (NULL != mender_client_callbacks.restart) {
             mender_client_callbacks.restart();
@@ -1305,20 +1153,19 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
 
     assert(NULL != type);
     cJSON       *json_types;
-    mender_err_t ret;
+    mender_err_t ret = MENDER_FAIL;
 
-    /* Take mutex used to protect access to the artifact types management list */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_client_artifact_types_mutex, -1))) {
-        mender_log_error("Unable to take mutex");
-        return ret;
-    }
+    mender_log_debug("Downloading artifact of type '%s' [%d/%zu]", type, index, size);
 
     /* Treatment depending of the type */
     if (NULL != mender_client_artifact_types_list) {
+
         for (size_t artifact_type_index = 0; artifact_type_index < mender_client_artifact_types_count; artifact_type_index++) {
 
             /* Check artifact type */
             if (StringEqual(type, mender_client_artifact_types_list[artifact_type_index]->type)) {
+
+                // mender_log_info("Found correct type callback");
 
                 /* Retrieve ID and artifact name */
                 cJSON *json_id = NULL;
@@ -1353,6 +1200,8 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
                 /* Treatments related to the artifact type (once) */
                 if (0 == index) {
 
+                    // mender_log_info("Are we index 0? This logic drives me mad!");
+
                     /* Add type to the deployment data */
                     if (NULL == (json_types = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "types"))) {
                         mender_log_error("Unable to add type to the deployment data");
@@ -1372,10 +1221,12 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
 
                     /* Set flags */
                     if (true == mender_client_artifact_types_list[artifact_type_index]->needs_restart) {
+                        mender_log_info("We are going to restart after the update");
                         mender_client_deployment_needs_restart = true;
                     }
                 }
 
+                ret = MENDER_OK;
                 goto END;
             }
         }
@@ -1386,9 +1237,6 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
     ret = MENDER_FAIL;
 
 END:
-
-    /* Release mutex used to protect access to the artifact types management list */
-    mender_scheduler_mutex_give(mender_client_artifact_types_mutex);
 
     return ret;
 }
@@ -1405,6 +1253,10 @@ mender_client_download_artifact_flash_callback(
 
     /* Check if the filename is provided */
     if (NULL != filename) {
+        mender_log_info("Writing to flash: %s", filename);
+
+        // TODO remove (here and below) in favor of debug logging once the logging is under control
+        printf(".");
 
         /* Check if the flash handle must be opened */
         if (0 == index) {
@@ -1425,6 +1277,7 @@ mender_client_download_artifact_flash_callback(
         /* Check if the flash handle must be closed */
         if (index + length >= size) {
 
+            printf("DONE\n");
             /* Close the flash handle */
             if (MENDER_OK != (ret = mender_flash_close(mender_client_flash_handle))) {
                 mender_log_error("Unable to close flash handle");

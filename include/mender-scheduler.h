@@ -3,6 +3,7 @@
  * @brief     Mender scheduler interface
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +26,13 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "mender-utils.h"
+
+/**
+ * @brief Alternative scheduler: simple delayable tasks with no resource protection. See MEN-7536
+ */
+typedef mender_err_t (*mender_scheduler_alt_work_function_t)(void);
+mender_err_t mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval);
+mender_err_t mender_scheduler_alt_work_start();
 
 /**
  * @brief Work parameters

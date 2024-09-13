@@ -25,6 +25,7 @@
 #include "mender-scheduler.h"
 
 #ifdef CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT
+#error This stable branch does not work with Troubleshoot add-on
 
 #include <msgpack.h>
 

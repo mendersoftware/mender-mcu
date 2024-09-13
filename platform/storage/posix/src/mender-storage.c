@@ -259,6 +259,16 @@ END:
     fclose(f);
     return ret;
 }
+mender_err_t
+mender_storage_delete_update_state(void) {
+    /* Delete update state */
+    if (0 != unlink(MENDER_STORAGE_NVS_UPDATE_STATE)) {
+        mender_log_error("Unable to delete update state");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS

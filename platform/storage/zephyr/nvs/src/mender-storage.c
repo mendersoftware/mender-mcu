@@ -346,12 +346,13 @@ mender_err_t
 mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type) {
     assert(NULL != *artifact_type);
 
-    size_t       artifact_type_size;
-    ssize_t      n_read;
-    mender_err_t ret;
+    size_t        artifact_type_size;
+    ssize_t       n_read;
+    mender_err_t  ret;
+    unsigned char byte;
 
-    n_read = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, NULL, 0);
-    if (0 == n_read) {
+    n_read = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, &byte, 0);
+    if ((0 == n_read) || (-ENOENT == n_read)) {
         mender_log_debug("Update state record empty or unavailable");
         return MENDER_NOT_FOUND;
     } else if (n_read < 0) {

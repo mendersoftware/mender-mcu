@@ -362,7 +362,7 @@ mender_storage_save_update_state(mender_update_state_t state, const char *artifa
 
 mender_err_t
 mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type) {
-    assert(NULL != *artifact_type);
+    assert(NULL != artifact_type);
 
     size_t        artifact_type_size;
     ssize_t       n_read;

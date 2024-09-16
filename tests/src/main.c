@@ -334,8 +334,7 @@ main(int argc, char **argv) {
 
 RELEASE:
 
-    /* Deactivate and release mender-client */
-    mender_client_deactivate();
+    /* Release mender-client */
     mender_client_exit();
 
 END:

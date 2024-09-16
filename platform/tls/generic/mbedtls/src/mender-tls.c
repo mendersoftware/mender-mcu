@@ -26,7 +26,7 @@
 #include <mbedtls/error.h>
 #endif /* MBEDTLS_ERROR_C */
 #include <mbedtls/pk.h>
-#include <mbedtls/rsa.h>
+#include <mbedtls/ecdsa.h>
 #include <mbedtls/x509.h>
 #include "mender-log.h"
 #include "mender-storage.h"
@@ -127,77 +127,95 @@ mender_tls_init(void) {
 mender_err_t
 mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char **user_provided_key, size_t *user_provided_key_length), bool recommissioning) {
 
-    mender_err_t ret;
-
     /* Release memory */
-    if (NULL != mender_tls_private_key) {
-        free(mender_tls_private_key);
-        mender_tls_private_key = NULL;
-    }
+    free(mender_tls_private_key);
+    mender_tls_private_key        = NULL;
     mender_tls_private_key_length = 0;
-    if (NULL != mender_tls_public_key) {
-        free(mender_tls_public_key);
-        mender_tls_public_key = NULL;
-    }
+
+    free(mender_tls_public_key);
+    mender_tls_public_key        = NULL;
     mender_tls_public_key_length = 0;
 
     /* Check if recommissioning is forced */
-    if (true == recommissioning) {
-
+    if (recommissioning) {
         /* Erase authentication keys */
-        mender_log_info("Delete authentication keys...");
+        mender_log_info("Deleting authentication keys");
         if (MENDER_OK != mender_storage_delete_authentication_keys()) {
             mender_log_warning("Unable to delete authentication keys");
         }
     }
 
-    /* Buffer used for user-provided key */
-    char  *user_provided_key        = NULL;
-    size_t user_provided_key_length = 0;
+    /* Get user provided key (callback is optional) */
+    if (NULL != get_user_provided_keys) {
+        char  *user_provided_key        = NULL;
+        size_t user_provided_key_length = 0;
 
-    if (MENDER_OK != (ret = get_user_provided_keys(&user_provided_key, &user_provided_key_length))) {
-        mender_log_error("Unable to get user provided key");
-        goto END;
-    }
-    if (NULL != user_provided_key) {
-        mender_log_info("Getting authentication key...");
-        if (MENDER_OK
-            != (ret = mender_tls_get_authentication_keys(&mender_tls_private_key,
-                                                         &mender_tls_private_key_length,
-                                                         &mender_tls_public_key,
-                                                         &mender_tls_public_key_length,
-                                                         user_provided_key,
-                                                         user_provided_key_length))) {
+        mender_log_debug("Retrieving user provided authentication keys");
+
+        if (MENDER_OK != get_user_provided_keys(&user_provided_key, &user_provided_key_length)) {
             mender_log_error("Unable to get user provided authentication key");
-            goto END;
-        }
-        /* Retrieve or generate private and public keys */
-    } else if (MENDER_OK
-               != (ret = mender_storage_get_authentication_keys(
-                       &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length))) {
-        /* Generate authentication keys */
-        mender_log_info("Generating authentication keys...");
-        if (MENDER_OK
-            != (ret = mender_tls_get_authentication_keys(
-                    &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length, NULL, 0))) {
-            mender_log_error("Unable to generate authentication keys");
-            goto END;
+            return MENDER_FAIL;
         }
 
-        /* Record keys */
-        if (MENDER_OK
-            != (ret = mender_storage_set_authentication_keys(
-                    mender_tls_private_key, mender_tls_private_key_length, mender_tls_public_key, mender_tls_public_key_length))) {
-            mender_log_error("Unable to record authentication keys");
-            goto END;
+        if ((NULL == user_provided_key) || (0 == user_provided_key_length)) {
+            mender_log_error("User provided authentication key is empty");
+            return MENDER_FAIL;
         }
+
+        if (MENDER_OK
+            != mender_tls_get_authentication_keys(&mender_tls_private_key,
+                                                  &mender_tls_private_key_length,
+                                                  &mender_tls_public_key,
+                                                  &mender_tls_public_key_length,
+                                                  user_provided_key,
+                                                  user_provided_key_length)) {
+            mender_log_error("Unable to get user provided authentication key");
+            free(user_provided_key);
+            return MENDER_FAIL;
+        }
+
+        free(user_provided_key);
+        return MENDER_OK;
     }
 
-END:
-    /* Release memory */
-    free(user_provided_key);
+    /* Get keys from store */
+    mender_log_debug("Trying to read authentication keys from store");
+    switch (mender_storage_get_authentication_keys(
+        &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length)) {
+        case MENDER_OK:
+            /* Keys found! */
+            return MENDER_OK;
+        case MENDER_NOT_FOUND:
+            mender_log_debug("Authentication keys not found in store");
+            break;
+        case MENDER_DONE:
+            /* fallthrough */
+        case MENDER_NOT_IMPLEMENTED:
+            assert(false && "Unexpected return value");
+            /* fallthrough */
+        case MENDER_FAIL:
+            mender_log_error("Unable to get authentication keys from store");
+            return MENDER_FAIL;
+    }
 
-    return (0 != ret) ? MENDER_FAIL : MENDER_OK;
+    /* We failed to get keys from store. Hence, we need to generate them */
+    mender_log_info("Generating authentication keys");
+    if (MENDER_OK
+        != mender_tls_get_authentication_keys(
+            &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length, NULL, 0)) {
+        mender_log_error("Unable to generate authentication keys");
+        return MENDER_FAIL;
+    }
+
+    /* Store newly generated keys */
+    mender_log_debug("Writing authentication keys to store");
+    if (MENDER_OK
+        != mender_storage_set_authentication_keys(mender_tls_private_key, mender_tls_private_key_length, mender_tls_public_key, mender_tls_public_key_length)) {
+        mender_log_error("Unable to store authentication keys");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
 }
 
 mender_err_t
@@ -363,9 +381,10 @@ mender_tls_exit(void) {
 static mender_err_t
 mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
 
-    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
-    mbedtls_entropy_context  *entropy  = NULL;
-    int                       ret;
+    mbedtls_ctr_drbg_context     *ctr_drbg   = NULL;
+    mbedtls_entropy_context      *entropy    = NULL;
+    const mbedtls_ecp_curve_info *curve_info = NULL;
+    int                           ret;
     MBEDTLS_ERR_BUF;
 
     if (NULL == (ctr_drbg = (mbedtls_ctr_drbg_context *)malloc(sizeof(mbedtls_ctr_drbg_context)))) {
@@ -388,13 +407,25 @@ mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
     }
 
     /* PK setup */
-    if (0 != (ret = mbedtls_pk_setup(pk_context, mbedtls_pk_info_from_type(MBEDTLS_PK_RSA)))) {
+    if (0 != (ret = mbedtls_pk_setup(pk_context, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)))) {
         LOG_MBEDTLS_ERROR("Unable to setup pk", ret);
         goto END;
     }
 
+    /* Find a supported curve */
+    for (curve_info = mbedtls_ecp_curve_list(); MBEDTLS_ECP_DP_NONE != curve_info->grp_id; curve_info++) {
+        if (1 == mbedtls_ecdsa_can_do(curve_info->grp_id)) {
+            mender_log_debug("Found supported ECDSA curve: %s", curve_info->name);
+            break;
+        }
+    }
+    if (MBEDTLS_ECP_DP_NONE == curve_info->grp_id) {
+        mender_log_error("Unable to find a ECDSA valid curve");
+        goto END;
+    }
+
     /* Generate key pair */
-    if (0 != (ret = mbedtls_rsa_gen_key(mbedtls_pk_rsa(*pk_context), mbedtls_ctr_drbg_random, ctr_drbg, 3072, 65537))) {
+    if (0 != (ret = mbedtls_ecdsa_genkey(mbedtls_pk_ec(*pk_context), curve_info->grp_id, mbedtls_ctr_drbg_random, ctr_drbg))) {
         LOG_MBEDTLS_ERROR("Unable to generate key", ret);
         goto END;
     }

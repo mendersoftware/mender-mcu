@@ -3,6 +3,7 @@
  * @brief     Mender scheduler interface for Zephyr platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +18,67 @@
  * limitations under the License.
  */
 
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#error This stable branch does not work with Inventory
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
 #include <zephyr/kernel.h>
 #include "mender-log.h"
 #include "mender-scheduler.h"
+
+/**
+ * @brief User parameters
+ */
+static mender_scheduler_alt_work_function_t user_function = NULL;
+static int32_t                              user_interval = 0;
+
+/**
+ * @brief Work Queue APIs
+ */
+static struct k_work_delayable mender_work_handle;
+static void
+mender_work_function(struct k_work *work) {
+
+    assert(NULL != user_function);
+
+    mender_log_debug("Inside work function");
+    mender_err_t status = (*user_function)();
+    mender_log_debug("Executed work function [%d]", status);
+
+    k_work_reschedule(&mender_work_handle, K_SECONDS(user_interval));
+}
+
+/**
+ * @brief Create work
+ */
+mender_err_t
+mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval) {
+
+    assert(NULL != func);
+
+    user_function = func;
+    user_interval = interval;
+
+    mender_log_debug("Entering activate function; here the magic begins!");
+    k_work_init_delayable(&mender_work_handle, mender_work_function);
+
+    return MENDER_OK;
+}
+
+/**
+ * @brief Start work
+ */
+mender_err_t
+mender_scheduler_alt_work_start() {
+
+    assert(NULL != user_function);
+
+    k_work_reschedule(&mender_work_handle, K_NO_WAIT);
+
+    return MENDER_OK;
+}
+
+#if 0
 
 /**
  * @brief Default work queue stack size (kB)
@@ -342,3 +401,4 @@ mender_scheduler_work_handler(struct k_work *handle) {
     /* Release semaphore used to protect the work function */
     k_sem_give(&work_context->sem_handle);
 }
+#endif

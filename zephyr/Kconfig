@@ -94,7 +94,7 @@ if MENDER_MCU_CLIENT
 
     menu "Update modules configuration"
 
-        config MENDER_CLIENT_ZEPHYR_IMAGE_UPDATE_MODULE
+        config MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
             bool "The default Mender zephyr-image update module"
             default y
             select BOOTLOADER_MCUBOOT

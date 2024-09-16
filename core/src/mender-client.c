@@ -1155,7 +1155,18 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
     cJSON       *json_types;
     mender_err_t ret = MENDER_FAIL;
 
-    mender_log_debug("Downloading artifact of type '%s' [%d/%zu]", type, index, size);
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
+    static size_t download_progress = 0;
+    /* New update */
+    if (0 == index) {
+        download_progress = 0;
+    }
+    /* Update every 10% */
+    if (((index * 10) / size) > download_progress) {
+        download_progress = (index * 10) / size;
+        mender_log_info("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
+    }
+#endif
 
     /* Treatment depending of the type */
     if (NULL != mender_client_artifact_types_list) {
@@ -1253,7 +1264,6 @@ mender_client_download_artifact_flash_callback(
 
     /* Check if the filename is provided */
     if (NULL != filename) {
-        mender_log_info("Writing to flash: %s", filename);
 
         // TODO remove (here and below) in favor of debug logging once the logging is under control
         printf(".");

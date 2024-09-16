@@ -344,9 +344,9 @@ mender_err_t
 mender_storage_save_update_state(mender_update_state_t state, const char *artifact_type) {
     assert(NULL != artifact_type);
 
-    size_t artifact_type_len;
+    size_t artifact_type_size;
 
-    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, state, sizeof(state))) {
+    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, (const void *)state, sizeof(state))) {
         mender_log_error("Unable to save update state");
         return MENDER_FAIL;
     }
@@ -385,7 +385,7 @@ mender_storage_get_update_state(mender_update_state_t *state, char **artifact_ty
     }
 
     *artifact_type = NULL;
-    ret            = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE, artifact_type, &artifact_type_size);
+    ret            = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE, (void **)artifact_type, &artifact_type_size);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
             mender_log_error("Failed to read saved update state, ignoring");

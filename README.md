@@ -73,7 +73,7 @@ The tenant token can be found under `My organization` in hosted Mender, where it
 ### Creating an Artifact
 Create an artifact (remember to disable compression):
 ```
-./mender-artifact write rootfs-image --compression none --artifact-name <artifact_name> --device-type <device_type> --file <file_name>
+./mender-artifact write module-image -T zephyr-image --compression none --artifact-name <artifact_name> --device-type <device_type> --file <file_name>
 ```
 The `device_type` in the artifact has to match the `device_type` used when running the client.
 

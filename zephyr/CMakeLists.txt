@@ -33,7 +33,7 @@ if(CONFIG_MENDER_MCU_CLIENT)
     zephyr_library_sources_ifdef(CONFIG_MENDER_CLIENT_INVENTORY
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-inventory.c"
     )
-    zephyr_library_sources_ifdef(CONFIG_MENDER_CLIENT_ZEPHYR_IMAGE_UPDATE_MODULE
+    zephyr_library_sources_ifdef(CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-zephyr-image-update-module.c"
     )
     zephyr_include_directories("${CMAKE_CURRENT_LIST_DIR}/../include")

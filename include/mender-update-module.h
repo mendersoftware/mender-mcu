@@ -55,16 +55,16 @@ typedef enum mender_update_state_t {
  * @param length Artifact data length
  */
 struct mender_update_download_state_data_s {
-    char    *id;
-    char    *artifact_name;
-    char    *type;
-    cJSON   *meta_data;
-    char    *filename;
-    size_t   size;
-    uint8_t *data;
-    size_t   offset;
-    size_t   length;
-    bool     done;
+    const char    *id;
+    const char    *artifact_name;
+    const char    *type;
+    const cJSON   *meta_data;
+    const char    *filename;
+    size_t         size;
+    const uint8_t *data;
+    size_t         offset;
+    size_t         length;
+    bool           done;
 };
 
 struct mender_update_install_state_data_s {

@@ -1193,9 +1193,8 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
     }
 
     /* Invoke update module download callback */
-    struct mender_update_download_state_data_s download_state_data
-        = { (char *)id, (char *)artifact_name, type, meta_data, filename, size, data, index, length, false };
-    mender_update_state_data_t state_data = { .download_state_data = &download_state_data };
+    struct mender_update_download_state_data_s download_state_data = { id, artifact_name, type, meta_data, filename, size, data, index, length, false };
+    mender_update_state_data_t                 state_data          = { .download_state_data = &download_state_data };
     if (MENDER_OK != (ret = mender_update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD](MENDER_UPDATE_STATE_DOWNLOAD, state_data))) {
         mender_log_error("An error occurred while processing data of the artifact '%s' of type '%s'", artifact_name, type);
         goto END;

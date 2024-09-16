@@ -108,6 +108,11 @@ mender_api_init(mender_api_config_t *config) {
     return ret;
 }
 
+bool
+mender_api_is_authenticated(void) {
+    return NULL != mender_api_jwt;
+}
+
 mender_err_t
 mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t **identity)) {
 

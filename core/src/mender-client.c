@@ -143,12 +143,6 @@ static mender_err_t mender_client_work_function(void);
  */
 static mender_err_t mender_client_initialization_work_function(void);
 
-/**
- * @brief Mender client authentication work function
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t mender_client_authentication_work_function(void);
-
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 /**
  * @brief Compare artifact, device and deployment device types
@@ -458,46 +452,15 @@ mender_client_work_function(void) {
         if (MENDER_DONE != (ret = mender_client_initialization_work_function())) {
             goto END;
         }
-        /* Update client state */
-        mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATION;
     }
-
-    /* TODO: Treat the network and authentication part below as not critical if
-     *       there is a saved update state we can resume from? It may fix
-     *       potential network/authentication issues. */
+    mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
 
     /* Request access to the network */
     if (MENDER_OK != (ret = mender_client_network_connect())) {
         goto END;
     }
 
-    /* Flag to allow deployment to continue in spite of a failed authentication */
-    bool allow_authentication_failure = false;
-
-    /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATION == mender_client_state) {
-        /* Perform authentication with the server */
-        if (MENDER_DONE != (ret = mender_client_authentication_work_function())) {
-            /* Check if there is a deployment in progress */
-            if (NULL != mender_client_deployment_data) {
-                /* Authentication failed with pending deployment */
-                mender_log_info("Authentication failed, continuing with deployment");
-                allow_authentication_failure = true;
-            } else {
-                /* Authentication failed and no pending deployment */
-                goto RELEASE;
-            }
-        }
-        /* Update client state */
-        if (!allow_authentication_failure) {
-            mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATED;
-        }
-    }
-    /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state || allow_authentication_failure) {
-        /* Perform updates */
-        ret = mender_client_update_work_function();
-    }
+    ret = mender_client_update_work_function();
 
 RELEASE:
 
@@ -605,18 +568,20 @@ mender_commit_artifact_data(void) {
     return MENDER_OK;
 }
 
-static mender_err_t
-mender_client_authentication_work_function(void) {
-    mender_err_t ret;
+mender_err_t
+mender_client_ensure_authenticated(void) {
+    if (mender_api_is_authenticated()) {
+        return MENDER_DONE;
+    }
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != (ret = mender_api_perform_authentication(mender_client_callbacks.get_identity))) {
+    if (MENDER_OK != mender_api_perform_authentication(mender_client_callbacks.get_identity)) {
         mender_log_error("Authentication failed");
         return MENDER_FAIL;
     }
-    mender_log_info("Authenticated successfully");
 
-    return MENDER_DONE;
+    mender_log_info("Authenticated successfully");
+    return MENDER_OK;
 }
 
 static mender_err_t
@@ -858,8 +823,13 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
 
 static mender_err_t
 mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
-
     assert(NULL != deployment_data);
+
+    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
+        /* authentication errors logged already */
+        mender_log_error("Cannot check for new deployment");
+        return MENDER_FAIL;
+    }
 
     if (NULL == (*deployment_data = calloc(1, sizeof(mender_api_deployment_data_t)))) {
         mender_log_error("Unable to allocate memory for deployment data");
@@ -1275,6 +1245,12 @@ END:
 
 static mender_err_t
 mender_client_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
+    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
+        /* authentication errors logged already */
+        mender_log_error("Cannot publish deployment status");
+        return MENDER_FAIL;
+    }
+
     mender_err_t ret;
 
     if (NULL == id) {

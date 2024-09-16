@@ -188,8 +188,7 @@ mender_zephyr_image_verify_reboot_callback(NDEBUG_UNUSED mender_update_state_t s
         return MENDER_FAIL;
     }
 
-    /* TODO: how (else) should we verify the new image? */
-    return (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) ? MENDER_OK : MENDER_FAIL;
+    return (MENDER_FAIL == mender_client_ensure_authenticated()) ? MENDER_FAIL : MENDER_OK;
 }
 
 static mender_err_t

@@ -178,7 +178,7 @@ mender_inventory_work_function(void) {
     }
 
     /* Request access to the network */
-    if (MENDER_OK != (ret = mender_client_network_connect())) {
+    if (MENDER_FAIL == (ret = mender_client_ensure_connected())) {
         mender_log_error("Requesting access to the network failed");
         goto END;
     }
@@ -187,9 +187,6 @@ mender_inventory_work_function(void) {
     if (MENDER_OK != (ret = mender_api_publish_inventory_data(mender_inventory_keystore))) {
         mender_log_error("Unable to publish inventory data");
     }
-
-    /* Release access to the network */
-    mender_client_network_release();
 
 END:
 

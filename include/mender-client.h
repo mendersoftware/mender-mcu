@@ -116,16 +116,12 @@ mender_err_t mender_client_deactivate(void);
 mender_err_t mender_client_execute(void);
 
 /**
- * @brief Function to request network access
- * @return MENDER_OK if network is connected following the request, error code otherwise
+ * @brief  Ensures the client has a network connection
+ * @return MENDER_DONE if already connected,
+ *         MENDER_OK if successfully connected,
+ *         MENDER_FAIL otherwise
  */
-mender_err_t mender_client_network_connect(void);
-
-/**
- * @brief Function to release network access
- * @return MENDER_OK if network is released following the request, error code otherwise
- */
-mender_err_t mender_client_network_release(void);
+mender_err_t mender_client_ensure_connected(void);
 
 /**
  * @brief  Ensures the client is authenticated to a Mender server API

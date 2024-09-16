@@ -111,6 +111,11 @@ static const char *update_state_str[N_MENDER_UPDATE_STATES + 1] = {
 #endif
 
 /**
+ * @brief Flag to know if network connection was requested or not
+ */
+static bool mender_client_network_connected = false;
+
+/**
  * @brief Deployment data (ID, artifact name and payload types), used to report deployment status after rebooting
  */
 static cJSON *mender_client_deployment_data = NULL;
@@ -142,6 +147,18 @@ static mender_err_t mender_client_work_function(void);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 static mender_err_t mender_client_initialization_work_function(void);
+
+/**
+ * @brief Function to request network access
+ * @return MENDER_OK if network is connected following the request, error code otherwise
+ */
+static mender_err_t mender_client_network_connect(void);
+
+/**
+ * @brief Function to release network access
+ * @return MENDER_OK if network is released following the request, error code otherwise
+ */
+static mender_err_t mender_client_network_release(void);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 /**
@@ -354,39 +371,49 @@ mender_client_activate(void) {
 }
 
 mender_err_t
-mender_client_network_connect(void) {
+mender_client_ensure_connected(void) {
+    if (mender_client_network_connected) {
+        return MENDER_DONE;
+    }
 
-    mender_err_t ret = MENDER_OK;
+    return mender_client_network_connect();
+}
+
+static mender_err_t
+mender_client_network_connect(void) {
+    if (mender_client_network_connected) {
+        return MENDER_OK;
+    }
 
     /* Request network access */
     if (NULL != mender_client_callbacks.network_connect) {
-        if (MENDER_OK != (ret = mender_client_callbacks.network_connect())) {
+        if (MENDER_OK != mender_client_callbacks.network_connect()) {
             mender_log_error("Unable to connect network");
-            goto END;
+            return MENDER_FAIL;
         }
     }
 
-END:
+    mender_client_network_connected = true;
 
-    return ret;
+    return MENDER_OK;
 }
 
-mender_err_t
+static mender_err_t
 mender_client_network_release(void) {
-
-    mender_err_t ret = MENDER_OK;
+    if (!mender_client_network_connected) {
+        return MENDER_OK;
+    }
 
     /* Release network access */
     if (NULL != mender_client_callbacks.network_release) {
-        if (MENDER_OK != (ret = mender_client_callbacks.network_release())) {
+        if (MENDER_OK != mender_client_callbacks.network_release()) {
             mender_log_error("Unable to release network");
-            goto END;
+            return MENDER_FAIL;
         }
     }
+    mender_client_network_connected = false;
 
-END:
-
-    return ret;
+    return MENDER_OK;
 }
 
 mender_err_t
@@ -410,6 +437,7 @@ mender_client_exit(void) {
     mender_tls_exit();
     mender_storage_exit();
     mender_log_exit();
+    mender_client_network_release();
 
     /* Release memory */
     mender_client_config.device_type                  = NULL;
@@ -417,6 +445,7 @@ mender_client_exit(void) {
     mender_client_config.tenant_token                 = NULL;
     mender_client_config.authentication_poll_interval = 0;
     mender_client_config.update_poll_interval         = 0;
+
     if (NULL != mender_client_deployment_data) {
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;

@@ -484,17 +484,7 @@ mender_client_work_function(void) {
     }
     mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
 
-    /* Request access to the network */
-    if (MENDER_OK != (ret = mender_client_network_connect())) {
-        goto END;
-    }
-
     ret = mender_client_update_work_function();
-
-RELEASE:
-
-    /* Release access to the network */
-    mender_client_network_release();
 
 END:
 
@@ -601,6 +591,10 @@ mender_err_t
 mender_client_ensure_authenticated(void) {
     if (mender_api_is_authenticated()) {
         return MENDER_DONE;
+    }
+
+    if (MENDER_FAIL == mender_client_ensure_connected()) {
+        return MENDER_FAIL;
     }
 
     /* Perform authentication with the mender server */

@@ -1161,7 +1161,8 @@ mender_client_update_work_function(void) {
                 if (NULL != mender_update_module->callbacks[update_state]) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
-                break;
+                NEXT_STATE;
+                break; /* end of the failure path */
 
             case MENDER_UPDATE_STATE_END:
                 /* This is only here to cover all possible values of the

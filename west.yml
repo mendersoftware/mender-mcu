@@ -1,0 +1,13 @@
+manifest:
+
+  remotes:
+    - name: mender
+      url-base: https://github.com/mendersoftware
+
+  projects:
+    - name: cjson-zephyr
+      submodules: true
+      remote: mender
+      path: modules/lib/cjson
+      # TODO: set to Git sha
+      revision: main

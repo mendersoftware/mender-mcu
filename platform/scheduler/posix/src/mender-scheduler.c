@@ -458,3 +458,22 @@ END:
     /* Terminate work queue thread */
     pthread_exit(NULL);
 }
+
+/**
+ * @brief Dummy implementation
+ */
+mender_err_t
+mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval) {
+    (void)func;
+    (void)interval;
+
+    return MENDER_FAIL;
+}
+
+/**
+ * @brief Dummy implementation
+ */
+mender_err_t
+mender_scheduler_alt_work_start() {
+    return MENDER_FAIL;
+}

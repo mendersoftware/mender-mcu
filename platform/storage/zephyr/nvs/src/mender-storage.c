@@ -52,8 +52,9 @@ static mender_err_t
 nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
     ssize_t ret;
 
-    /* Retrieve length of the data */
-    ret = nvs_read(nvs, id, NULL, 0);
+    /* Peek read to retrieve length of the data */
+    uint8_t byte;
+    ret = nvs_read(nvs, id, &byte, 0);
     if (ret <= 0) {
         return (0 == ret || -ENOENT == ret) ? MENDER_NOT_FOUND : MENDER_FAIL;
     }

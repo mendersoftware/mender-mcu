@@ -73,17 +73,11 @@ if(CONFIG_MENDER_PLATFORM_STORAGE_TYPE MATCHES "zephyr/nvs")
 endif()
 
 # Link the mender-mcu-client library
-if(CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    target_link_libraries(mender-mcu-client msgpack-c)
-endif()
 if(CONFIG_MENDER_PLATFORM_NET_TYPE MATCHES "generic/curl")
     target_link_libraries(mender-mcu-client curl)
 endif()
 if(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE MATCHES "posix")
     target_link_libraries(mender-mcu-client rt)
-endif()
-if(CONFIG_MENDER_PLATFORM_TLS_TYPE MATCHES "generic/cryptoauthlib")
-    target_link_libraries(mender-mcu-client cryptoauth)
 endif()
 
 # Link the executable with the mender-mcu-client library

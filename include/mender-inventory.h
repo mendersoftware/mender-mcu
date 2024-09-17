@@ -1,6 +1,6 @@
 /**
  * @file      mender-inventory.h
- * @brief     Mender MCU Inventory add-on implementation
+ * @brief     Mender MCU Inventory implementation
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -24,39 +24,25 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-addon.h"
 #include "mender-utils.h"
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 /**
- * @brief Mender inventory instance
- */
-extern const mender_addon_instance_t mender_inventory_addon_instance;
-
-/**
- * @brief Mender inventory configuration
- */
-typedef struct {
-    int32_t refresh_interval; /**< Inventory refresh interval, default is 28800 seconds, -1 permits to disable periodic execution */
-} mender_inventory_config_t;
-
-/**
- * @brief Initialize mender inventory add-on
- * @param config Mender inventory configuration
- * @param callbacks Mender inventory callbacks (not used)
+ * @brief Initialize mender inventory
+ * @param interval The interval to perform inventory updates at
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_init(void *config, void *callbacks);
+mender_err_t mender_inventory_init(uint32_t interval);
 
 /**
- * @brief Activate mender inventory add-on
+ * @brief Activate mender inventory
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_inventory_activate(void);
 
 /**
- * @brief Deactivate mender inventory add-on
+ * @brief Deactivate mender inventory
  * @note This function stops synchronization with the server
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
@@ -78,12 +64,12 @@ mender_err_t mender_inventory_set(mender_keystore_t *inventory);
 mender_err_t mender_inventory_execute(void);
 
 /**
- * @brief Release mender inventory add-on
+ * @brief Release mender inventory
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_inventory_exit(void);
 
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 #ifdef __cplusplus
 }

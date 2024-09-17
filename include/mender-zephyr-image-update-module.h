@@ -1,8 +1,8 @@
 /**
- * @file      mender-addon.h
- * @brief     Mender MCU addon implementation
+ * @file      mender-zephyr-image-update-module.h
+ * @brief     The basic Zephyr update module based on MCUboot
  *
- * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,27 +17,27 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_ADDON_H__
-#define __MENDER_ADDON_H__
+#ifndef __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_H__
+#define __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-utils.h"
+#include "mender-update-module.h"
+
+#ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
 
 /**
- * @brief Mender add-on instance
+ * @brief  Register the 'zephyr-image' update module
+ * @return MENDER_OK if successfully registered, error code otherwise
  */
-typedef struct {
-    mender_err_t (*init)(void *, void *); /**< Invoked to initialize the add-on */
-    mender_err_t (*activate)(void);       /**< Invoked to activate the add-on */
-    mender_err_t (*deactivate)(void);     /**< Invoked to deactivate the add-on */
-    mender_err_t (*exit)(void);           /**< Invoked to cleanup the add-on */
-} mender_addon_instance_t;
+mender_err_t mender_zephyr_image_register_update_module(void);
+
+#endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_ADDON_H__ */
+#endif /* __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_H__ */

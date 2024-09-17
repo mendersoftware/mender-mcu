@@ -25,20 +25,37 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-addon.h"
 #include "mender-utils.h"
+#include "mender-update-module.h"
+
+/**
+ * @brief Mender client states
+ */
+typedef enum {
+    MENDER_CLIENT_STATE_INITIALIZATION, /**< Perform initialization */
+    MENDER_CLIENT_STATE_AUTHENTICATION, /**< Perform authentication with the server */
+    MENDER_CLIENT_STATE_AUTHENTICATED,  /**< Perform updates */
+    MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
+} mender_client_state_t;
+
+/**
+ * @brief Mender client state
+ */
+extern mender_client_state_t mender_client_state;
 
 /**
  * @brief Mender client configuration
  */
 typedef struct {
-    char   *artifact_name;                /**< Artifact name */
     char   *device_type;                  /**< Device type */
     char   *host;                         /**< URL of the mender server */
     char   *tenant_token;                 /**< Tenant token used to authenticate on the mender server (optional) */
     int32_t authentication_poll_interval; /**< Authentication poll interval, default is 60 seconds, -1 permits to disable periodic execution */
     int32_t update_poll_interval;         /**< Update poll interval, default is 1800 seconds, -1 permits to disable periodic execution */
-    bool    recommissioning;              /**< Used to force creation of new authentication keys */
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
+#endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY */
+    bool recommissioning;               /**< Used to force creation of new authentication keys */
 } mender_client_config_t;
 
 /**
@@ -47,14 +64,14 @@ typedef struct {
 typedef struct {
     mender_err_t (*network_connect)(void);                                 /**< Invoked when mender-client requests access to the network */
     mender_err_t (*network_release)(void);                                 /**< Invoked when mender-client releases access to the network */
-    mender_err_t (*authentication_success)(void);                          /**< Invoked when authentication with the mender server succeeded */
-    mender_err_t (*authentication_failure)(void);                          /**< Invoked when authentication with the mender server failed */
     mender_err_t (*deployment_status)(mender_deployment_status_t, char *); /**< Invoked on transition changes to inform of the new deployment status */
     mender_err_t (*restart)(void);                                         /**< Invoked to restart the device */
     mender_err_t (*get_identity)(mender_identity_t **identity);            /**< Invoked to retrieve identity */
     mender_err_t (*get_user_provided_keys)(
         char **user_provided_key, size_t *user_provided_key_length); /**< Invoked to retrieve buffer and buffer size of PEM encoded user-provided key */
 } mender_client_callbacks_t;
+
+extern mender_client_callbacks_t mender_client_callbacks;
 
 /**
  * @brief Return mender client version
@@ -71,26 +88,12 @@ char *mender_client_version(void);
 mender_err_t mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks);
 
 /**
- * @brief Register artifact type
- * @param type Artifact type
- * @param callback Artifact type callback
- * @param needs_restart Flag to indicate if the artifact type requires the device to restart after downloading
- * @param artifact_name Artifact name (optional, NULL otherwise), set to validate module update after restarting
+ * @brief Register update module
+ * @param update_module The update module to register
  * @return MENDER_OK if the function succeeds, error code otherwise
+ * @note Takes ownership of #update_module in case of success
  */
-mender_err_t mender_client_register_artifact_type(char *type,
-                                                  mender_err_t (*callback)(char *, char *, char *, cJSON *, char *, size_t, void *, size_t, size_t),
-                                                  bool  needs_restart,
-                                                  char *artifact_name);
-
-/**
- * @brief Register add-on
- * @param addon Add-on
- * @param config Add-on configuration
- * @param callbacks Add-on callbacks
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_client_register_addon(mender_addon_instance_t *addon, void *config, void *callbacks);
+mender_err_t mender_client_register_update_module(mender_update_module_t *update_module);
 
 /**
  * @brief Activate mender client
@@ -114,13 +117,13 @@ mender_err_t mender_client_deactivate(void);
 mender_err_t mender_client_execute(void);
 
 /**
- * @brief Function to be called from add-ons to request network access
+ * @brief Function to request network access
  * @return MENDER_OK if network is connected following the request, error code otherwise
  */
 mender_err_t mender_client_network_connect(void);
 
 /**
- * @brief Function to be called from add-ons to release network access
+ * @brief Function to release network access
  * @return MENDER_OK if network is released following the request, error code otherwise
  */
 mender_err_t mender_client_network_release(void);

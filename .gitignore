@@ -1,9 +1,9 @@
 build
 tests/build
 tests/mocks/cjson/cjson
-tests/mocks/cryptoauthlib/cryptoauthlib
-tests/mocks/freertos/freertos
 tests/mocks/mbedtls/mbedtls
+tests/_deps/
+tests/mender-mcu-client.elf
 
 CMakeCache.txt
 CMakeFiles/

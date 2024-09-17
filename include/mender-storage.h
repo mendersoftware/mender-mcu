@@ -25,6 +25,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "mender-utils.h"
+#include "mender-update-module.h"
 
 /**
  * @brief Initialize mender storage
@@ -76,36 +77,29 @@ mender_err_t mender_storage_set_deployment_data(char *deployment_data);
 mender_err_t mender_storage_get_deployment_data(char **deployment_data);
 
 /**
+ * @brief Save update module state
+ * @param artifact_type artifact type of the update module we are saving the state of
+ * @param state state of the update module
+ */
+mender_err_t mender_storage_save_update_state(mender_update_state_t state, const char *artifact_type);
+
+/**
+ * @brief Get update module state
+ * @see mender_storage_save_update_state()
+ */
+mender_err_t mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type);
+
+/**
+ * @brief Delete update module state
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_delete_update_state(void);
+
+/**
  * @brief Delete deployment data
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_storage_delete_deployment_data(void);
-
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-
-/**
- * @brief Set device configuration
- * @param device_config Device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_storage_set_device_config(char *device_config);
-
-/**
- * @brief Get device configuration
- * @param device_config Device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_storage_get_device_config(char **device_config);
-
-/**
- * @brief Delete device configuration
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_storage_delete_device_config(void);
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
@@ -129,6 +123,18 @@ mender_err_t mender_storage_delete_provides(void);
 
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
+/**
+ * @brief Set artifact name
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_set_artifact_name(const char *artifact_name);
+
+/**
+ * @brief Get artifact name
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_storage_get_artifact_name(char **artifact_name);
 
 /**
  * @brief Release mender storage

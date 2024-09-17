@@ -83,37 +83,6 @@ mender_storage_delete_deployment_data(void) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE
-#ifdef CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE
-
-__attribute__((weak)) mender_err_t
-mender_storage_set_device_config(char *device_config) {
-
-    (void)device_config;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_storage_get_device_config(char **device_config) {
-
-    (void)device_config;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_storage_delete_device_config(void) {
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-#endif /* CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE */
-#endif /* CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE */
-
 __attribute__((weak)) mender_err_t
 mender_storage_exit(void) {
 

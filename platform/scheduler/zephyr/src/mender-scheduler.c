@@ -18,9 +18,9 @@
  * limitations under the License.
  */
 
-#ifdef CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #error This stable branch does not work with Inventory
-#endif
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 #include <zephyr/kernel.h>
 #include "mender-log.h"

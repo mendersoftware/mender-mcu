@@ -50,36 +50,18 @@ if (NOT CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL)
 else()
     message(STATUS "Using custom '${CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL}' update poll interval")
 endif()
-option(CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE "Mender client Configure" OFF)
-option(CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE "Mender client Configure storage" ON)
-if (CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
-    message(STATUS "Using mender-configure add-on")
-    if (CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE)
-        message(STATUS "Using mender-configure storage")
-    endif()
-    if (NOT CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL)
-        message(STATUS "Using default configure refresh interval")
-    else()
-        message(STATUS "Using custom '${CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL}' configure refresh interval")
-    endif()
-endif()
-option(CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY "Mender client Inventory" ON)
-if (CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    message(STATUS "Using mender-inventory add-on")
+option(CONFIG_MENDER_CLIENT_INVENTORY "Mender client Inventory" ON)
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+    message(STATUS "Using mender-inventory")
     if (NOT CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL)
         message(STATUS "Using default inventory refresh interval")
     else()
         message(STATUS "Using custom '${CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL}' inventory refresh interval")
     endif()
-endif()
-option(CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT "Mender client Troubleshoot (EXPERIMENTAL)" OFF)
-if (CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    message(STATUS "Using mender-troubleshoot add-on")
-    if (NOT CONFIG_MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL)
-        message(STATUS "Using default troubleshoot healthcheck interval")
-    else()
-        message(STATUS "Using custom '${CONFIG_MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL}' troubleshoot healthcheck interval")
-    endif()
+  endif()
+option(CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE "The defautl Mender zephyr-image update module" ON)
+if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
+  message(STATUS "Using the default zephyr-image update module")
 endif()
 if (NOT CONFIG_MENDER_LOG_LEVEL)
     message(STATUS "Using default log level")
@@ -153,26 +135,14 @@ endif()
 if (CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL)
     target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL=${CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL})
 endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
-    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
-    if (CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE)
-        target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_CONFIGURE_STORAGE)
-    endif()
-    if (CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL)
-        target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL=${CONFIG_MENDER_CLIENT_CONFIGURE_REFRESH_INTERVAL})
-    endif()
-endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_INVENTORY)
     if (CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL)
         target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL=${CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL})
     endif()
 endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    if (CONFIG_MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL)
-        target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL=${CONFIG_MENDER_CLIENT_TROUBLESHOOT_HEALTHCHECK_INTERVAL})
-    endif()
+if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
+  target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
 endif()
 if (CONFIG_MENDER_LOG_LEVEL)
     target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_LOG_LEVEL=${CONFIG_MENDER_LOG_LEVEL})
@@ -190,6 +160,7 @@ file(GLOB SOURCES_TEMP
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-artifact.c"
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-client.c"
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-utils.c"
+    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-zephyr-image-update-module.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
@@ -197,25 +168,19 @@ file(GLOB SOURCES_TEMP
     "${CMAKE_CURRENT_LIST_DIR}/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
 )
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+    list(APPEND SOURCES_TEMP
+        "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-inventory.c"
+    )
+endif()
+if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
+    list(APPEND SOURCES_TEMP
+        "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-zephyr-image-update-module.c"
+    )
+endif()
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     list(APPEND SOURCES_TEMP
         "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-net.c"
-    )
-endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_CONFIGURE)
-    list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/add-ons/src/mender-configure.c"
-    )
-endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_INVENTORY)
-    list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/add-ons/src/mender-inventory.c"
-    )
-endif()
-if (CONFIG_MENDER_CLIENT_ADD_ON_TROUBLESHOOT)
-    list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/add-ons/src/mender-troubleshoot.c"
-        "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-websocket.c"
     )
 endif()
 target_sources(mender-mcu-client PRIVATE ${SOURCES_TEMP})

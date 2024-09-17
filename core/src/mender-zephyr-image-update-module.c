@@ -93,7 +93,7 @@ mender_zephyr_image_register_update_module(void) {
 }
 
 static mender_err_t
-mender_zephyr_image_download_artifact_flash_callback(NDEBUG_UNUSED mender_update_state_t state, mender_update_state_data_t callback_data) {
+mender_zephyr_image_download_artifact_flash_callback(MENDER_NDEBUG_UNUSED mender_update_state_t state, mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_DOWNLOAD == state);
 
     struct mender_update_download_state_data_s *dl_data = callback_data.download_state_data;
@@ -138,7 +138,7 @@ END:
 }
 
 static mender_err_t
-mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_set_pending_image(MENDER_NDEBUG_UNUSED mender_update_state_t state, MENDER_ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_INSTALL == state);
     mender_err_t ret;
 
@@ -155,7 +155,7 @@ mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state,
 }
 
 static mender_err_t
-mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t state, MENDER_ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_FAILURE == state);
     mender_err_t ret;
 
@@ -167,7 +167,7 @@ mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, 
 }
 
 static mender_err_t
-mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_reboot_callback(MENDER_NDEBUG_UNUSED mender_update_state_t state, MENDER_ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_REBOOT == state || MENDER_UPDATE_STATE_ROLLBACK_REBOOT == state);
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
     if (NULL != mender_client_callbacks.restart) {
@@ -180,7 +180,7 @@ mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, A
 }
 
 static mender_err_t
-mender_zephyr_image_verify_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_verify_reboot_callback(MENDER_NDEBUG_UNUSED mender_update_state_t state, MENDER_ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_VERIFY_REBOOT == state);
 
     if (mender_flash_is_image_confirmed()) {
@@ -192,7 +192,7 @@ mender_zephyr_image_verify_reboot_callback(NDEBUG_UNUSED mender_update_state_t s
 }
 
 static mender_err_t
-mender_zephyr_image_confirm_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
+mender_zephyr_image_confirm_image(MENDER_NDEBUG_UNUSED mender_update_state_t state, MENDER_ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_COMMIT == state);
 
     mender_err_t ret = mender_flash_confirm_image();

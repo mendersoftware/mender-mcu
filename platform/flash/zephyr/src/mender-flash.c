@@ -142,6 +142,12 @@ mender_flash_confirm_image(void) {
             return MENDER_FAIL;
         }
         mender_log_info("Application has been mark valid and rollback canceled");
+    } else {
+
+        /* This should not happen: if there is no pending image the deployment should
+           have been already aborted in Artifact Verify Reboot state. */
+        mender_log_error("Commit requested but there is no pending image con confirm");
+        return MENDER_NOT_FOUND;
     }
 
     return MENDER_OK;

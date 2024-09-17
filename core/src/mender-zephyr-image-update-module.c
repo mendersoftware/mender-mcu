@@ -183,6 +183,11 @@ static mender_err_t
 mender_zephyr_image_verify_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_VERIFY_REBOOT == state);
 
+    if (mender_flash_is_image_confirmed()) {
+        /* There is no pending image to confirm - we likely booted into the "old" confirmed image */
+        return MENDER_FAIL;
+    }
+
     /* TODO: how (else) should we verify the new image? */
     return (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) ? MENDER_OK : MENDER_FAIL;
 }

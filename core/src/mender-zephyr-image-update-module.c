@@ -76,10 +76,11 @@ mender_zephyr_image_register_update_module(void) {
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_VERIFY_REBOOT] = &mender_zephyr_image_verify_reboot_callback;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_COMMIT]        = &mender_zephyr_image_confirm_image;
     /* no need for a rollback callback because a reboot without image confirmation is a rollback */
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE] = &mender_zephyr_image_abort_deployment;
-    zephyr_image_umod->artifact_type                          = "zephyr-image";
-    zephyr_image_umod->requires_reboot                        = true;
-    zephyr_image_umod->supports_rollback                      = true;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]         = &mender_zephyr_image_abort_deployment;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_ROLLBACK_REBOOT] = &mender_zephyr_image_reboot_callback;
+    zephyr_image_umod->artifact_type                                  = "zephyr-image";
+    zephyr_image_umod->requires_reboot                                = true;
+    zephyr_image_umod->supports_rollback                              = true;
 
     if (MENDER_OK != (ret = mender_client_register_update_module(zephyr_image_umod))) {
         mender_log_error("Unable to register the 'zephyr-image' update module");
@@ -163,7 +164,7 @@ mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, 
 
 static mender_err_t
 mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
-    assert(MENDER_UPDATE_STATE_REBOOT == state);
+    assert(MENDER_UPDATE_STATE_REBOOT == state || MENDER_UPDATE_STATE_ROLLBACK_REBOOT == state);
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
     if (NULL != mender_client_callbacks.restart) {
         mender_client_callbacks.restart();

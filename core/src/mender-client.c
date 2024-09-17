@@ -928,8 +928,10 @@ mender_client_update_work_function(void) {
     }
 
     {
-        char *artifact_type;
-        if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state, &artifact_type))) {
+        char                 *artifact_type;
+        mender_update_state_t update_state_resume;
+        if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state_resume, &artifact_type))) {
+            update_state = update_state_resume;
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
             mender_update_module = mender_client_get_update_module(artifact_type);
             if (NULL == mender_update_module) {

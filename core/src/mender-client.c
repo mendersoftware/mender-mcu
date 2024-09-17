@@ -90,16 +90,23 @@ static const struct mender_update_state_transition_s update_state_transitions[N_
     /* MENDER_UPDATE_STATE_ROLLBACK               */ { MENDER_UPDATE_STATE_ROLLBACK_REBOOT, MENDER_UPDATE_STATE_FAILURE },
     /* MENDER_UPDATE_STATE_ROLLBACK_REBOOT        */ { MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, MENDER_UPDATE_STATE_FAILURE },
     /* MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT */ { MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_FAILURE },
-    /* MENDER_UPDATE_STATE_FAILURE                */ { MENDER_UPDATE_STATE_END, MENDER_UPDATE_STATE_END },
+    /* MENDER_UPDATE_STATE_FAILURE                */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_CLEANUP },
 };
 
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
 /* This is only needed for debug messages. */
-static const char *update_state_str[N_MENDER_UPDATE_STATES] = {
-    "MENDER_UPDATE_STATE_DOWNLOAD",      "MENDER_UPDATE_STATE_INSTALL",         "MENDER_UPDATE_STATE_REBOOT",
-    "MENDER_UPDATE_STATE_VERIFY_REBOOT", "MENDER_UPDATE_STATE_COMMIT",          "MENDER_UPDATE_STATE_CLEANUP",
-    "MENDER_UPDATE_STATE_ROLLBACK",      "MENDER_UPDATE_STATE_ROLLBACK_REBOOT", "MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT",
+static const char *update_state_str[N_MENDER_UPDATE_STATES + 1] = {
+    "MENDER_UPDATE_STATE_DOWNLOAD",
+    "MENDER_UPDATE_STATE_INSTALL",
+    "MENDER_UPDATE_STATE_REBOOT",
+    "MENDER_UPDATE_STATE_VERIFY_REBOOT",
+    "MENDER_UPDATE_STATE_COMMIT",
+    "MENDER_UPDATE_STATE_CLEANUP",
+    "MENDER_UPDATE_STATE_ROLLBACK",
+    "MENDER_UPDATE_STATE_ROLLBACK_REBOOT",
+    "MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT",
     "MENDER_UPDATE_STATE_FAILURE",
+    "MENDER_UPDATE_STATE_END (this is a bug!)",
 };
 #endif
 
@@ -546,6 +553,7 @@ REBOOT:
 
     /* Delete pending deployment */
     mender_storage_delete_deployment_data();
+    mender_storage_delete_update_state();
 
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
     if (NULL != mender_client_callbacks.restart) {
@@ -921,8 +929,10 @@ mender_client_update_work_function(void) {
     }
 
     {
-        char *artifact_type;
-        if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state, &artifact_type))) {
+        char                 *artifact_type;
+        mender_update_state_t update_state_resume;
+        if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state_resume, &artifact_type))) {
+            update_state = update_state_resume;
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
             mender_update_module = mender_client_get_update_module(artifact_type);
             if (NULL == mender_update_module) {
@@ -1090,7 +1100,6 @@ mender_client_update_work_function(void) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
                     goto END;
                 }
-                mender_storage_delete_deployment_data();
                 if (MENDER_OK != mender_commit_artifact_data()) {
                     mender_log_error("Unable to commit artifact data");
                     ret = MENDER_FAIL;
@@ -1109,6 +1118,8 @@ mender_client_update_work_function(void) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
                 NEXT_STATE;
+                mender_storage_delete_deployment_data();
+                mender_storage_delete_update_state();
                 break; /* below is the failure path */
 
             case MENDER_UPDATE_STATE_ROLLBACK:
@@ -1150,7 +1161,8 @@ mender_client_update_work_function(void) {
                 if (NULL != mender_update_module->callbacks[update_state]) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
-                break;
+                NEXT_STATE;
+                break; /* end of the failure path */
 
             case MENDER_UPDATE_STATE_END:
                 /* This is only here to cover all possible values of the

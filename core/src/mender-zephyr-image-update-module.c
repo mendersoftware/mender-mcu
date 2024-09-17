@@ -76,10 +76,11 @@ mender_zephyr_image_register_update_module(void) {
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_VERIFY_REBOOT] = &mender_zephyr_image_verify_reboot_callback;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_COMMIT]        = &mender_zephyr_image_confirm_image;
     /* no need for a rollback callback because a reboot without image confirmation is a rollback */
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE] = &mender_zephyr_image_abort_deployment;
-    zephyr_image_umod->artifact_type                          = "zephyr-image";
-    zephyr_image_umod->requires_reboot                        = true;
-    zephyr_image_umod->supports_rollback                      = true;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]         = &mender_zephyr_image_abort_deployment;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_ROLLBACK_REBOOT] = &mender_zephyr_image_reboot_callback;
+    zephyr_image_umod->artifact_type                                  = "zephyr-image";
+    zephyr_image_umod->requires_reboot                                = true;
+    zephyr_image_umod->supports_rollback                              = true;
 
     if (MENDER_OK != (ret = mender_client_register_update_module(zephyr_image_umod))) {
         mender_log_error("Unable to register the 'zephyr-image' update module");
@@ -128,7 +129,6 @@ mender_zephyr_image_download_artifact_flash_callback(NDEBUG_UNUSED mender_update
                 mender_log_error("Unable to close flash handle");
                 goto END;
             }
-            mcu_boot_flash_handle = NULL;
         }
     }
 
@@ -141,6 +141,11 @@ static mender_err_t
 mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_INSTALL == state);
     mender_err_t ret;
+
+    if (NULL == mcu_boot_flash_handle) {
+        mender_log_error("Set pending image requested but handle is cleared");
+        return MENDER_FAIL;
+    }
 
     if (MENDER_OK != (ret = mender_flash_set_pending_image(mcu_boot_flash_handle))) {
         mender_log_error("Unable to set boot partition");
@@ -163,7 +168,7 @@ mender_zephyr_image_abort_deployment(NDEBUG_UNUSED mender_update_state_t state, 
 
 static mender_err_t
 mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
-    assert(MENDER_UPDATE_STATE_REBOOT == state);
+    assert(MENDER_UPDATE_STATE_REBOOT == state || MENDER_UPDATE_STATE_ROLLBACK_REBOOT == state);
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
     if (NULL != mender_client_callbacks.restart) {
         mender_client_callbacks.restart();
@@ -177,6 +182,11 @@ mender_zephyr_image_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, A
 static mender_err_t
 mender_zephyr_image_verify_reboot_callback(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_VERIFY_REBOOT == state);
+
+    if (mender_flash_is_image_confirmed()) {
+        /* There is no pending image to confirm - we likely booted into the "old" confirmed image */
+        return MENDER_FAIL;
+    }
 
     /* TODO: how (else) should we verify the new image? */
     return (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state) ? MENDER_OK : MENDER_FAIL;

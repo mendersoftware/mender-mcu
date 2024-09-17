@@ -1099,7 +1099,6 @@ mender_client_update_work_function(void) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
                     goto END;
                 }
-                mender_storage_delete_deployment_data();
                 if (MENDER_OK != mender_commit_artifact_data()) {
                     mender_log_error("Unable to commit artifact data");
                     ret = MENDER_FAIL;
@@ -1118,6 +1117,7 @@ mender_client_update_work_function(void) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
                 NEXT_STATE;
+                mender_storage_delete_deployment_data();
                 break; /* below is the failure path */
 
             case MENDER_UPDATE_STATE_ROLLBACK:

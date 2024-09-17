@@ -129,7 +129,6 @@ mender_zephyr_image_download_artifact_flash_callback(NDEBUG_UNUSED mender_update
                 mender_log_error("Unable to close flash handle");
                 goto END;
             }
-            mcu_boot_flash_handle = NULL;
         }
     }
 
@@ -142,6 +141,11 @@ static mender_err_t
 mender_zephyr_image_set_pending_image(NDEBUG_UNUSED mender_update_state_t state, ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_INSTALL == state);
     mender_err_t ret;
+
+    if (NULL == mcu_boot_flash_handle) {
+        mender_log_error("Set pending image requested but handle is cleared");
+        return MENDER_FAIL;
+    }
 
     if (MENDER_OK != (ret = mender_flash_set_pending_image(mcu_boot_flash_handle))) {
         mender_log_error("Unable to set boot partition");

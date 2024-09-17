@@ -105,6 +105,11 @@ mender_flash_set_pending_image(void *handle) {
 
         /* Release memory */
         free(handle);
+    } else {
+
+        /* This should not happen! */
+        mender_log_error("boot_request_upgrade not called, handle is NULL");
+        return MENDER_NOT_FOUND;
     }
 
     return MENDER_OK;

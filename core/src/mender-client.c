@@ -465,30 +465,27 @@ mender_client_exit(void) {
 
 static mender_err_t
 mender_client_work_function(void) {
-    mender_err_t ret = MENDER_OK;
-
     mender_log_info("work function: %d", mender_client_state);
 
-    if (MENDER_CLIENT_STATE_PENDING_REBOOT == mender_client_state) {
-        mender_log_info("Waiting for a reboot");
-        /* nothing to do */
-        goto END;
+    switch (mender_client_state) {
+        case MENDER_CLIENT_STATE_PENDING_REBOOT:
+            mender_log_info("Waiting for a reboot");
+            /* nothing to do */
+            return MENDER_OK;
+        case MENDER_CLIENT_STATE_INITIALIZATION:
+            /* Perform initialization of the client */
+            if (MENDER_DONE != mender_client_initialization_work_function()) {
+                return MENDER_FAIL;
+            }
+            mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
+            /* fallthrough */
+        case MENDER_CLIENT_STATE_OPERATIONAL:
+            return mender_client_update_work_function();
     }
 
-    /* Work depending of the client state */
-    if (MENDER_CLIENT_STATE_INITIALIZATION == mender_client_state) {
-        /* Perform initialization of the client */
-        if (MENDER_DONE != (ret = mender_client_initialization_work_function())) {
-            goto END;
-        }
-    }
-    mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
-
-    ret = mender_client_update_work_function();
-
-END:
-
-    return ret;
+    /* This should never be reached, all the cases should be covered in the
+       above switch and they all return. */
+    return MENDER_FAIL;
 }
 
 static mender_err_t

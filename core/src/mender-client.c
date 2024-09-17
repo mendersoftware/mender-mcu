@@ -553,6 +553,7 @@ REBOOT:
 
     /* Delete pending deployment */
     mender_storage_delete_deployment_data();
+    mender_storage_delete_update_state();
 
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
     if (NULL != mender_client_callbacks.restart) {
@@ -1118,6 +1119,7 @@ mender_client_update_work_function(void) {
                 }
                 NEXT_STATE;
                 mender_storage_delete_deployment_data();
+                mender_storage_delete_update_state();
                 break; /* below is the failure path */
 
             case MENDER_UPDATE_STATE_ROLLBACK:

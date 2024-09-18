@@ -111,6 +111,11 @@ static const char *update_state_str[N_MENDER_UPDATE_STATES + 1] = {
 #endif
 
 /**
+ * @brief Flag to know if network connection was requested or not
+ */
+static bool mender_client_network_connected = false;
+
+/**
  * @brief Deployment data (ID, artifact name and payload types), used to report deployment status after rebooting
  */
 static cJSON *mender_client_deployment_data = NULL;
@@ -144,10 +149,16 @@ static mender_err_t mender_client_work_function(void);
 static mender_err_t mender_client_initialization_work_function(void);
 
 /**
- * @brief Mender client authentication work function
- * @return MENDER_OK if the function succeeds, error code otherwise
+ * @brief Function to request network access
+ * @return MENDER_OK if network is connected following the request, error code otherwise
  */
-static mender_err_t mender_client_authentication_work_function(void);
+static mender_err_t mender_client_network_connect(void);
+
+/**
+ * @brief Function to release network access
+ * @return MENDER_OK if network is released following the request, error code otherwise
+ */
+static mender_err_t mender_client_network_release(void);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 /**
@@ -360,39 +371,49 @@ mender_client_activate(void) {
 }
 
 mender_err_t
-mender_client_network_connect(void) {
+mender_client_ensure_connected(void) {
+    if (mender_client_network_connected) {
+        return MENDER_DONE;
+    }
 
-    mender_err_t ret = MENDER_OK;
+    return mender_client_network_connect();
+}
+
+static mender_err_t
+mender_client_network_connect(void) {
+    if (mender_client_network_connected) {
+        return MENDER_OK;
+    }
 
     /* Request network access */
     if (NULL != mender_client_callbacks.network_connect) {
-        if (MENDER_OK != (ret = mender_client_callbacks.network_connect())) {
+        if (MENDER_OK != mender_client_callbacks.network_connect()) {
             mender_log_error("Unable to connect network");
-            goto END;
+            return MENDER_FAIL;
         }
     }
 
-END:
+    mender_client_network_connected = true;
 
-    return ret;
+    return MENDER_OK;
 }
 
-mender_err_t
+static mender_err_t
 mender_client_network_release(void) {
-
-    mender_err_t ret = MENDER_OK;
+    if (!mender_client_network_connected) {
+        return MENDER_OK;
+    }
 
     /* Release network access */
     if (NULL != mender_client_callbacks.network_release) {
-        if (MENDER_OK != (ret = mender_client_callbacks.network_release())) {
+        if (MENDER_OK != mender_client_callbacks.network_release()) {
             mender_log_error("Unable to release network");
-            goto END;
+            return MENDER_FAIL;
         }
     }
+    mender_client_network_connected = false;
 
-END:
-
-    return ret;
+    return MENDER_OK;
 }
 
 mender_err_t
@@ -416,6 +437,7 @@ mender_client_exit(void) {
     mender_tls_exit();
     mender_storage_exit();
     mender_log_exit();
+    mender_client_network_release();
 
     /* Release memory */
     mender_client_config.device_type                  = NULL;
@@ -423,6 +445,7 @@ mender_client_exit(void) {
     mender_client_config.tenant_token                 = NULL;
     mender_client_config.authentication_poll_interval = 0;
     mender_client_config.update_poll_interval         = 0;
+
     if (NULL != mender_client_deployment_data) {
         cJSON_Delete(mender_client_deployment_data);
         mender_client_deployment_data = NULL;
@@ -442,71 +465,27 @@ mender_client_exit(void) {
 
 static mender_err_t
 mender_client_work_function(void) {
-    mender_err_t ret = MENDER_OK;
-
     mender_log_info("work function: %d", mender_client_state);
 
-    if (MENDER_CLIENT_STATE_PENDING_REBOOT == mender_client_state) {
-        mender_log_info("Waiting for a reboot");
-        /* nothing to do */
-        goto END;
-    }
-
-    /* Work depending of the client state */
-    if (MENDER_CLIENT_STATE_INITIALIZATION == mender_client_state) {
-        /* Perform initialization of the client */
-        if (MENDER_DONE != (ret = mender_client_initialization_work_function())) {
-            goto END;
-        }
-        /* Update client state */
-        mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATION;
-    }
-
-    /* TODO: Treat the network and authentication part below as not critical if
-     *       there is a saved update state we can resume from? It may fix
-     *       potential network/authentication issues. */
-
-    /* Request access to the network */
-    if (MENDER_OK != (ret = mender_client_network_connect())) {
-        goto END;
-    }
-
-    /* Flag to allow deployment to continue in spite of a failed authentication */
-    bool allow_authentication_failure = false;
-
-    /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATION == mender_client_state) {
-        /* Perform authentication with the server */
-        if (MENDER_DONE != (ret = mender_client_authentication_work_function())) {
-            /* Check if there is a deployment in progress */
-            if (NULL != mender_client_deployment_data) {
-                /* Authentication failed with pending deployment */
-                mender_log_info("Authentication failed, continuing with deployment");
-                allow_authentication_failure = true;
-            } else {
-                /* Authentication failed and no pending deployment */
-                goto RELEASE;
+    switch (mender_client_state) {
+        case MENDER_CLIENT_STATE_PENDING_REBOOT:
+            mender_log_info("Waiting for a reboot");
+            /* nothing to do */
+            return MENDER_OK;
+        case MENDER_CLIENT_STATE_INITIALIZATION:
+            /* Perform initialization of the client */
+            if (MENDER_DONE != mender_client_initialization_work_function()) {
+                return MENDER_FAIL;
             }
-        }
-        /* Update client state */
-        if (!allow_authentication_failure) {
-            mender_client_state = MENDER_CLIENT_STATE_AUTHENTICATED;
-        }
-    }
-    /* Intentional pass-through */
-    if (MENDER_CLIENT_STATE_AUTHENTICATED == mender_client_state || allow_authentication_failure) {
-        /* Perform updates */
-        ret = mender_client_update_work_function();
+            mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
+            /* fallthrough */
+        case MENDER_CLIENT_STATE_OPERATIONAL:
+            return mender_client_update_work_function();
     }
 
-RELEASE:
-
-    /* Release access to the network */
-    mender_client_network_release();
-
-END:
-
-    return ret;
+    /* This should never be reached, all the cases should be covered in the
+       above switch and they all return. */
+    return MENDER_FAIL;
 }
 
 static mender_err_t
@@ -605,18 +584,24 @@ mender_commit_artifact_data(void) {
     return MENDER_OK;
 }
 
-static mender_err_t
-mender_client_authentication_work_function(void) {
-    mender_err_t ret;
+mender_err_t
+mender_client_ensure_authenticated(void) {
+    if (mender_api_is_authenticated()) {
+        return MENDER_DONE;
+    }
+
+    if (MENDER_FAIL == mender_client_ensure_connected()) {
+        return MENDER_FAIL;
+    }
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != (ret = mender_api_perform_authentication(mender_client_callbacks.get_identity))) {
+    if (MENDER_OK != mender_api_perform_authentication(mender_client_callbacks.get_identity)) {
         mender_log_error("Authentication failed");
         return MENDER_FAIL;
     }
-    mender_log_info("Authenticated successfully");
 
-    return MENDER_DONE;
+    mender_log_info("Authenticated successfully");
+    return MENDER_OK;
 }
 
 static mender_err_t
@@ -858,8 +843,13 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
 
 static mender_err_t
 mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
-
     assert(NULL != deployment_data);
+
+    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
+        /* authentication errors logged already */
+        mender_log_error("Cannot check for new deployment");
+        return MENDER_FAIL;
+    }
 
     if (NULL == (*deployment_data = calloc(1, sizeof(mender_api_deployment_data_t)))) {
         mender_log_error("Unable to allocate memory for deployment data");
@@ -1275,6 +1265,12 @@ END:
 
 static mender_err_t
 mender_client_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
+    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
+        /* authentication errors logged already */
+        mender_log_error("Cannot publish deployment status");
+        return MENDER_FAIL;
+    }
+
     mender_err_t ret;
 
     if (NULL == id) {

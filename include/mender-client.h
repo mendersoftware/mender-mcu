@@ -33,8 +33,7 @@ extern "C" {
  */
 typedef enum {
     MENDER_CLIENT_STATE_INITIALIZATION, /**< Perform initialization */
-    MENDER_CLIENT_STATE_AUTHENTICATION, /**< Perform authentication with the server */
-    MENDER_CLIENT_STATE_AUTHENTICATED,  /**< Perform updates */
+    MENDER_CLIENT_STATE_OPERATIONAL,    /**< Under standard operation */
     MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
 } mender_client_state_t;
 
@@ -117,16 +116,20 @@ mender_err_t mender_client_deactivate(void);
 mender_err_t mender_client_execute(void);
 
 /**
- * @brief Function to request network access
- * @return MENDER_OK if network is connected following the request, error code otherwise
+ * @brief  Ensures the client has a network connection
+ * @return MENDER_DONE if already connected,
+ *         MENDER_OK if successfully connected,
+ *         MENDER_FAIL otherwise
  */
-mender_err_t mender_client_network_connect(void);
+mender_err_t mender_client_ensure_connected(void);
 
 /**
- * @brief Function to release network access
- * @return MENDER_OK if network is released following the request, error code otherwise
+ * @brief  Ensures the client is authenticated to a Mender server API
+ * @return MENDER_DONE if already authenticated,
+ *         MENDER_OK if successfully authenticated,
+ *         MENDER_FAIL otherwise
  */
-mender_err_t mender_client_network_release(void);
+mender_err_t mender_client_ensure_authenticated(void);
 
 /**
  * @brief Release mender client

@@ -27,6 +27,7 @@
 #include "mender-tls.h"
 #include "mender-update-module.h"
 #include "mender-utils.h"
+#include "mender-deployment-data.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #include "mender-inventory.h"
@@ -116,9 +117,10 @@ static const char *update_state_str[N_MENDER_UPDATE_STATES + 1] = {
 static bool mender_client_network_connected = false;
 
 /**
- * @brief Deployment data (ID, artifact name and payload types), used to report deployment status after rebooting
+ * @brief Deployment data. Used to track progress of an update, so that the
+ *        operation can resume or roll back across reboots
  */
-static cJSON *mender_client_deployment_data = NULL;
+static mender_deployment_data_t *mender_client_deployment_data = NULL;
 
 /**
  * @brief Mender client update modules list
@@ -445,18 +447,13 @@ mender_client_exit(void) {
     mender_client_config.tenant_token                 = NULL;
     mender_client_config.authentication_poll_interval = 0;
     mender_client_config.update_poll_interval         = 0;
-
-    if (NULL != mender_client_deployment_data) {
-        cJSON_Delete(mender_client_deployment_data);
-        mender_client_deployment_data = NULL;
-    }
+    DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
 
     if (NULL != mender_update_modules_list) {
         for (size_t update_module_index = 0; update_module_index < mender_update_modules_count; update_module_index++) {
             free(mender_update_modules_list[update_module_index]);
         }
-        free(mender_update_modules_list);
-        mender_update_modules_list = NULL;
+        FREE_AND_NULL(mender_update_modules_list);
     }
     mender_update_modules_count = 0;
 
@@ -491,8 +488,7 @@ mender_client_work_function(void) {
 static mender_err_t
 mender_client_initialization_work_function(void) {
 
-    char        *storage_deployment_data = NULL;
-    mender_err_t ret                     = MENDER_DONE;
+    mender_err_t ret = MENDER_DONE;
 
     /* Retrieve or generate authentication keys */
     if (MENDER_OK != (ret = mender_tls_init_authentication_keys(mender_client_callbacks.get_user_provided_keys, mender_client_config.recommissioning))) {
@@ -501,21 +497,11 @@ mender_client_initialization_work_function(void) {
     }
 
     /* Retrieve deployment data if it is found (following an update) */
-    if (MENDER_OK != (ret = mender_storage_get_deployment_data(&storage_deployment_data))) {
+    if (MENDER_OK != (ret = mender_get_deployment_data(&mender_client_deployment_data))) {
         if (MENDER_NOT_FOUND != ret) {
             mender_log_error("Unable to get deployment data");
             goto REBOOT;
         }
-    }
-
-    if (NULL != storage_deployment_data) {
-        if (NULL == (mender_client_deployment_data = cJSON_Parse(storage_deployment_data))) {
-            mender_log_error("Unable to parse deployment data");
-            free(storage_deployment_data);
-            ret = MENDER_FAIL;
-            goto REBOOT;
-        }
-        free(storage_deployment_data);
     }
 
     mender_log_info("Initialization done");
@@ -545,13 +531,15 @@ REBOOT:
 static mender_err_t
 mender_commit_artifact_data(void) {
 
-    cJSON *json_artifact_name = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "artifact_name");
-    if (NULL == json_artifact_name) {
+    assert(NULL != mender_client_deployment_data);
+
+    const char *artifact_name;
+    if (MENDER_OK != mender_deployment_data_get_artifact_name(mender_client_deployment_data, &artifact_name)) {
         mender_log_error("Unable to get artifact name from the deployment data");
         return MENDER_FAIL;
     }
 
-    if (MENDER_OK != mender_storage_set_artifact_name(json_artifact_name->valuestring)) {
+    if (MENDER_OK != mender_storage_set_artifact_name(artifact_name)) {
         mender_log_error("Unable to set artifact name");
         return MENDER_FAIL;
     }
@@ -559,15 +547,15 @@ mender_commit_artifact_data(void) {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
     /* Get provides from the deployment data */
-    cJSON *provides = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "provides");
-    if (NULL == provides) {
+    const char *provides;
+    if (MENDER_OK != mender_deployment_data_get_provides(mender_client_deployment_data, &provides)) {
         mender_log_error("Unable to get new_provides from the deployment data");
         return MENDER_FAIL;
     }
 
     /* Parse provides */
     mender_key_value_list_t *new_provides = NULL;
-    if (MENDER_OK != mender_utils_string_to_key_value_list(provides->valuestring, &new_provides)) {
+    if (MENDER_OK != mender_utils_string_to_key_value_list(provides, &new_provides)) {
         mender_log_error("Unable to parse provides from the deployment data");
         return MENDER_FAIL;
     }
@@ -878,19 +866,14 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
     /* Create deployment data */
     if (NULL != mender_client_deployment_data) {
         mender_log_warning("Unexpected stale deployment data");
-        cJSON_Delete(mender_client_deployment_data);
+        mender_delete_deployment_data(mender_client_deployment_data);
     }
-    if (NULL == (mender_client_deployment_data = cJSON_CreateObject())) {
-        mender_log_error("Unable to allocate memory");
+    if (MENDER_OK
+        != (mender_create_deployment_data(
+            deployment->id, deployment->artifact_name, NULL /* We will populate later */, NULL /* TODO: MEN-7515 */, &mender_client_deployment_data))) {
+        /* Error already logged */
         return MENDER_FAIL;
     }
-    cJSON_AddStringToObject(mender_client_deployment_data, "id", deployment->id);
-    cJSON_AddStringToObject(mender_client_deployment_data, "artifact_name", deployment->artifact_name);
-    cJSON_AddArrayToObject(mender_client_deployment_data, "types");
-
-    assert(NULL != cJSON_GetObjectItem(mender_client_deployment_data, "id"));
-    assert(NULL != cJSON_GetObjectItem(mender_client_deployment_data, "artifact_name"));
-    assert(NULL != cJSON_GetObjectItem(mender_client_deployment_data, "types"));
 
     return MENDER_OK;
 }
@@ -903,19 +886,15 @@ mender_client_update_work_function(void) {
     mender_artifact_ctx_t *mender_artifact_ctx = NULL;
 
     /* Check for deployment */
-    mender_api_deployment_data_t *deployment              = NULL;
-    char                         *storage_deployment_data = NULL;
-    mender_update_state_t         update_state            = MENDER_UPDATE_STATE_DOWNLOAD;
-    const char                   *deployment_id           = NULL;
+    mender_api_deployment_data_t *deployment    = NULL;
+    mender_update_state_t         update_state  = MENDER_UPDATE_STATE_DOWNLOAD;
+    const char                   *deployment_id = NULL;
 
     /* reset the currently used update module */
     mender_update_module = NULL;
 
-    {
-        cJSON *deployment_id_j = cJSON_GetObjectItem(mender_client_deployment_data, "id");
-        if (NULL != deployment_id_j) {
-            deployment_id = deployment_id_j->valuestring;
-        }
+    if (NULL != mender_client_deployment_data) {
+        mender_deployment_data_get_id(mender_client_deployment_data, &deployment_id);
     }
 
     {
@@ -1001,9 +980,13 @@ mender_client_update_work_function(void) {
                             char       *new_provides  = NULL;
                             const char *artifact_name = NULL;
                             if (MENDER_OK == (ret = mender_prepare_new_provides(mender_artifact_ctx, &new_provides, &artifact_name))) {
-                                cJSON_AddStringToObject(mender_client_deployment_data, "provides", new_provides);
+                                if (MENDER_OK != (ret = mender_deployment_data_set_provides(mender_client_deployment_data, new_provides))) {
+                                    mender_log_error("Failed to set deployment data provides");
+                                }
                                 /* Replace artifact_name with the one from provides */
-                                cJSON_ReplaceItemInObject(mender_client_deployment_data, "artifact_name", cJSON_CreateString(artifact_name));
+                                else if (MENDER_OK != (ret = mender_deployment_data_set_artifact_name(mender_client_deployment_data, artifact_name))) {
+                                    mender_log_error("Failed to set deployment data artifact name");
+                                }
                                 free(new_provides);
                             } else {
                                 mender_log_error("Unable to prepare new provides");
@@ -1047,10 +1030,7 @@ mender_client_update_work_function(void) {
                 mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
 
                 /* Save deployment data to publish deployment status after rebooting */
-                if (NULL == (storage_deployment_data = cJSON_PrintUnformatted(mender_client_deployment_data))) {
-                    mender_log_error("Unable to serialize deployment data for saving");
-                    ret = MENDER_FAIL;
-                } else if (MENDER_OK != (ret = mender_storage_set_deployment_data(storage_deployment_data))) {
+                if (MENDER_OK != (ret = mender_set_deployment_data(mender_client_deployment_data))) {
                     mender_log_error("Unable to save deployment data");
                 }
                 if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
@@ -1168,13 +1148,7 @@ mender_client_update_work_function(void) {
 END:
     /* Release memory */
     deployment_destroy(deployment);
-    if (NULL != storage_deployment_data) {
-        free(storage_deployment_data);
-    }
-    if (NULL != mender_client_deployment_data) {
-        cJSON_Delete(mender_client_deployment_data);
-        mender_client_deployment_data = NULL;
-    }
+    DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
     mender_artifact_release_ctx(mender_artifact_ctx);
 
     return ret;
@@ -1184,7 +1158,6 @@ static mender_err_t
 mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length) {
 
     assert(NULL != type);
-    cJSON       *json_types;
     mender_err_t ret = MENDER_FAIL;
 
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
@@ -1208,23 +1181,13 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
     }
 
     /* Retrieve ID and artifact name */
-    cJSON *json_id = NULL;
-    if (NULL == (json_id = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "id"))) {
+    const char *id;
+    if (MENDER_OK != mender_deployment_data_get_id(mender_client_deployment_data, &id)) {
         mender_log_error("Unable to get ID from the deployment data");
         goto END;
     }
-    char *id;
-    if (NULL == (id = cJSON_GetStringValue(json_id))) {
-        mender_log_error("Unable to get ID from the deployment data");
-        goto END;
-    }
-    cJSON *json_artifact_name = NULL;
-    if (NULL == (json_artifact_name = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "artifact_name"))) {
-        mender_log_error("Unable to get artifact name from the deployment data");
-        goto END;
-    }
-    char *artifact_name;
-    if (NULL == (artifact_name = cJSON_GetStringValue(json_artifact_name))) {
+    const char *artifact_name;
+    if (MENDER_OK != mender_deployment_data_get_artifact_name(mender_client_deployment_data, &artifact_name)) {
         mender_log_error("Unable to get artifact name from the deployment data");
         goto END;
     }
@@ -1240,20 +1203,9 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
     /* Treatments related to the artifact type (once) */
     if (0 == index) {
         /* Add type to the deployment data */
-        if (NULL == (json_types = cJSON_GetObjectItemCaseSensitive(mender_client_deployment_data, "types"))) {
-            mender_log_error("Unable to add type to the deployment data");
-            ret = MENDER_FAIL;
+        if (MENDER_OK != (ret = mender_deployment_data_add_payload_type(mender_client_deployment_data, type))) {
+            /* Error already logged */
             goto END;
-        }
-        bool   found     = false;
-        cJSON *json_type = NULL;
-        cJSON_ArrayForEach(json_type, json_types) {
-            if (StringEqual(type, cJSON_GetStringValue(json_type))) {
-                found = true;
-            }
-        }
-        if (!found) {
-            cJSON_AddItemToArray(json_types, cJSON_CreateString(type));
         }
     }
 

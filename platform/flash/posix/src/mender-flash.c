@@ -35,7 +35,7 @@
 #define MENDER_FLASH_REQUEST_UPGRADE CONFIG_MENDER_FLASH_PATH "request_upgrade"
 
 mender_err_t
-mender_flash_open(char *name, size_t size, void **handle) {
+mender_flash_open(const char *name, size_t size, void **handle) {
 
     assert(NULL != name);
     assert(NULL != handle);
@@ -66,7 +66,7 @@ mender_flash_open(char *name, size_t size, void **handle) {
 }
 
 mender_err_t
-mender_flash_write(void *handle, void *data, size_t index, size_t length) {
+mender_flash_write(void *handle, const void *data, size_t index, size_t length) {
 
     (void)index;
 

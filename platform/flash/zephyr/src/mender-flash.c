@@ -24,7 +24,7 @@
 #include "mender-log.h"
 
 mender_err_t
-mender_flash_open(char *name, size_t size, void **handle) {
+mender_flash_open(const char *name, size_t size, void **handle) {
 
     assert(NULL != name);
     assert(NULL != handle);
@@ -49,7 +49,7 @@ mender_flash_open(char *name, size_t size, void **handle) {
 }
 
 mender_err_t
-mender_flash_write(void *handle, void *data, size_t index, size_t length) {
+mender_flash_write(void *handle, const void *data, size_t index, size_t length) {
 
     (void)index;
     int result;
@@ -118,12 +118,8 @@ mender_flash_set_pending_image(void *handle) {
 mender_err_t
 mender_flash_abort_deployment(void *handle) {
 
-    /* Check flash handle */
-    if (NULL != handle) {
-
-        /* Release memory */
-        free(handle);
-    }
+    /* Release memory */
+    free(handle);
 
     return MENDER_OK;
 }

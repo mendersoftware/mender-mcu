@@ -25,6 +25,7 @@
 #include <zephyr/kernel.h>
 #include "mender-log.h"
 #include "mender-scheduler.h"
+#include "mender-utils.h"
 
 /**
  * @brief User parameters
@@ -188,9 +189,7 @@ FAIL:
 
     /* Release memory */
     if (NULL != work_context) {
-        if (NULL != work_context->params.name) {
-            free(work_context->params.name);
-        }
+        free(work_context->params.name);
         free(work_context);
     }
 
@@ -284,16 +283,14 @@ mender_scheduler_work_deactivate(void *handle) {
 mender_err_t
 mender_scheduler_work_delete(void *handle) {
 
-    assert(NULL != handle);
+    if (NULL != handle) {
+        /* Get work context */
+        mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
 
-    /* Get work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
-
-    /* Release memory */
-    if (NULL != work_context->params.name) {
+        /* Release memory */
         free(work_context->params.name);
+        free(work_context);
     }
-    free(work_context);
 
     return MENDER_OK;
 }
@@ -308,8 +305,7 @@ mender_scheduler_mutex_create(void **handle) {
         return MENDER_FAIL;
     }
     if (0 != k_mutex_init((struct k_mutex *)(*handle))) {
-        free(*handle);
-        *handle = NULL;
+        FREE_AND_NULL(*handle);
         return MENDER_FAIL;
     }
 
@@ -344,8 +340,6 @@ mender_scheduler_mutex_give(void *handle) {
 
 mender_err_t
 mender_scheduler_mutex_delete(void *handle) {
-
-    assert(NULL != handle);
 
     /* Release memory */
     free(handle);

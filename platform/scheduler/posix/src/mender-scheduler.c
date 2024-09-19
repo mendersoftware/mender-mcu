@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include "mender-log.h"
 #include "mender-scheduler.h"
+#include "mender-utils.h"
 
 /**
  * @brief Default work queue stack size (kB)
@@ -178,9 +179,7 @@ FAIL:
     if (NULL != work_context) {
         timer_delete(work_context->timer_handle);
         pthread_mutex_destroy(&work_context->sem_handle);
-        if (NULL != work_context->params.name) {
-            free(work_context->params.name);
-        }
+        free(work_context->params.name);
         free(work_context);
     }
 
@@ -309,9 +308,7 @@ mender_scheduler_work_delete(void *handle) {
     /* Release memory */
     timer_delete(work_context->timer_handle);
     pthread_mutex_destroy(&work_context->sem_handle);
-    if (NULL != work_context->params.name) {
-        free(work_context->params.name);
-    }
+    free(work_context->params.name);
     free(work_context);
 
     return MENDER_OK;
@@ -327,8 +324,7 @@ mender_scheduler_mutex_create(void **handle) {
         return MENDER_FAIL;
     }
     if (0 != pthread_mutex_init(*handle, NULL)) {
-        free(*handle);
-        *handle = NULL;
+        FREE_AND_NULL(*handle);
         return MENDER_FAIL;
     }
 

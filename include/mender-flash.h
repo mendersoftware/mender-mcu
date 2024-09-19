@@ -33,7 +33,7 @@ extern "C" {
  * @param handle Handle of the deployment to be used with mender flash functions
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_flash_open(char *name, size_t size, void **handle);
+mender_err_t mender_flash_open(const char *name, size_t size, void **handle);
 
 /**
  * @brief Write deployment data
@@ -43,7 +43,7 @@ mender_err_t mender_flash_open(char *name, size_t size, void **handle);
  * @param length Length of the data to be written
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_flash_write(void *handle, void *data, size_t index, size_t length);
+mender_err_t mender_flash_write(void *handle, const void *data, size_t index, size_t length);
 
 /**
  * @brief Close flash device

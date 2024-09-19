@@ -32,6 +32,8 @@
 #include "mender-storage.h"
 #include "mender-tls.h"
 
+#include "mender-utils.h"
+
 /**
  * @brief Keys buffer length
  */
@@ -128,12 +130,9 @@ mender_err_t
 mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char **user_provided_key, size_t *user_provided_key_length), bool recommissioning) {
 
     /* Release memory */
-    free(mender_tls_private_key);
-    mender_tls_private_key        = NULL;
+    FREE_AND_NULL(mender_tls_private_key);
     mender_tls_private_key_length = 0;
-
-    free(mender_tls_public_key);
-    mender_tls_public_key        = NULL;
+    FREE_AND_NULL(mender_tls_public_key);
     mender_tls_public_key_length = 0;
 
     /* Check if recommissioning is forced */
@@ -330,8 +329,7 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
         if (MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL == ret) {
             mender_log_error("This is a bug, please report it");
         }
-        free(*signature);
-        *signature        = NULL;
+        FREE_AND_NULL(*signature);
         *signature_length = 0;
         goto END;
     }
@@ -339,23 +337,15 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
 END:
 
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
-    if (NULL != pk_context) {
-        mbedtls_pk_free(pk_context);
-        free(pk_context);
-    }
+    mbedtls_entropy_free(entropy);
+    free(entropy);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
+    mbedtls_pk_free(pk_context);
+    free(pk_context);
 
     /* Release memory */
-    if (NULL != sig) {
-        free(sig);
-    }
+    free(sig);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -364,15 +354,9 @@ mender_err_t
 mender_tls_exit(void) {
 
     /* Release memory */
-    if (NULL != mender_tls_private_key) {
-        free(mender_tls_private_key);
-        mender_tls_private_key = NULL;
-    }
+    FREE_AND_NULL(mender_tls_private_key);
     mender_tls_private_key_length = 0;
-    if (NULL != mender_tls_public_key) {
-        free(mender_tls_public_key);
-        mender_tls_public_key = NULL;
-    }
+    FREE_AND_NULL(mender_tls_public_key);
     mender_tls_public_key_length = 0;
 
     return MENDER_OK;
@@ -432,14 +416,10 @@ mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
 
 END:
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
+    mbedtls_entropy_free(entropy);
+    free(entropy);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -488,14 +468,10 @@ mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, con
 
 END:
     /* Release mbedtls */
-    if (NULL != entropy) {
-        mbedtls_entropy_free(entropy);
-        free(entropy);
-    }
-    if (NULL != ctr_drbg) {
-        mbedtls_ctr_drbg_free(ctr_drbg);
-        free(ctr_drbg);
-    }
+    mbedtls_entropy_free(entropy);
+    free(entropy);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -547,17 +523,15 @@ mender_tls_get_authentication_keys(unsigned char **private_key,
     }
     if ((ret = mbedtls_pk_write_key_der(pk_context, *private_key, MENDER_TLS_PRIVATE_KEY_LENGTH)) < 0) {
         LOG_MBEDTLS_ERROR("Unable to write private key to PEM format", ret);
-        free(*private_key);
-        *private_key = NULL;
+        FREE_AND_NULL(*private_key);
         goto END;
     }
     *private_key_length = (size_t)ret;
     memcpy(*private_key, *private_key + MENDER_TLS_PRIVATE_KEY_LENGTH - *private_key_length, *private_key_length);
     if (NULL == (tmp = realloc(*private_key, *private_key_length))) {
         mender_log_error("Unable to allocate memory");
-        free(*private_key);
-        *private_key = NULL;
-        ret          = -1;
+        FREE_AND_NULL(*private_key);
+        ret = -1;
         goto END;
     }
     *private_key = tmp;
@@ -565,28 +539,23 @@ mender_tls_get_authentication_keys(unsigned char **private_key,
     /* Export public key */
     if (NULL == (*public_key = (unsigned char *)malloc(MENDER_TLS_PUBLIC_KEY_LENGTH))) {
         mender_log_error("Unable to allocate memory");
-        free(*private_key);
-        *private_key = NULL;
-        ret          = -1;
+        FREE_AND_NULL(*private_key);
+        ret = -1;
         goto END;
     }
     if ((ret = mbedtls_pk_write_pubkey_der(pk_context, *public_key, MENDER_TLS_PUBLIC_KEY_LENGTH)) < 0) {
         LOG_MBEDTLS_ERROR("Unable to write public key to PEM format", ret);
-        free(*private_key);
-        *private_key = NULL;
-        free(*public_key);
-        *public_key = NULL;
+        FREE_AND_NULL(*private_key);
+        FREE_AND_NULL(*public_key);
         goto END;
     }
     *public_key_length = (size_t)ret;
     memcpy(*public_key, *public_key + MENDER_TLS_PUBLIC_KEY_LENGTH - *public_key_length, *public_key_length);
     if (NULL == (tmp = realloc(*public_key, *public_key_length))) {
         mender_log_error("Unable to allocate memory");
-        free(*private_key);
-        *private_key = NULL;
-        free(*public_key);
-        *public_key = NULL;
-        ret         = -1;
+        FREE_AND_NULL(*private_key);
+        FREE_AND_NULL(*public_key);
+        ret = -1;
         goto END;
     }
     *public_key = tmp;
@@ -595,10 +564,8 @@ mender_tls_get_authentication_keys(unsigned char **private_key,
 END:
 
     /* Release mbedtls */
-    if (NULL != pk_context) {
-        mbedtls_pk_free(pk_context);
-        free(pk_context);
-    }
+    mbedtls_pk_free(pk_context);
+    free(pk_context);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }
@@ -682,9 +649,7 @@ mender_tls_pem_write_buffer(const unsigned char *der_data, size_t der_len, char 
 END:
 
     /* Release memory */
-    if (NULL != encode_buf) {
-        free(encode_buf);
-    }
+    free(encode_buf);
 
     return ret;
 }

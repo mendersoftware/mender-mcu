@@ -33,31 +33,44 @@ mender_log_init(void) {
     return MENDER_OK;
 }
 
+/* IMPORTANT: Please note that the default size of internal Zephyr logger buffer is 1024 bytes; if we need log buffer size 
+              to be more than that there is CONFIG_LOG_BUFFER_SIZE option allowing to extend the buffer size. */
+#define LOG_MESSAGE_MAX_SIZE_BYTES (128)
+
 mender_err_t
 mender_log_print(uint8_t level, const char *filename, const char *function, int line, char *format, ...) {
 
-    (void)function;
-    char log[256] = { 0 };
+    (void)filename;
 
-    /* Format message */
     va_list args;
     va_start(args, format);
-    vsnprintf(log, sizeof(log), format, args);
+
+    char log_buff[LOG_MESSAGE_MAX_SIZE_BYTES];
+    int  ret = vsnprintf(log_buff, LOG_MESSAGE_MAX_SIZE_BYTES, format, args);
+
     va_end(args);
+
+    if (ret < 0) {
+        LOG_ERR("logger error: log message formatting failed: %d", ret);
+        return MENDER_FAIL;
+    } else if (ret >= LOG_MESSAGE_MAX_SIZE_BYTES) {
+        /* Log message is too long; add ... at the end */
+        memset(&log_buff[LOG_MESSAGE_MAX_SIZE_BYTES - 4], '.', 3);
+    }
 
     /* Switch depending log level */
     switch (level) {
         case MENDER_LOG_LEVEL_ERR:
-            LOG_ERR("%s (%d): %s", filename, line, log);
+            LOG_ERR("%s", log_buff);
             break;
         case MENDER_LOG_LEVEL_WRN:
-            LOG_WRN("%s (%d): %s", filename, line, log);
+            LOG_WRN("%s", log_buff);
             break;
         case MENDER_LOG_LEVEL_INF:
-            LOG_INF("%s (%d): %s", filename, line, log);
+            LOG_INF("%s", log_buff);
             break;
         case MENDER_LOG_LEVEL_DBG:
-            LOG_DBG("%s (%d): %s", filename, line, log);
+            LOG_DBG("%s (%d): %s", function, line, log_buff);
             break;
         default:
             break;

@@ -17,10 +17,6 @@
  * limitations under the License.
  */
 
-#if CONFIG_MENDER_LOG_LEVEL != MENDER_LOG_LEVEL_OFF
-#error This stable branch does not work with Logging. Set CONFIG_MENDER_LOG_LEVEL_OFF=y
-#endif
-
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(mender, CONFIG_MENDER_LOG_LEVEL);
 

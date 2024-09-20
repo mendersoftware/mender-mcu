@@ -37,7 +37,7 @@
 /**
  * @brief Request timeout (milliseconds)
  */
-#define MENDER_HTTP_REQUEST_TIMEOUT (600 * MSEC_PER_SEC)
+#define MENDER_HTTP_REQUEST_TIMEOUT (60 * 1000)
 
 /**
  * @brief Request context

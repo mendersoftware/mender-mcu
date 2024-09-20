@@ -22,7 +22,6 @@ if(CONFIG_MENDER_MCU_CLIENT)
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-artifact.c"
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-client.c"
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-utils.c"
-        "${CMAKE_CURRENT_LIST_DIR}/../platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
         "${CMAKE_CURRENT_LIST_DIR}/../platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
         "${CMAKE_CURRENT_LIST_DIR}/../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
         "${CMAKE_CURRENT_LIST_DIR}/../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-net.c"
@@ -35,6 +34,7 @@ if(CONFIG_MENDER_MCU_CLIENT)
     )
     zephyr_library_sources_ifdef(CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
         "${CMAKE_CURRENT_LIST_DIR}/../core/src/mender-zephyr-image-update-module.c"
+        "${CMAKE_CURRENT_LIST_DIR}/../platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
     )
     zephyr_include_directories("${CMAKE_CURRENT_LIST_DIR}/../include")
     zephyr_include_directories("${CMAKE_CURRENT_LIST_DIR}/../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/include")

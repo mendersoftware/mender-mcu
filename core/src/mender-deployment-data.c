@@ -236,9 +236,12 @@ FAIL:
 mender_err_t
 __mender_deployment_data_get_string(const mender_deployment_data_t *deployment_data, const char *key, const char **str) {
 
-    assert(NULL != deployment_data);
     assert(NULL != key);
     assert(NULL != str);
+
+    if (NULL == deployment_data) {
+        return MENDER_NOT_FOUND;
+    }
 
     cJSON *item;
     if (NULL == (item = cJSON_GetObjectItemCaseSensitive(deployment_data, key))) {
@@ -276,9 +279,45 @@ __mender_deployment_data_set_string(mender_deployment_data_t *deployment_data, c
 }
 
 mender_err_t
-mender_deployment_data_add_payload_type(mender_deployment_data_t *deployment_data, const char *payload_type) {
+mender_deployment_data_get_state(mender_deployment_data_t *deployment_data, mender_update_state_t *state) {
+
+    if (NULL == deployment_data) {
+        return MENDER_NOT_FOUND;
+    }
+
+    assert(NULL != state);
+
+    cJSON *item;
+    if (NULL == (item = cJSON_GetObjectItemCaseSensitive(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE))) {
+        return MENDER_FAIL;
+    }
+
+    /* Assign state value to state pointer */
+    double state_value = cJSON_GetNumberValue(item);
+    *state             = (mender_update_state_t)state_value;
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_deployment_data_set_state(mender_deployment_data_t *deployment_data, const mender_update_state_t state) {
 
     assert(NULL != deployment_data);
+
+    if (!cJSON_ReplaceItemInObjectCaseSensitive(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE, cJSON_CreateNumber(state))) {
+        mender_log_error("Unable to allocate memory");
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_deployment_data_add_payload_type(mender_deployment_data_t *deployment_data, const char *payload_type) {
+
+    if (NULL == deployment_data) {
+        return MENDER_NOT_FOUND;
+    }
+
     assert(NULL != payload_type);
 
     cJSON *types;
@@ -300,6 +339,32 @@ mender_deployment_data_add_payload_type(mender_deployment_data_t *deployment_dat
             mender_log_error("Unable to allocate memory");
             return MENDER_FAIL;
         }
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_deployment_data_get_payload_type(const mender_deployment_data_t *deployment_data, const char **payload_type) {
+
+    assert(NULL != payload_type);
+
+    if (NULL == deployment_data) {
+        return MENDER_NOT_FOUND;
+    }
+
+    cJSON *types;
+    if (NULL == (types = cJSON_GetObjectItemCaseSensitive(deployment_data, "payload_types"))) {
+        return MENDER_FAIL;
+    }
+
+    cJSON *type;
+    if (NULL == (type = cJSON_GetArrayItem(types, 0))) {
+        return MENDER_FAIL;
+    }
+    *payload_type = type->valuestring;
+    if (NULL == *payload_type) {
+        return MENDER_FAIL;
     }
 
     return MENDER_OK;

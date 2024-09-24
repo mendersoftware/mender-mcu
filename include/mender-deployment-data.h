@@ -25,6 +25,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "mender-utils.h"
+#include "mender-update-module.h"
 #include "cJSON.h"
 
 #define MENDER_DEPLOYMENT_DATA_KEY_VERSION                "version"
@@ -69,6 +70,8 @@ mender_err_t mender_get_deployment_data(mender_deployment_data_t **deployment_da
  * @note The version number field will be initialized to the current version and
  *       the state data store count field will be initialized to zero. This
  *       does not take ownership of any of the arguments.
+ *       `Provides` and `state` will be populater later, it's initialized to null
+ *       upon creation.
  * @warning If NULL is passed in the arguments, the respective field will be
  *          initialized with the JSON 'null' value as a place holder. If you
  *          don't replace this value before storing the deployment data with
@@ -85,6 +88,15 @@ mender_err_t mender_create_deployment_data(const char *id, const char *artifact_
  * @return MENDER_OK on success, otherwise MENDER_FAIL
  */
 mender_err_t mender_deployment_data_add_payload_type(mender_deployment_data_t *deployment_data, const char *payload_type);
+
+/**
+ * @brief Get payload type
+ * @param deployment_data Deployment data
+ * @param payload_type Payload type
+ * @note We only support Artifact with 1 payload, so it will always return the first payload from the list
+ * @return MENDER_OK on success, otherwise MENDER_FAIL
+ */
+mender_err_t mender_deployment_data_get_payload_type(const mender_deployment_data_t *deployment_data, const char **payload_type);
 
 /**
  * @warning Do not use this function directly.
@@ -118,12 +130,12 @@ mender_err_t __mender_deployment_data_get_string(const mender_deployment_data_t 
 #define mender_deployment_data_get_id(deployment_data, id) __mender_deployment_data_get_string(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_ID, id)
 
 /**
- * @brief Get state name
+ * @brief Get state
  * @param deployment_data Deployment data
- * @param name State name
+ * @param state State
  * @return MENDER_OK on success, otherwise MENDER_FAIL
  */
-#define mender_deployment_data_get_state(deployment_data, name) __mender_deployment_data_get_string(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE, state)
+mender_err_t mender_deployment_data_get_state(mender_deployment_data_t *deployment_data, mender_update_state_t *state);
 
 /**
  * @warning Do not use this function directly.
@@ -162,7 +174,7 @@ mender_err_t __mender_deployment_data_set_string(mender_deployment_data_t *deplo
  * @param name State name
  * @return MENDER_OK on success, otherwise MENDER_FAIL
  */
-#define mender_deployment_data_set_state(deployment_data, name) __mender_deployment_data_set_string(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE, name)
+mender_err_t mender_deployment_data_set_state(mender_deployment_data_t *deployment_data, const mender_update_state_t state);
 
 #ifdef __cplusplus
 }

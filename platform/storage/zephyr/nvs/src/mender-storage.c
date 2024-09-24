@@ -38,10 +38,8 @@
 #define MENDER_STORAGE_NVS_PRIVATE_KEY     1
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      2
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA 3
-#define MENDER_STORAGE_NVS_UPDATE_STATE    4
-#define MENDER_STORAGE_NVS_ARTIFACT_TYPE   5
-#define MENDER_STORAGE_NVS_PROVIDES        7
-#define MENDER_STORAGE_NVS_ARTICACT_NAME   8
+#define MENDER_STORAGE_NVS_PROVIDES        4
+#define MENDER_STORAGE_NVS_ARTICACT_NAME   5
 
 /**
  * @brief NVS storage handle
@@ -224,24 +222,6 @@ mender_storage_delete_deployment_data(void) {
     return MENDER_OK;
 }
 
-mender_err_t
-mender_storage_delete_update_state(void) {
-
-    /* Delete update state */
-    if (0 != nvs_delete(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE)) {
-        mender_log_error("Unable to delete update state");
-        return MENDER_FAIL;
-    }
-
-    /* Delete artifact type */
-    if (0 != nvs_delete(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE)) {
-        mender_log_error("Unable to delete update state");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 mender_err_t
@@ -337,68 +317,6 @@ mender_storage_get_artifact_name(char **artifact_name) {
     }
 
     return ret;
-}
-
-mender_err_t
-mender_storage_save_update_state(mender_update_state_t state, const char *artifact_type) {
-    assert(NULL != artifact_type);
-
-    size_t artifact_type_size;
-
-    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, (const void *)&state, sizeof(state))) {
-        mender_log_error("Unable to save update state");
-        return MENDER_FAIL;
-    }
-
-    artifact_type_size = strlen(artifact_type) + 1;
-    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE, artifact_type, artifact_type_size)) {
-        mender_log_error("Unable to save update state");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type) {
-    assert(NULL != artifact_type);
-
-    size_t        artifact_type_size;
-    ssize_t       n_read;
-    mender_err_t  ret;
-    unsigned char byte;
-
-    n_read = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, &byte, 0);
-    if ((0 == n_read) || (-ENOENT == n_read)) {
-        mender_log_debug("Update state record empty or unavailable");
-        return MENDER_NOT_FOUND;
-    } else if (n_read < 0) {
-        mender_log_error("Failed to retrieve saved update state");
-        return MENDER_FAIL;
-    }
-
-    n_read = nvs_read(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_UPDATE_STATE, state, sizeof(*state));
-    if (n_read < sizeof(*state)) {
-        mender_log_error("Incomplete or invalid update state, ignoring");
-        return MENDER_FAIL;
-    }
-
-    *artifact_type = NULL;
-    ret            = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTIFACT_TYPE, (void **)artifact_type, &artifact_type_size);
-    if (MENDER_OK != ret) {
-        if (MENDER_NOT_FOUND == ret) {
-            mender_log_error("Failed to read saved update state, ignoring");
-            return MENDER_FAIL;
-        }
-    } else {
-        if (artifact_type_size < 2) {
-            mender_log_error("Incomplete or invalid update state, ignoring");
-            free(artifact_type);
-            return MENDER_FAIL;
-        }
-    }
-
-    return MENDER_OK;
 }
 
 mender_err_t

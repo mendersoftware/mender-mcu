@@ -518,7 +518,6 @@ REBOOT:
 
     /* Delete pending deployment */
     mender_storage_delete_deployment_data();
-    mender_storage_delete_update_state();
 
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
     if (NULL != mender_client_callbacks.restart) {
@@ -868,13 +867,32 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
         mender_log_warning("Unexpected stale deployment data");
         mender_delete_deployment_data(mender_client_deployment_data);
     }
-    if (MENDER_OK
-        != (mender_create_deployment_data(
-            deployment->id, deployment->artifact_name, NULL /* We will populate later */, NULL /* TODO: MEN-7515 */, &mender_client_deployment_data))) {
+    if (MENDER_OK != (mender_create_deployment_data(deployment->id, deployment->artifact_name, &mender_client_deployment_data))) {
         /* Error already logged */
         return MENDER_FAIL;
     }
 
+    return MENDER_OK;
+}
+
+static mender_err_t
+set_and_store_state(const mender_update_state_t state) {
+
+    /*
+     * Set the state in `mender_client_deployment_data` and write it to the nvs
+     */
+
+    /* Set state in deployment data */
+    if (MENDER_OK != mender_deployment_data_set_state(mender_client_deployment_data, state)) {
+        mender_log_error("Failed to set deployment data state");
+        return MENDER_FAIL;
+    }
+
+    /* Store deployment data */
+    if (MENDER_OK != mender_set_deployment_data(mender_client_deployment_data)) {
+        mender_log_error("Failed to store deployment data");
+        return MENDER_FAIL;
+    }
     return MENDER_OK;
 }
 
@@ -898,9 +916,10 @@ mender_client_update_work_function(void) {
     }
 
     {
-        char                 *artifact_type;
+        const char           *artifact_type;
         mender_update_state_t update_state_resume;
-        if (MENDER_OK == (ret = mender_storage_get_update_state(&update_state_resume, &artifact_type))) {
+        if (MENDER_OK == (ret = mender_deployment_data_get_state(mender_client_deployment_data, &update_state_resume))
+            && MENDER_OK == mender_deployment_data_get_payload_type(mender_client_deployment_data, &artifact_type)) {
             update_state = update_state_resume;
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
             mender_update_module = mender_client_get_update_module(artifact_type);
@@ -909,11 +928,8 @@ mender_client_update_work_function(void) {
                 mender_log_error("No update module found for artifact type '%s'", artifact_type);
                 mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
                 mender_storage_delete_deployment_data();
-                mender_storage_delete_update_state();
-                free(artifact_type);
                 goto END;
             }
-            free(artifact_type);
         }
     }
 
@@ -926,21 +942,21 @@ mender_client_update_work_function(void) {
  *
  * mender_update_module is guaranteed be not NULL since the first
  * successful transition (from the DOWNLOAD state). */
-#define NEXT_STATE                                                                               \
-    if (MENDER_OK == ret) {                                                                      \
-        update_state = update_state_transitions[update_state].success;                           \
-        assert(NULL != mender_update_module);                                                    \
-        mender_log_debug("Entering state %s", update_state_str[update_state]);                   \
-        mender_storage_save_update_state(update_state, mender_update_module->artifact_type);     \
-        ret = MENDER_OK;                                                                         \
-    } else {                                                                                     \
-        update_state = update_state_transitions[update_state].failure;                           \
-        mender_log_debug("Entering state %s", update_state_str[update_state]);                   \
-        if (NULL != mender_update_module) {                                                      \
-            mender_storage_save_update_state(update_state, mender_update_module->artifact_type); \
-        }                                                                                        \
-        ret = MENDER_OK;                                                                         \
-        continue;                                                                                \
+#define NEXT_STATE                                                             \
+    if (MENDER_OK == ret) {                                                    \
+        update_state = update_state_transitions[update_state].success;         \
+        assert(NULL != mender_update_module);                                  \
+        mender_log_debug("Entering state %s", update_state_str[update_state]); \
+        set_and_store_state(update_state);                                     \
+        ret = MENDER_OK;                                                       \
+    } else {                                                                   \
+        update_state = update_state_transitions[update_state].failure;         \
+        mender_log_debug("Entering state %s", update_state_str[update_state]); \
+        if (NULL != mender_update_module) {                                    \
+            set_and_store_state(update_state);                                 \
+        }                                                                      \
+        ret = MENDER_OK;                                                       \
+        continue;                                                              \
     }
 
     while (MENDER_UPDATE_STATE_END != update_state) {
@@ -1017,7 +1033,7 @@ mender_client_update_work_function(void) {
                 if ((MENDER_OK == ret) && !mender_update_module->requires_reboot) {
                     /* skip reboot */
                     update_state = MENDER_UPDATE_STATE_COMMIT;
-                    mender_storage_save_update_state(update_state, mender_update_module->artifact_type);
+                    set_and_store_state(update_state);
                     continue;
                 }
                 /* else continue to the next successful/failure state */
@@ -1028,11 +1044,6 @@ mender_client_update_work_function(void) {
                 assert(mender_update_module->requires_reboot);
                 mender_log_info("Artifact installation done, rebooting");
                 mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
-
-                /* Save deployment data to publish deployment status after rebooting */
-                if (MENDER_OK != (ret = mender_set_deployment_data(mender_client_deployment_data))) {
-                    mender_log_error("Unable to save deployment data");
-                }
                 if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     /* Save the next state before running the reboot callback --
                      * if there is an interrupt (power, crash,...) right after,
@@ -1040,9 +1051,8 @@ mender_client_update_work_function(void) {
                      * verification should happen anyway, the callback in that
                      * state should be able to see if things went well or
                      * wrong. */
-                    mender_storage_save_update_state(MENDER_UPDATE_STATE_VERIFY_REBOOT, mender_update_module->artifact_type);
+                    set_and_store_state(MENDER_UPDATE_STATE_VERIFY_REBOOT);
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
-
                     if (MENDER_OK == ret) {
                         /* now we need to get outside of the loop so that a
                          * potential asynchronous reboot has a chance to kick in
@@ -1089,7 +1099,6 @@ mender_client_update_work_function(void) {
                 }
                 NEXT_STATE;
                 mender_storage_delete_deployment_data();
-                mender_storage_delete_update_state();
                 break; /* below is the failure path */
 
             case MENDER_UPDATE_STATE_ROLLBACK:
@@ -1105,7 +1114,7 @@ mender_client_update_work_function(void) {
             case MENDER_UPDATE_STATE_ROLLBACK_REBOOT:
                 /* Save the next state before running the reboot callback (see
                  * STATE_REBOOT for details). */
-                mender_storage_save_update_state(MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, mender_update_module->artifact_type);
+                set_and_store_state(MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT);
                 ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
 
                 if (MENDER_OK == ret) {

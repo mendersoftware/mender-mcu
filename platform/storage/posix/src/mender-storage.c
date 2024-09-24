@@ -34,7 +34,6 @@
 #define MENDER_STORAGE_NVS_PRIVATE_KEY     CONFIG_MENDER_STORAGE_PATH "key.der"
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      CONFIG_MENDER_STORAGE_PATH "pubkey.der"
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA CONFIG_MENDER_STORAGE_PATH "deployment-data.json"
-#define MENDER_STORAGE_NVS_UPDATE_STATE    CONFIG_MENDER_STORAGE_PATH "um_state.dat"
 #define MENDER_STORAGE_NVS_PROVIDES        CONFIG_MENDER_STORAGE_PATH "provides.txt"
 #define MENDER_STORAGE_NVS_ARTICACT_NAME   CONFIG_MENDER_STORAGE_PATH "artifact_name.txt"
 
@@ -178,92 +177,6 @@ mender_storage_delete_deployment_data(void) {
     /* Delete deployment data */
     if (0 != unlink(MENDER_STORAGE_NVS_DEPLOYMENT_DATA)) {
         mender_log_error("Unable to delete deployment data");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_save_update_state(mender_update_state_t state, const char *artifact_type) {
-    assert(NULL != artifact_type);
-    size_t artifact_type_len;
-
-    FILE *f = fopen(MENDER_STORAGE_NVS_UPDATE_STATE, "wb");
-    if (NULL == f) {
-        mender_log_error("Unable to open " MENDER_STORAGE_NVS_UPDATE_STATE " for writing");
-        return MENDER_FAIL;
-    }
-    if (fwrite(&state, 1, sizeof(state), f) != sizeof(state)) {
-        mender_log_error("Unable to save update state");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-    artifact_type_len = strlen(artifact_type);
-    if (fwrite(artifact_type, sizeof(char), artifact_type_len, f) != artifact_type_len) {
-        mender_log_error("Unable to save update state");
-        fclose(f);
-        return MENDER_FAIL;
-    }
-
-    fclose(f);
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_storage_get_update_state(mender_update_state_t *state, char **artifact_type) {
-    FILE        *f;
-    size_t       length;
-    size_t       n_read;
-    mender_err_t ret = MENDER_OK;
-
-    f = fopen(MENDER_STORAGE_NVS_UPDATE_STATE, "rb");
-    if (NULL == f) {
-        mender_log_debug("No update state file");
-        return MENDER_NOT_FOUND;
-    }
-    fseek(f, 0, SEEK_END);
-    length = ftell(f);
-    if (length <= 0) {
-        mender_log_debug("Update state file empty or unavailable");
-        ret = MENDER_NOT_FOUND;
-        goto END;
-    }
-    if (length < (sizeof(*state) + 2)) {
-        mender_log_error("Incomplete or invalid update state, ignoring");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    fseek(f, 0, SEEK_SET);
-    n_read = fread(state, sizeof(*state), 1, f);
-    if (n_read < 1) {
-        mender_log_error("Failed to read saved update state, ignoring");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    *artifact_type = calloc(length - sizeof(*state) + 1, sizeof(char));
-    if (NULL == *artifact_type) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    n_read = fread(*artifact_type, sizeof(char), length - sizeof(*state), f);
-    if (n_read < (length - sizeof(*state))) {
-        mender_log_error("Failed to read saved update state, ignoring");
-        free(*artifact_type);
-        ret = MENDER_FAIL;
-        goto END;
-    }
-
-END:
-    fclose(f);
-    return ret;
-}
-mender_err_t
-mender_storage_delete_update_state(void) {
-    /* Delete update state */
-    if (0 != unlink(MENDER_STORAGE_NVS_UPDATE_STATE)) {
-        mender_log_error("Unable to delete update state");
         return MENDER_FAIL;
     }
 

@@ -65,8 +65,6 @@ mender_err_t mender_get_deployment_data(mender_deployment_data_t **deployment_da
  * @brief Create a deployment data object.
  * @param id Deployment ID or NULL
  * @param artifact_name Artifact name or NULL
- * @param provides Provides (filtered on clears provides) or NULL
- * @param name State name or NULL
  * @param deployment_data Deployment data
  * @note The version number field will be initialized to the current version and
  *       the state data store count field will be initialized to zero. This
@@ -77,8 +75,7 @@ mender_err_t mender_get_deployment_data(mender_deployment_data_t **deployment_da
  *          mender_set_deployment_data(), the validation will fail.
  * @return MENDER_OK on success, otherwise MENDER_FAIL
  */
-mender_err_t mender_create_deployment_data(
-    const char *id, const char *artifact_name, const char *provides, const char *name, mender_deployment_data_t **deployment_data);
+mender_err_t mender_create_deployment_data(const char *id, const char *artifact_name, mender_deployment_data_t **deployment_data);
 
 /**
  * @brief Append payload type

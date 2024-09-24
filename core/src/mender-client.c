@@ -868,9 +868,7 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
         mender_log_warning("Unexpected stale deployment data");
         mender_delete_deployment_data(mender_client_deployment_data);
     }
-    if (MENDER_OK
-        != (mender_create_deployment_data(
-            deployment->id, deployment->artifact_name, NULL /* We will populate later */, NULL /* TODO: MEN-7515 */, &mender_client_deployment_data))) {
+    if (MENDER_OK != (mender_create_deployment_data(deployment->id, deployment->artifact_name, &mender_client_deployment_data))) {
         /* Error already logged */
         return MENDER_FAIL;
     }

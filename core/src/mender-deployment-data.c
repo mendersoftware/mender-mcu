@@ -163,7 +163,7 @@ mender_get_deployment_data(mender_deployment_data_t **deployment_data) {
 }
 
 mender_err_t
-mender_create_deployment_data(const char *id, const char *artifact_name, const char *provides, const char *name, mender_deployment_data_t **deployment_data) {
+mender_create_deployment_data(const char *id, const char *artifact_name, mender_deployment_data_t **deployment_data) {
 
     assert(NULL != deployment_data);
 
@@ -202,18 +202,14 @@ mender_create_deployment_data(const char *id, const char *artifact_name, const c
     }
 
     /* Add provides field */
-    if (NULL == (item = (NULL == provides) ? cJSON_CreateNull() : cJSON_CreateString(provides))) {
-        goto FAIL;
-    }
+    item = cJSON_CreateNull();
     if (!cJSON_AddItemToObject(*deployment_data, MENDER_DEPLOYMENT_DATA_KEY_PROVIDES, item)) {
         goto FAIL;
     }
     item = NULL;
 
-    /* Add state name field */
-    if (NULL == (item = (NULL == name) ? cJSON_CreateNull() : cJSON_CreateString(name))) {
-        goto FAIL;
-    }
+    /* Add state field */
+    item = cJSON_CreateNull();
     if (!cJSON_AddItemToObject(*deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE, item)) {
         goto FAIL;
     }

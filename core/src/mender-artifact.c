@@ -179,6 +179,20 @@ mender_artifact_get_ctx(mender_artifact_ctx_t **ctx) {
     return MENDER_OK;
 }
 
+static bool
+is_compressed(const char *filename) {
+
+    static const char *compression_suffixes[] = { ".gz", ".xz", ".zst", NULL };
+
+    for (size_t i = 0; NULL != compression_suffixes[i]; i++) {
+        if (mender_utils_strendwith(filename, compression_suffixes[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 mender_err_t
 mender_artifact_process_data(mender_artifact_ctx_t *ctx,
                              void                  *input_data,
@@ -203,6 +217,12 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
 
     /* Parse data */
     do {
+
+        /* We do not support compressed artifacts */
+        if (is_compressed(ctx->file.name)) {
+            mender_log_error("Artifact compression is not supported");
+            return MENDER_FAIL;
+        }
 
         /* Treatment depending of the stream state */
         if (MENDER_ARTIFACT_STREAM_STATE_PARSING_HEADER == ctx->stream_state) {

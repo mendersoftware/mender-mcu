@@ -124,6 +124,12 @@ if (NOT CONFIG_MENDER_PLATFORM_TLS_TYPE)
 else()
     message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_TLS_TYPE}' platform TLS implementation")
 endif()
+if (NOT CONFIG_MENDER_PLATFORM_SHA_TYPE)
+    message(STATUS "Using default 'generic/weak' platform SHA implementation")
+    set(CONFIG_MENDER_PLATFORM_SHA_TYPE "generic/weak")
+else()
+    message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_SHA_TYPE}' platform SHA implementation")
+endif()
 
 option(MENDER_MBEDTLS_ERROR_STR "Enable mbedtls error strings" OFF)
 
@@ -176,6 +182,7 @@ file(GLOB SOURCES_TEMP
     "${CMAKE_CURRENT_LIST_DIR}/platform/scheduler/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/mender-scheduler.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
+    "${CMAKE_CURRENT_LIST_DIR}/platform/sha/${CONFIG_MENDER_PLATFORM_SHA_TYPE}/src/mender-sha.c"
 )
 if (CONFIG_MENDER_CLIENT_INVENTORY)
     list(APPEND SOURCES_TEMP

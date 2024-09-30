@@ -795,7 +795,7 @@ mender_client_get_update_module(const char *artifact_type) {
 }
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-mender_err_t
+static mender_err_t
 mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, mender_api_deployment_data_t *deployment) {
     mender_err_t ret;
 

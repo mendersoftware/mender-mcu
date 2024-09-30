@@ -48,6 +48,13 @@
 #endif /* CONFIG_MENDER_SERVER_TENANT_TOKEN */
 
 /**
+ * @brief Default device type
+ */
+#ifndef CONFIG_MENDER_DEVICE_TYPE
+#define CONFIG_MENDER_DEVICE_TYPE NULL
+#endif /* CONFIG_MENDER_DEVICE_TYPE */
+
+/**
  * @brief Default authentication poll interval (seconds)
  */
 #ifndef CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL
@@ -244,13 +251,17 @@ mender_err_t
 mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks) {
 
     assert(NULL != config);
-    assert(NULL != config->device_type);
     assert(NULL != callbacks);
     assert(NULL != callbacks->restart);
     mender_err_t ret;
 
-    mender_client_config.device_type = config->device_type;
-
+    /* Prefer client config over Kconfig */
+    mender_client_config.device_type = IS_NULL_OR_EMPTY(config->device_type) ? CONFIG_MENDER_DEVICE_TYPE : config->device_type;
+    if (IS_NULL_OR_EMPTY(mender_client_config.device_type)) {
+        mender_log_error("Invalid device type configuration, can't be null or empty");
+        ret = MENDER_FAIL;
+        goto END;
+    }
     mender_log_info("Device type: [%s]", mender_client_config.device_type);
 
     if ((NULL != config->host) && (strlen(config->host) > 0)) {

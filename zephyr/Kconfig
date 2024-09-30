@@ -46,6 +46,12 @@ if MENDER_MCU_CLIENT
             help
                 Set the Mender server Tenant Token, to be used with https://hosted.mender.io. Retrieve it from the "Organization and billing" settings of your account.
 
+        config MENDER_DEVICE_TYPE
+            string "Mender Device Type"
+            default BOARD_TARGET
+            help
+                The type of device, used to ensure compatibility between the hardware and software.
+
         config MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL
             int "Mender client Authentication poll interval (seconds)"
             range 0 3600

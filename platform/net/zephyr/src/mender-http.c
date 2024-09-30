@@ -110,6 +110,7 @@ mender_http_perform(char                *jwt,
     char                       *port               = NULL;
     char                       *url                = NULL;
     int                         sock               = -1;
+    int                         http_req_ret;
 
     /* Headers to be added to the request */
     char *host_header      = NULL;
@@ -185,8 +186,8 @@ mender_http_perform(char                *jwt,
     }
 
     /* Perform HTTP request */
-    if (http_client_req(sock, &request, MENDER_HTTP_REQUEST_TIMEOUT, (void *)&request_context) < 0) {
-        mender_log_error("Unable to write data");
+    if ((http_req_ret = http_client_req(sock, &request, MENDER_HTTP_REQUEST_TIMEOUT, (void *)&request_context)) < 0) {
+        mender_log_error("HTTP request failed: %s", strerror(-http_req_ret));
         goto END;
     }
 

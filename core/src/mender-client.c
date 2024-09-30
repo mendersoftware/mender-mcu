@@ -1170,15 +1170,18 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
     mender_err_t ret = MENDER_FAIL;
 
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
-    static size_t download_progress = 0;
-    /* New update */
-    if (0 == index) {
-        download_progress = 0;
-    }
-    /* Update every 10% */
-    if (((index * 10) / size) > download_progress) {
-        download_progress = (index * 10) / size;
-        mender_log_info("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
+    if (size > 0) {
+        static size_t download_progress = 0;
+        /* New update */
+        if (0 == index) {
+            download_progress = 0;
+        }
+
+        /* Update every 10% */
+        if (((index * 10) / size) > download_progress) {
+            download_progress = (index * 10) / size;
+            mender_log_info("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
+        }
     }
 #endif
 

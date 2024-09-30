@@ -70,7 +70,7 @@ mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int3
  * @brief Start work
  */
 mender_err_t
-mender_scheduler_alt_work_start() {
+mender_scheduler_alt_work_start(void) {
 
     assert(NULL != user_function);
 

@@ -43,7 +43,7 @@ mender_work_function(struct k_work *work) {
     assert(NULL != user_function);
 
     mender_log_debug("Inside work function");
-    mender_err_t status = (*user_function)();
+    MENDER_NDEBUG_UNUSED mender_err_t status = (*user_function)();
     mender_log_debug("Executed work function [%d]", status);
 
     k_work_reschedule(&mender_work_handle, K_SECONDS(user_interval));

@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include "mender-flash.h"
 #include "mender-log.h"
+#include "mender-utils.h"
 
 /**
  * @brief Default deployment path (working directory)
@@ -35,14 +36,14 @@
 #define MENDER_FLASH_REQUEST_UPGRADE CONFIG_MENDER_FLASH_PATH "request_upgrade"
 
 mender_err_t
-mender_flash_open(const char *name, size_t size, void **handle) {
+mender_flash_open(const char *name, MENDER_ARG_UNUSED size_t size, void **handle) {
 
     assert(NULL != name);
     assert(NULL != handle);
     char *path = NULL;
 
     /* Print current file name and size */
-    mender_log_info("Start flashing artifact '%s' with size %d", name, size);
+    mender_log_verbose("Start flashing artifact '%s' with size %d", name, size);
 
     /* Compute path */
     size_t str_length = strlen(CONFIG_MENDER_FLASH_PATH) + strlen(name) + 1;

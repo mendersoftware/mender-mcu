@@ -78,7 +78,7 @@ mender_storage_read_file(const char *file_path, void **data, size_t *data_length
     fseek(f, 0, SEEK_END);
     long length = ftell(f);
     if (length <= 0) {
-        mender_log_info("File %s is empty or unavailable", file_path);
+        mender_log_verbose("File %s is empty or unavailable", file_path);
         fclose(f);
         return MENDER_NOT_FOUND;
     }

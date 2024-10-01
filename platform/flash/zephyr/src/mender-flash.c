@@ -31,7 +31,7 @@ mender_flash_open(const char *name, size_t size, void **handle) {
     int result;
 
     /* Print current file name and size */
-    mender_log_info("Start flashing artifact '%s' with size %d", name, size);
+    mender_log_verbose("Start flashing artifact '%s' with size %d", name, size);
 
     /* Allocate memory to store the flash handle */
     if (NULL == (*handle = malloc(sizeof(struct flash_img_context)))) {

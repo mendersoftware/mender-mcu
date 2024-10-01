@@ -138,7 +138,7 @@ mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char 
     /* Check if recommissioning is forced */
     if (recommissioning) {
         /* Erase authentication keys */
-        mender_log_info("Deleting authentication keys");
+        mender_log_verbose("Deleting authentication keys");
         if (MENDER_OK != mender_storage_delete_authentication_keys()) {
             mender_log_warning("Unable to delete authentication keys");
         }
@@ -198,7 +198,7 @@ mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char 
     }
 
     /* We failed to get keys from store. Hence, we need to generate them */
-    mender_log_info("Generating authentication keys");
+    mender_log_verbose("Generating authentication keys");
     if (MENDER_OK
         != mender_tls_get_authentication_keys(
             &mender_tls_private_key, &mender_tls_private_key_length, &mender_tls_public_key, &mender_tls_public_key_length, NULL, 0)) {

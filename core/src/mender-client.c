@@ -251,7 +251,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
 
     mender_client_config.device_type = config->device_type;
 
-    mender_log_info("Device type: [%s]", mender_client_config.device_type);
+    mender_log_verbose("Device type: [%s]", mender_client_config.device_type);
 
     if ((NULL != config->host) && (strlen(config->host) > 0)) {
         mender_client_config.host = config->host;
@@ -504,7 +504,7 @@ mender_client_initialization_work_function(void) {
         }
     }
 
-    mender_log_info("Initialization done");
+    mender_log_verbose("Initialization done");
 
     return MENDER_DONE;
 
@@ -587,7 +587,7 @@ mender_client_ensure_authenticated(void) {
         return MENDER_FAIL;
     }
 
-    mender_log_info("Authenticated successfully");
+    mender_log_verbose("Authenticated successfully");
     return MENDER_OK;
 }
 
@@ -806,7 +806,7 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
         return ret;
     }
 
-    mender_log_info("Checking device type compatibility");
+    mender_log_verbose("Checking device type compatibility");
 
     /* Match device type  */
     if (MENDER_OK
@@ -847,9 +847,9 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
 
     mender_err_t ret = MENDER_OK;
 
-    mender_log_info("Checking for deployment...");
+    mender_log_verbose("Checking for deployment...");
     if (MENDER_NOT_FOUND == (ret = mender_api_check_for_deployment(deployment))) {
-        mender_log_info("No deployment available");
+        mender_log_verbose("No deployment available");
         return MENDER_DONE;
     } else if (MENDER_OK != ret) {
         mender_log_error("Unable to check for deployment");
@@ -1180,7 +1180,7 @@ mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *fil
         /* Update every 10% */
         if (((index * 10) / size) > download_progress) {
             download_progress = (index * 10) / size;
-            mender_log_info("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
+            mender_log_verbose("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
         }
     }
 #endif

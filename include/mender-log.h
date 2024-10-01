@@ -33,7 +33,8 @@ extern "C" {
 #define MENDER_LOG_LEVEL_ERR (1)
 #define MENDER_LOG_LEVEL_WRN (2)
 #define MENDER_LOG_LEVEL_INF (3)
-#define MENDER_LOG_LEVEL_DBG (4)
+#define MENDER_LOG_LEVEL_VRB (4)
+#define MENDER_LOG_LEVEL_DBG (5)
 
 /**
  * @brief Default log level
@@ -92,6 +93,18 @@ mender_err_t mender_log_print(uint8_t level, const char *filename, const char *f
 #else
 #define mender_log_info(...)
 #endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF */
+
+/**
+ * @brief Print verbose log
+ * @param error_code Error code
+ * @param ... Arguments
+ * @return Error code
+ */
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_VRB
+#define mender_log_verbose(...) ({ mender_log_print(MENDER_LOG_LEVEL_VRB, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
+#else
+#define mender_log_verbose(...)
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_VRB */
 
 /**
  * @brief Print debug log

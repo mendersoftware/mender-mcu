@@ -65,6 +65,11 @@ mender_log_print(uint8_t level, const char *filename, const char *function, int 
         case MENDER_LOG_LEVEL_INF:
             LOG_INF("%s", log_buff);
             break;
+        case MENDER_LOG_LEVEL_VRB:
+            /* No LOG_VRB() on Zephyr, let's use the INF level. This still
+               allows us to filter out the verbose info messages, though. */
+            LOG_INF("%s", log_buff);
+            break;
         case MENDER_LOG_LEVEL_DBG:
             LOG_DBG("%s (%d): %s", function, line, log_buff);
             break;

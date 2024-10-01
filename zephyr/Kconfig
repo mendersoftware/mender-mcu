@@ -62,10 +62,46 @@ if MENDER_MCU_CLIENT
                 Interval used to periodically check for new deployments on the Mender server.
                 Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
-        module = MENDER
-        module-str = Log Level for mender
-        module-help = Enables logging for mender code.
-        source "subsys/logging/Kconfig.template.log_config"
+
+        choice "MENDER_LOG_LEVEL_CHOICE"
+            prompt "Max compiled-in log level for the Mender module"
+            default MENDER_LOG_LEVEL_DEFAULT
+            depends on LOG
+            help
+                Enables logging for Mender code.
+
+            config MENDER_LOG_LEVEL_OFF
+                bool "Off"
+
+            config MENDER_LOG_LEVEL_ERR
+                bool "Error"
+
+            config MENDER_LOG_LEVEL_WRN
+                bool "Warning"
+
+            config MENDER_LOG_LEVEL_INF
+                bool "Info"
+
+            config MENDER_LOG_LEVEL_VRB
+                bool "Verbose"
+
+            config MENDER_LOG_LEVEL_DBG
+                bool "Debug"
+
+            config MENDER_LOG_LEVEL_DEFAULT
+                bool "Default"
+        endchoice
+
+        config MENDER_LOG_LEVEL
+            int
+            depends on LOG
+            default 0 if MENDER_LOG_LEVEL_OFF
+            default 1 if MENDER_LOG_LEVEL_ERR
+            default 2 if MENDER_LOG_LEVEL_WRN
+            default 3 if MENDER_LOG_LEVEL_INF
+            default 4 if MENDER_LOG_LEVEL_VRB
+            default 5 if MENDER_LOG_LEVEL_DBG
+            default LOG_DEFAULT_LEVEL if MENDER_LOG_LEVEL_DEFAULT
 
     endmenu
 

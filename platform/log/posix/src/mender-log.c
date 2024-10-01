@@ -54,6 +54,9 @@ mender_log_print(uint8_t level, const char *filename, const char *function, int 
         case MENDER_LOG_LEVEL_INF:
             printf("[%ld] <inf> %s (%d): %s\n", now.tv_sec, filename, line, log);
             break;
+        case MENDER_LOG_LEVEL_VRB:
+            printf("[%ld] <vrb> %s (%d): %s\n", now.tv_sec, filename, line, log);
+            break;
         case MENDER_LOG_LEVEL_DBG:
             printf("[%ld] <dbg> %s (%d): %s\n", now.tv_sec, filename, line, log);
             break;

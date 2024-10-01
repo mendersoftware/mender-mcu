@@ -5,7 +5,8 @@
 #define LOG_LEVEL_ERR  1U
 #define LOG_LEVEL_WRN  2U
 #define LOG_LEVEL_INF  3U
-#define LOG_LEVEL_DBG  4U
+#define LOG_LEVEL_VRB  4U
+#define LOG_LEVEL_DBG  5U
 
 #ifndef CONFIG_LOG
 #define CONFIG_LOG_DEFAULT_LEVEL 0U

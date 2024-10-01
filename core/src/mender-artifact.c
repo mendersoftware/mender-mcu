@@ -532,7 +532,7 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
         }
         *next = '\0';
 
-        ///* Process line */
+        /* Process line */
         char *separator = strstr(line, "  ");
         if (NULL == separator) {
             mender_log_error("Invalid manifest file");
@@ -547,7 +547,7 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
         }
         *separator = '\0';
 
-        /* Allocate memory and check if allocation was succesfull */
+        /* Allocate memory and check if allocation was successful */
         checksum->key   = strdup(line);
         checksum->value = strdup(separator + 2);
         if ((NULL == checksum->key) || (NULL == checksum->value)) {

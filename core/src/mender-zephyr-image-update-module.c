@@ -101,9 +101,6 @@ mender_zephyr_image_download_artifact_flash_callback(MENDER_NDEBUG_UNUSED mender
 
     /* Check if the filename is provided */
     if (NULL != dl_data->filename) {
-        // TODO remove (here and below) in favor of debug logging once the logging is under control
-        printf(".");
-
         /* Check if the flash handle must be opened */
         if (0 == dl_data->offset) {
             /* Open the flash handle */
@@ -121,9 +118,6 @@ mender_zephyr_image_download_artifact_flash_callback(MENDER_NDEBUG_UNUSED mender
 
         /* Check if the flash handle must be closed */
         if (dl_data->offset + dl_data->length >= dl_data->size) {
-
-            printf("DONE\n");
-
             /* Close the flash handle */
             if (MENDER_OK != (ret = mender_flash_close(mcu_boot_flash_handle))) {
                 mender_log_error("Unable to close flash handle");

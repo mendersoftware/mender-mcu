@@ -94,7 +94,7 @@ mender_err_t mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const c
 mender_artifact_ctx_t *mender_artifact_create_ctx(void);
 
 /**
- * @brief Function used to create a new artifact context
+ * @brief Function used to get the artifact context
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_artifact_get_ctx(mender_artifact_ctx_t **ctx);

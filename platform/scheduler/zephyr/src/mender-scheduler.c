@@ -42,7 +42,6 @@ mender_work_function(struct k_work *work) {
 
     assert(NULL != user_function);
 
-    mender_log_debug("Inside work function");
     MENDER_NDEBUG_UNUSED mender_err_t status = (*user_function)();
     mender_log_debug("Executed work function [%d]", status);
 

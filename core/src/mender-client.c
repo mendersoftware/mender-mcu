@@ -462,7 +462,7 @@ mender_client_exit(void) {
 
 static mender_err_t
 mender_client_work_function(void) {
-    mender_log_info("work function: %d", mender_client_state);
+    mender_log_debug("Inside work function [state: %d]", mender_client_state);
 
     switch (mender_client_state) {
         case MENDER_CLIENT_STATE_PENDING_REBOOT:

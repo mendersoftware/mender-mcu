@@ -221,6 +221,24 @@ mender_artifact_check_integrity(mender_artifact_ctx_t *ctx) {
 
         if (0 != memcmp(checksum->manifest, computed, MENDER_DIGEST_BUFFER_SIZE)) {
             mender_log_error("Computed checksum for file '%s' does not match manifest", checksum->filename);
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
+            /* Log the mismatching checksums for debugging */
+            char checksum_str[(MENDER_DIGEST_BUFFER_SIZE * 2) + 1];
+
+            for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
+                if (2 != snprintf(checksum_str + (i * 2), 3, "%02hhx", checksum->manifest[i])) {
+                    break;
+                }
+            }
+            mender_log_debug("%s: '%s' (manifest)", checksum->filename, checksum_str);
+
+            for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
+                if (2 != snprintf(checksum_str + (i * 2), 3, "%02hhx", computed[i])) {
+                    break;
+                }
+            }
+            mender_log_debug("%s: '%s' (computed)", checksum->filename, checksum_str);
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG */
             return MENDER_FAIL;
         }
     }
@@ -641,6 +659,9 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 
         const char *checksum_str = line;
         const char *filename     = separator + 2;
+
+        /* Useful when debugging artifact integrity check failures */
+        mender_log_debug("%s  %s", checksum_str, filename);
 
         /* Make sure digest is of expected length (two hex per byte) */
         if ((MENDER_DIGEST_BUFFER_SIZE * 2) != strlen(checksum_str)) {

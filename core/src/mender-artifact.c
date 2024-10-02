@@ -150,6 +150,80 @@ static size_t mender_artifact_round_up(size_t length, size_t incr);
  */
 static mender_artifact_ctx_t *mender_artifact_ctx = NULL;
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+/**
+ * @brief Get checksum entry for a file in the context
+ * @param ctx The mender artifact context
+ * @param filename The name of the file in the artifact
+ * @return The checksum entry or NULL on error.
+ * @note Since other files may be parsed before the manifest file, we need to
+ *       create these entries in a lazy fashion.
+ */
+static mender_artifact_checksum_t *
+mender_artifact_checksum_get_or_create(mender_artifact_ctx_t *ctx, const char *filename) {
+    assert(NULL != ctx);
+    assert(NULL != filename);
+
+    /* See if we already have an entry for this file */
+    mender_artifact_checksum_t *checksum;
+    for (checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+        if (StringEqual(checksum->filename, filename)) {
+            break;
+        }
+    }
+
+    if (NULL == checksum) {
+        /* Create new if entry not found */
+        checksum = (mender_artifact_checksum_t *)calloc(1, sizeof(mender_artifact_checksum_t));
+        if (NULL == checksum) {
+            mender_log_error("Unable to allocate memory");
+            return NULL;
+        }
+        checksum->filename = strdup(filename);
+        if (NULL == checksum->filename) {
+            mender_log_error("Unable to allocate memory");
+            free(checksum);
+            return NULL;
+        }
+        checksum->next               = ctx->artifact_info.checksums;
+        ctx->artifact_info.checksums = checksum;
+
+        /* Start SHA-256 checksum computation */
+        if (MENDER_OK != mender_sha256_begin(&(checksum->context))) {
+            mender_log_error("Failed to start checksum for file '%s'", filename);
+            return NULL;
+        }
+    }
+
+    return checksum;
+}
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
+mender_err_t
+mender_artifact_check_integrity(mender_artifact_ctx_t *ctx) {
+    assert(NULL != ctx);
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+        unsigned char computed[MENDER_DIGEST_BUFFER_SIZE];
+        mender_log_debug("Checking integrity for artifact file '%s'", checksum->filename);
+
+        if (MENDER_OK != mender_sha256_finish(checksum->context, computed)) {
+            mender_log_error("Failed to finish checksum for file '%s'", checksum->filename);
+            checksum->context = NULL;
+            return MENDER_FAIL;
+        }
+        checksum->context = NULL;
+
+        if (0 != memcmp(checksum->manifest, computed, MENDER_DIGEST_BUFFER_SIZE)) {
+            mender_log_error("Computed checksum for file '%s' does not match manifest", checksum->filename);
+            return MENDER_FAIL;
+        }
+    }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+    return MENDER_OK;
+}
+
 mender_artifact_ctx_t *
 mender_artifact_create_ctx(void) {
 
@@ -325,7 +399,10 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         mender_utils_free_linked_list(ctx->artifact_info.provides);
         mender_utils_free_linked_list(ctx->artifact_info.depends);
-        mender_utils_free_linked_list(ctx->artifact_info.checksums);
+        for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+            free(checksum->filename);
+            mender_sha256_finish(checksum->context, NULL);
+        }
 #endif
         free(ctx);
     }
@@ -440,6 +517,21 @@ mender_artifact_read_version(mender_artifact_ctx_t *ctx) {
         return MENDER_OK;
     }
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    /* Get checksum entry (create one if needed) */
+    mender_artifact_checksum_t *checksum;
+    if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, "version"))) {
+        /* Error already logged */
+        return MENDER_FAIL;
+    }
+
+    /* Update SHA-256 checksum */
+    if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, ctx->file.size)) {
+        mender_log_error("Failed to update update checksum");
+        return MENDER_FAIL;
+    }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
     /* Check version file */
     if (NULL == (object = cJSON_ParseWithLength(ctx->input.data, ctx->file.size))) {
         mender_log_error("Unable to allocate memory");
@@ -538,25 +630,31 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
             mender_log_error("Invalid manifest file");
             return MENDER_FAIL;
         }
-
-        /* Add checksum to the list */
-        mender_key_value_list_t *checksum = (mender_key_value_list_t *)calloc(1, sizeof(mender_key_value_list_t));
-        if (NULL == checksum) {
-            mender_log_error("Unable to allocate memory");
-            return MENDER_FAIL;
-        }
         *separator = '\0';
 
-        /* Allocate memory and check if allocation was successful */
-        checksum->key   = strdup(line);
-        checksum->value = strdup(separator + 2);
-        if ((NULL == checksum->key) || (NULL == checksum->value)) {
-            mender_log_error("Unable to allocate memory");
-            mender_utils_free_linked_list(checksum);
+        const char *checksum_str = line;
+        const char *filename     = separator + 2;
+
+        /* Make sure digest is of expected length (two hex per byte) */
+        if ((MENDER_DIGEST_BUFFER_SIZE * 2) != strlen(checksum_str)) {
+            mender_log_error("Bad checksum '%s' in manifest for file '%s'", checksum_str, filename);
             return MENDER_FAIL;
         }
-        checksum->next               = ctx->artifact_info.checksums;
-        ctx->artifact_info.checksums = checksum;
+
+        /* Get checksum entry for the file (creates one if not found) */
+        mender_artifact_checksum_t *checksum;
+        if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, filename))) {
+            /* Error already logged */
+            return MENDER_FAIL;
+        }
+
+        /* Populate with manifest checksum */
+        for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
+            if (1 != sscanf(checksum_str + (2 * i), "%02hhx", checksum->manifest + i)) {
+                mender_log_error("Bad checksum '%s' in manifest for file '%s'", checksum_str, filename);
+                return MENDER_FAIL;
+            }
+        }
 
         ///* Move to the next line */
         line = next + 1;

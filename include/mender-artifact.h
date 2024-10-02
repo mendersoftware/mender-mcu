@@ -25,6 +25,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include "mender-utils.h"
+#include "mender-sha.h"
 
 /**
  * @brief Artifact state machine used to process input data stream
@@ -50,6 +51,16 @@ typedef struct {
     cJSON *meta_data; /**< Meta-data from the header tarball, NULL if no meta-data */
 } mender_artifact_payload_t;
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+typedef struct mender_artifact_checksum_t mender_artifact_checksum_t;
+struct mender_artifact_checksum_t {
+    char                       *filename;
+    unsigned char               manifest[MENDER_DIGEST_BUFFER_SIZE];
+    mender_sha256_context_t     context;
+    mender_artifact_checksum_t *next;
+};
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
 /**
  * @brief Artifact context
  */
@@ -65,11 +76,11 @@ typedef struct {
     } payloads;                            /**< Payloads of the artifact */
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
     struct {
-        mender_key_value_list_t *checksums; /**< Contains checksums of the artifact */
-        mender_key_value_list_t *provides;  /**< Provides of the artifact */
-        mender_key_value_list_t *depends;   /**< Depends of the artifact */
-    } artifact_info;                        /**< Global information about the artifact */
-#endif
+        mender_artifact_checksum_t *checksums; /**< Contains checksums of the artifact */
+        mender_key_value_list_t    *provides;  /**< Provides of the artifact */
+        mender_key_value_list_t    *depends;   /**< Depends of the artifact */
+    } artifact_info;                           /**< Global information about the artifact */
+#endif                                         /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
     struct {
         char  *name;  /**< Name of the file currently parsed */
         size_t size;  /**< Size of the file currently parsed (bytes) */
@@ -111,6 +122,14 @@ mender_err_t mender_artifact_process_data(mender_artifact_ctx_t *ctx,
                                           void                  *input_data,
                                           size_t                 input_length,
                                           mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+
+/**
+ * @brief Do integrity checks by comparing the manifest checksums to the computed ones
+ * @param ctx Artifact context
+ * @return MENDER_OK if integrity is enforced, error code otherwise
+ * @note Call the after the processing of data from artifact stream is complete
+ */
+mender_err_t mender_artifact_check_integrity(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Function used to release artifact context

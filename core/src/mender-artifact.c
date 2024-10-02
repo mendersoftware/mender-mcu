@@ -129,6 +129,10 @@ static mender_err_t mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender
  */
 static mender_err_t mender_artifact_drop_file(mender_artifact_ctx_t *ctx);
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+static mender_err_t mender_artifact_read_header(mender_artifact_ctx_t *ctx);
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
 /**
  * @brief Shift data after parsing
  * @param ctx Artifact context
@@ -344,7 +348,10 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
 
                 /* Drop data, file is not relevant */
                 ret = mender_artifact_drop_file(ctx);
-
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+            } else if (StringEqual(ctx->file.name, "header.tar")) {
+                ret = mender_artifact_read_header(ctx);
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
             } else {
 
                 /* Nothing to do */
@@ -796,6 +803,33 @@ END:
 
     return ret;
 }
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+static mender_err_t
+mender_artifact_read_header(mender_artifact_ctx_t *ctx) {
+    assert(NULL != ctx);
+
+    /* Check if all data have been received */
+    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+        return MENDER_OK;
+    }
+
+    /* Get checksum entry (create one if needed) */
+    mender_artifact_checksum_t *checksum;
+    if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, "header.tar"))) {
+        /* Error already logged */
+        return MENDER_FAIL;
+    }
+
+    /* Update SHA-256 checksum */
+    if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, ctx->file.size)) {
+        mender_log_error("Failed to update update checksum");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_DONE;
+}
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 static mender_err_t

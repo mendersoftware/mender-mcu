@@ -587,7 +587,7 @@ mender_client_ensure_authenticated(void) {
         return MENDER_FAIL;
     }
 
-    mender_log_info("Authenticated successfully");
+    mender_log_debug("Authenticated successfully");
     return MENDER_OK;
 }
 
@@ -806,7 +806,7 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
         return ret;
     }
 
-    mender_log_info("Checking device type compatibility");
+    mender_log_debug("Checking device type compatibility");
 
     /* Match device type  */
     if (MENDER_OK

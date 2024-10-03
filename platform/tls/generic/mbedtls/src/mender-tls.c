@@ -138,7 +138,7 @@ mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char 
     /* Check if recommissioning is forced */
     if (recommissioning) {
         /* Erase authentication keys */
-        mender_log_info("Deleting authentication keys");
+        mender_log_debug("Deleting authentication keys");
         if (MENDER_OK != mender_storage_delete_authentication_keys()) {
             mender_log_warning("Unable to delete authentication keys");
         }

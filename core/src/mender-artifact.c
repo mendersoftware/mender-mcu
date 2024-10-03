@@ -469,7 +469,7 @@ mender_artifact_read_version(mender_artifact_ctx_t *ctx) {
         ret = MENDER_FAIL;
         goto END;
     }
-    mender_log_info("Artifact has valid version");
+    mender_log_debug("Artifact has valid version");
 
     /* Shift data in the buffer */
     if (MENDER_OK != mender_artifact_shift_data(ctx, mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {

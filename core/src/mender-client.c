@@ -473,7 +473,7 @@ mender_client_exit(void) {
 
 static mender_err_t
 mender_client_work_function(void) {
-    mender_log_info("work function: %d", mender_client_state);
+    mender_log_debug("Inside work function [state: %d]", mender_client_state);
 
     switch (mender_client_state) {
         case MENDER_CLIENT_STATE_PENDING_REBOOT:
@@ -598,7 +598,7 @@ mender_client_ensure_authenticated(void) {
         return MENDER_FAIL;
     }
 
-    mender_log_info("Authenticated successfully");
+    mender_log_debug("Authenticated successfully");
     return MENDER_OK;
 }
 
@@ -817,7 +817,7 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
         return ret;
     }
 
-    mender_log_info("Checking device type compatibility");
+    mender_log_debug("Checking device type compatibility");
 
     /* Match device type  */
     if (MENDER_OK

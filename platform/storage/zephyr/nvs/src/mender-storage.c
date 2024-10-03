@@ -141,7 +141,7 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PRIVATE_KEY, (void **)private_key, private_key_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            mender_log_info("Private key not available");
+            mender_log_debug("Private key not available");
         } else {
             mender_log_error("Unable to read private key");
         }
@@ -152,7 +152,7 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
     ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PUBLIC_KEY, (void **)public_key, public_key_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            mender_log_info("Public key not available");
+            mender_log_debug("Public key not available");
         } else {
             mender_log_error("Unable to read public key");
         }
@@ -200,7 +200,7 @@ mender_storage_get_deployment_data(char **deployment_data) {
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, (void **)deployment_data, &deployment_data_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            mender_log_info("Deployment data not available");
+            mender_log_debug("Deployment data not available");
         } else {
             mender_log_error("Unable to read deployment data");
         }
@@ -256,7 +256,7 @@ mender_storage_get_provides(mender_key_value_list_t **provides) {
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES, (void **)&provides_str, &provides_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            mender_log_info("Provides not available");
+            mender_log_debug("Provides not available");
         } else {
             mender_log_error("Unable to read provides");
         }

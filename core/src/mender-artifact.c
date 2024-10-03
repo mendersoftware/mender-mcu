@@ -1063,6 +1063,37 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
         size_t length
             = ((ctx->file.size - ctx->file.index) > MENDER_ARTIFACT_STREAM_BLOCK_SIZE) ? MENDER_ARTIFACT_STREAM_BLOCK_SIZE : (ctx->file.size - ctx->file.index);
 
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+        mender_artifact_checksum_t *checksum;
+        {
+            /* The filename will be something like
+             * 'data/0000.tar/zephyr.signed.bin'. But the manifest will hold
+             * 'data/0000/zephyr.signed.bin'. Hence, we need to remove the
+             * '.tar' extension from the string.
+             */
+            char filename[strlen(ctx->file.name) + 1];
+            strcpy(filename, ctx->file.name);
+
+            for (char *ch = strstr(filename, ".tar"); (NULL != ch) && (*ch != '\0'); ch++) {
+                /* Don't worry! The call to strlen() on a static string should
+                 * be optimized out by the compiler */
+                *ch = ch[strlen(".tar")];
+            }
+
+            /* Get checksum entry (create one if needed) */
+            if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, filename))) {
+                /* Error already logged */
+                return MENDER_FAIL;
+            }
+        }
+
+        /* Update SHA-256 checksum */
+        if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, length)) {
+            mender_log_error("Failed to update update checksum");
+            return MENDER_FAIL;
+        }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
         /* Invoke callback */
         if (MENDER_OK
             != (ret = callback(ctx->payloads.values[index].type,

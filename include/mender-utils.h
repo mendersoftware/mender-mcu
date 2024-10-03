@@ -47,6 +47,11 @@ extern "C" {
 #define FREE_AND_NULL(resource) DESTROY_AND_NULL(free, resource)
 
 /**
+ * @brief Macro for checking if string is NULL or empty
+ */
+#define IS_NULL_OR_EMPTY(str) ((NULL == str) || (str[0] == '\0'))
+
+/**
  * @brief Macro for comparing two strings
  * @return true if the strings are equal, false otherwise
  */

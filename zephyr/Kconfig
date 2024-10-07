@@ -218,6 +218,24 @@ if MENDER_MCU_CLIENT
             default "generic/mbedtls" if MENDER_PLATFORM_TLS_TYPE_MBEDTLS
             default "generic/weak" if MENDER_PLATFORM_TLS_TYPE_WEAK
 
+        choice MENDER_PLATFORM_SHA_TYPE
+            prompt "Mender platform SHA implementation type"
+            default MENDER_PLATFORM_SHA_TYPE_MBEDTLS
+            help
+                Specify platform SHA implementation type, select 'weak' to use you own implementation.
+
+            config MENDER_PLATFORM_SHA_TYPE_MBEDTLS
+                bool "mbedtls"
+                select MBEDTLS
+            config MENDER_PLATFORM_SHA_TYPE_WEAK
+                bool "weak"
+        endchoice
+
+        config MENDER_PLATFORM_SHA_TYPE
+            string
+            default "generic/mbedtls" if MENDER_PLATFORM_SHA_TYPE_MBEDTLS
+            default "generic/weak" if MENDER_PLATFORM_SHA_TYPE_WEAK
+
     endmenu
 
     if MENDER_PLATFORM_NET_TYPE_DEFAULT

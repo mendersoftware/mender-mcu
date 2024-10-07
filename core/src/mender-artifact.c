@@ -67,21 +67,21 @@ typedef struct {
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_parse_tar_header(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Read version file of the artifact
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed and version verified, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_read_version(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_version(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Read header-info file of the artifact
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_read_header_info(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_header_info(mender_artifact_ctx_t *ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 /**
@@ -89,14 +89,14 @@ static mender_err_t mender_artifact_read_header_info(mender_artifact_ctx_t *ctx)
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed and checksums retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_read_manifest(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_manifest(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Read type-info file of the artifact
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_read_type_info(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_type_info(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Parse provides/depends from JSON object
@@ -104,7 +104,7 @@ static mender_err_t mender_artifact_read_type_info(mender_artifact_ctx_t *ctx);
  * @param provides_depends Pointer to the list of provides or depends
  * @return MENDER_SUCCESS if the function succeeds, MENDER_FAIL otherwise
  */
-static mender_err_t mender_artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_list_t **provides_depends);
+static mender_err_t artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_list_t **provides_depends);
 #endif
 
 /**
@@ -112,7 +112,7 @@ static mender_err_t mender_artifact_parse_provides_depends(cJSON *json_provides_
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_meta_data(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Read data file of the artifact
@@ -120,17 +120,17 @@ static mender_err_t mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx);
  * @param callback Callback function to be invoked to perform the treatment of the data from the artifact
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
 
 /**
  * @brief Drop content of the current file of the artifact
  * @param ctx Artifact context
  * @return MENDER_DONE if the data have been parsed and dropped, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t mender_artifact_drop_file(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_drop_file(mender_artifact_ctx_t *ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-static mender_err_t mender_artifact_read_header(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_header(mender_artifact_ctx_t *ctx);
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
 /**
@@ -139,7 +139,7 @@ static mender_err_t mender_artifact_read_header(mender_artifact_ctx_t *ctx);
  * @param length Length of data to shift
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-static mender_err_t mender_artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length);
+static mender_err_t artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length);
 
 /**
  * @brief Compute length rounded up to increment (usually the block size)
@@ -147,12 +147,12 @@ static mender_err_t mender_artifact_shift_data(mender_artifact_ctx_t *ctx, size_
  * @param incr Increment
  * @return Rounded length
  */
-static size_t mender_artifact_round_up(size_t length, size_t incr);
+static size_t artifact_round_up(size_t length, size_t incr);
 
 /**
  * @brief Artifact context
  */
-static mender_artifact_ctx_t *mender_artifact_ctx = NULL;
+static mender_artifact_ctx_t *artifact_ctx = NULL;
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 /**
@@ -164,7 +164,7 @@ static mender_artifact_ctx_t *mender_artifact_ctx = NULL;
  *       create these entries in a lazy fashion.
  */
 static mender_artifact_checksum_t *
-mender_artifact_checksum_get_or_create(mender_artifact_ctx_t *ctx, const char *filename) {
+artifact_checksum_get_or_create(mender_artifact_ctx_t *ctx, const char *filename) {
     assert(NULL != ctx);
     assert(NULL != filename);
 
@@ -257,7 +257,7 @@ mender_artifact_create_ctx(void) {
     }
 
     /* Save context */
-    mender_artifact_ctx = ctx;
+    artifact_ctx = ctx;
 
     return ctx;
 }
@@ -267,11 +267,11 @@ mender_artifact_get_ctx(mender_artifact_ctx_t **ctx) {
 
     assert(NULL != ctx);
 
-    if (NULL == mender_artifact_ctx) {
+    if (NULL == artifact_ctx) {
         return MENDER_FAIL;
     }
 
-    *ctx = mender_artifact_ctx;
+    *ctx = artifact_ctx;
     return MENDER_OK;
 }
 
@@ -324,7 +324,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
         if (MENDER_ARTIFACT_STREAM_STATE_PARSING_HEADER == ctx->stream_state) {
 
             /* Parse TAR header */
-            ret = mender_artifact_parse_tar_header(ctx);
+            ret = artifact_parse_tar_header(ctx);
 
         } else if (MENDER_ARTIFACT_STREAM_STATE_PARSING_DATA == ctx->stream_state) {
 
@@ -332,43 +332,43 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
             if (StringEqual(ctx->file.name, "version")) {
 
                 /* Validate artifact version */
-                ret = mender_artifact_read_version(ctx);
+                ret = artifact_read_version(ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
             } else if (StringEqual(ctx->file.name, "manifest")) {
 
                 /* Read manifest file */
-                ret = mender_artifact_read_manifest(ctx);
+                ret = artifact_read_manifest(ctx);
 #endif
             } else if (StringEqual(ctx->file.name, "header.tar/header-info")) {
 
                 /* Read header-info file */
-                ret = mender_artifact_read_header_info(ctx);
+                ret = artifact_read_header_info(ctx);
 
             } else if ((true == mender_utils_strbeginwith(ctx->file.name, "header.tar/headers"))
                        && (true == mender_utils_strendwith(ctx->file.name, "meta-data"))) {
 
                 /* Read meta-data file */
-                ret = mender_artifact_read_meta_data(ctx);
+                ret = artifact_read_meta_data(ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
             } else if (mender_utils_strbeginwith(ctx->file.name, "header.tar/headers") && mender_utils_strendwith(ctx->file.name, "type-info")) {
 
                 /* Read type-info file */
-                ret = mender_artifact_read_type_info(ctx);
+                ret = artifact_read_type_info(ctx);
 #endif
             } else if (true == mender_utils_strbeginwith(ctx->file.name, "data")) {
 
                 /* Read data */
-                ret = mender_artifact_read_data(ctx, callback);
+                ret = artifact_read_data(ctx, callback);
 
             } else if (false == mender_utils_strendwith(ctx->file.name, ".tar")) {
 
                 /* Drop data, file is not relevant */
-                ret = mender_artifact_drop_file(ctx);
+                ret = artifact_drop_file(ctx);
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
             } else if (StringEqual(ctx->file.name, "header.tar")) {
-                ret = mender_artifact_read_header(ctx);
+                ret = artifact_read_header(ctx);
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
             } else {
 
@@ -434,7 +434,7 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
+artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
     char *tmp;
@@ -472,7 +472,7 @@ mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
         }
 
         /* Shift data in the buffer */
-        if (MENDER_OK != mender_artifact_shift_data(ctx, 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+        if (MENDER_OK != artifact_shift_data(ctx, 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
             mender_log_error("Unable to shift input data");
             return MENDER_FAIL;
         }
@@ -519,7 +519,7 @@ mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
     ctx->file.index = 0;
 
     /* Shift data in the buffer */
-    if (MENDER_OK != mender_artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+    if (MENDER_OK != artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
         mender_log_error("Unable to shift input data");
         return MENDER_FAIL;
     }
@@ -531,21 +531,21 @@ mender_artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-mender_artifact_read_version(mender_artifact_ctx_t *ctx) {
+artifact_read_version(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
     cJSON       *object = NULL;
     mender_err_t ret    = MENDER_DONE;
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
     /* Get checksum entry (create one if needed) */
     mender_artifact_checksum_t *checksum;
-    if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, "version"))) {
+    if (NULL == (checksum = artifact_checksum_get_or_create(ctx, "version"))) {
         /* Error already logged */
         return MENDER_FAIL;
     }
@@ -589,7 +589,7 @@ mender_artifact_read_version(mender_artifact_ctx_t *ctx) {
     mender_log_debug("Artifact has valid version");
 
     /* Shift data in the buffer */
-    if (MENDER_OK != mender_artifact_shift_data(ctx, mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         mender_log_error("Unable to shift input data");
         ret = MENDER_FAIL;
         goto END;
@@ -624,12 +624,12 @@ mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const char **device_
 }
 
 static mender_err_t
-mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
+artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
 
     /* Check if all data has been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
 
@@ -671,7 +671,7 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 
         /* Get checksum entry for the file (creates one if not found) */
         mender_artifact_checksum_t *checksum;
-        if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, filename))) {
+        if (NULL == (checksum = artifact_checksum_get_or_create(ctx, filename))) {
             /* Error already logged */
             return MENDER_FAIL;
         }
@@ -689,7 +689,7 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
     }
 
     /* Shift data in the buffer */
-    if (MENDER_OK != mender_artifact_shift_data(ctx, mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         mender_log_error("Unable to shift input data");
         return MENDER_FAIL;
     }
@@ -698,7 +698,7 @@ mender_artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-mender_artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_list_t **provides_depends) {
+artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_list_t **provides_depends) {
 
     assert(NULL != json_provides_depends);
     assert(NULL != provides_depends);
@@ -736,14 +736,14 @@ ERROR:
 #endif
 
 static mender_err_t
-mender_artifact_read_header_info(mender_artifact_ctx_t *ctx) {
+artifact_read_header_info(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
     cJSON       *object = NULL;
     mender_err_t ret    = MENDER_DONE;
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
 
@@ -787,7 +787,7 @@ mender_artifact_read_header_info(mender_artifact_ctx_t *ctx) {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         cJSON *json_provides = cJSON_GetObjectItemCaseSensitive(object, "artifact_provides");
         if (cJSON_IsObject(json_provides)) {
-            if (MENDER_FAIL == mender_artifact_parse_provides_depends(json_provides, &(ctx->artifact_info.provides))) {
+            if (MENDER_FAIL == artifact_parse_provides_depends(json_provides, &(ctx->artifact_info.provides))) {
                 mender_log_error("Unable to parse artifact_provides");
                 ret = MENDER_FAIL;
                 goto END;
@@ -796,7 +796,7 @@ mender_artifact_read_header_info(mender_artifact_ctx_t *ctx) {
 
         cJSON *json_depends = cJSON_GetObjectItemCaseSensitive(object, "artifact_depends");
         if (cJSON_IsObject(json_depends)) {
-            if (MENDER_FAIL == mender_artifact_parse_provides_depends(json_depends, &(ctx->artifact_info.depends))) {
+            if (MENDER_FAIL == artifact_parse_provides_depends(json_depends, &(ctx->artifact_info.depends))) {
                 mender_log_error("Unable to parse artifact_depends");
                 ret = MENDER_FAIL;
                 goto END;
@@ -811,7 +811,7 @@ mender_artifact_read_header_info(mender_artifact_ctx_t *ctx) {
     }
 
     /* Shift data in the buffer */
-    if (MENDER_OK != mender_artifact_shift_data(ctx, mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         mender_log_error("Unable to shift input data");
         ret = MENDER_FAIL;
         goto END;
@@ -827,17 +827,17 @@ END:
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 static mender_err_t
-mender_artifact_read_header(mender_artifact_ctx_t *ctx) {
+artifact_read_header(mender_artifact_ctx_t *ctx) {
     assert(NULL != ctx);
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
 
     /* Get checksum entry (create one if needed) */
     mender_artifact_checksum_t *checksum;
-    if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, "header.tar"))) {
+    if (NULL == (checksum = artifact_checksum_get_or_create(ctx, "header.tar"))) {
         /* Error already logged */
         return MENDER_FAIL;
     }
@@ -854,7 +854,7 @@ mender_artifact_read_header(mender_artifact_ctx_t *ctx) {
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 static mender_err_t
-mender_artifact_read_type_info(mender_artifact_ctx_t *ctx) {
+artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
     cJSON       *object = NULL;
@@ -862,7 +862,7 @@ mender_artifact_read_type_info(mender_artifact_ctx_t *ctx) {
     size_t       index  = 0;
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
 
@@ -881,7 +881,7 @@ mender_artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
     cJSON *json_provides = cJSON_GetObjectItemCaseSensitive(object, "artifact_provides");
     if (cJSON_IsObject(json_provides)) {
-        if (MENDER_FAIL == mender_artifact_parse_provides_depends(json_provides, &(ctx->payloads.values[index].provides))) {
+        if (MENDER_FAIL == artifact_parse_provides_depends(json_provides, &(ctx->payloads.values[index].provides))) {
             mender_log_error("Unable to parse artifact_provides");
             ret = MENDER_FAIL;
             goto END;
@@ -890,7 +890,7 @@ mender_artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 
     cJSON *json_depends = cJSON_GetObjectItemCaseSensitive(object, "artifact_depends");
     if (cJSON_IsObject(json_depends)) {
-        if (MENDER_FAIL == mender_artifact_parse_provides_depends(json_depends, &(ctx->payloads.values[index].depends))) {
+        if (MENDER_FAIL == artifact_parse_provides_depends(json_depends, &(ctx->payloads.values[index].depends))) {
             mender_log_error("Unable to parse artifact_depends");
             ret = MENDER_FAIL;
             goto END;
@@ -930,7 +930,7 @@ mender_artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 #endif
 
     /* Shift data in the buffer */
-    if (MENDER_OK != mender_artifact_shift_data(ctx, mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         mender_log_error("Unable to shift input data");
         ret = MENDER_FAIL;
         goto END;
@@ -946,7 +946,7 @@ END:
 #endif
 
 static mender_err_t
-mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
+artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
 
@@ -976,13 +976,13 @@ mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
     assert(StringEqualN(end_ptr, "/meta-data", 10)); /* just one last sanity check */
 
     /* Check size of the meta-data */
-    if (0 == mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+    if (0 == artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
         /* Nothing to do */
         return MENDER_DONE;
     }
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
 
@@ -993,7 +993,7 @@ mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
     }
 
     /* Shift data in the buffer */
-    if (MENDER_OK != mender_artifact_shift_data(ctx, mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         mender_log_error("Unable to shift input data");
         return MENDER_FAIL;
     }
@@ -1002,7 +1002,7 @@ mender_artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
+artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
 
     assert(NULL != ctx);
     assert(NULL != callback);
@@ -1046,7 +1046,7 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
     }
 
     /* Check size of the data */
-    if (0 == mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+    if (0 == artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
         /* Nothing to do */
         return MENDER_DONE;
     }
@@ -1081,7 +1081,7 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
             }
 
             /* Get checksum entry (create one if needed) */
-            if (NULL == (checksum = mender_artifact_checksum_get_or_create(ctx, filename))) {
+            if (NULL == (checksum = artifact_checksum_get_or_create(ctx, filename))) {
                 /* Error already logged */
                 return MENDER_FAIL;
             }
@@ -1111,7 +1111,7 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
         ctx->file.index += MENDER_ARTIFACT_STREAM_BLOCK_SIZE;
 
         /* Shift data in the buffer */
-        if (MENDER_OK != (ret = mender_artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+        if (MENDER_OK != (ret = artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
             mender_log_error("Unable to shift input data");
             return ret;
         }
@@ -1122,13 +1122,13 @@ mender_artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(c
 }
 
 static mender_err_t
-mender_artifact_drop_file(mender_artifact_ctx_t *ctx) {
+artifact_drop_file(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
     mender_err_t ret;
 
     /* Check size of the data */
-    if (0 == mender_artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+    if (0 == artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
         /* Nothing to do */
         return MENDER_DONE;
     }
@@ -1145,7 +1145,7 @@ mender_artifact_drop_file(mender_artifact_ctx_t *ctx) {
         ctx->file.index += MENDER_ARTIFACT_STREAM_BLOCK_SIZE;
 
         /* Shift data in the buffer */
-        if (MENDER_OK != (ret = mender_artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+        if (MENDER_OK != (ret = artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
             mender_log_error("Unable to shift input data");
             return ret;
         }
@@ -1156,7 +1156,7 @@ mender_artifact_drop_file(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-mender_artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length) {
+artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length) {
 
     assert(NULL != ctx);
     char *tmp;
@@ -1181,6 +1181,6 @@ mender_artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length) {
 }
 
 static size_t
-mender_artifact_round_up(size_t length, size_t incr) {
+artifact_round_up(size_t length, size_t incr) {
     return length + (incr - length % incr) % incr;
 }

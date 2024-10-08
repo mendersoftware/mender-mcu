@@ -20,7 +20,7 @@
 result=""
 
 # Check source and header files
-for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.c$|.*\.h$|.*\.cpp$|.*\.hpp$)' | grep -vFf .clang-format-ignore`
+for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.c$|.*\.h$|.*\.cpp$|.*\.hpp$)'`
 do
     lines=$(clang-format --dry-run ${source_file} 2>&1 | wc -l)
     if [[ ! $lines -eq 0 ]]; then

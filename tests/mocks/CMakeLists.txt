@@ -17,9 +17,6 @@
 
 # Include all mocks
 include("${CMAKE_CURRENT_LIST_DIR}/cjson/CMakeLists.txt")
-if(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE MATCHES "zephyr")
-    include("${CMAKE_CURRENT_LIST_DIR}/zephyr/CMakeLists.txt")
-endif()
 if(CONFIG_MENDER_PLATFORM_TLS_TYPE MATCHES "generic/mbedtls")
     include("${CMAKE_CURRENT_LIST_DIR}/mbedtls/CMakeLists.txt")
 endif()

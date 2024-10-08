@@ -3,6 +3,7 @@
  * @brief     Mender TLS interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +28,9 @@ mender_tls_init(void) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_tls_init_authentication_keys(bool recommissioning) {
+mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char **user_provided_key, size_t *user_provided_key_length), bool recommissioning) {
 
+    (void)get_user_provided_keys;
     (void)recommissioning;
 
     /* Nothing to do */

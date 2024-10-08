@@ -3,6 +3,7 @@
  * @brief     Mender scheduler interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +19,22 @@
  */
 
 #include "mender-scheduler.h"
+
+__attribute__((weak)) mender_err_t
+mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval) {
+
+    (void)func;
+    (void)interval;
+
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+__attribute__((weak)) mender_err_t
+mender_scheduler_alt_work_start() {
+
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
 
 __attribute__((weak)) mender_err_t
 mender_scheduler_init(void) {

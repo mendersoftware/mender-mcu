@@ -143,7 +143,7 @@ apt install cmake libcurl4-openssl-dev libmbedtls-dev
 
 1. Configure the build:
 ```
-cmake -C CMake_posix_defaults.txt -B build tests
+cmake -C cmake/CMake_posix_defaults.txt -B build tests
 ```
 
 2. Build the client:

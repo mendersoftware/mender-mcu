@@ -3,6 +3,7 @@
  * @brief     Mender storage interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +79,42 @@ mender_storage_get_deployment_data(char **deployment_data) {
 
 __attribute__((weak)) mender_err_t
 mender_storage_delete_deployment_data(void) {
+
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+__attribute__((weak)) mender_err_t
+mender_storage_set_provides(mender_key_value_list_t *provides) {
+
+    (void)provides;
+
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+__attribute__((weak)) mender_err_t
+mender_storage_get_provides(mender_key_value_list_t **provides) {
+
+    (void)provides;
+
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+__attribute__((weak)) mender_err_t
+mender_storage_set_artifact_name(const char *artifact_name) {
+
+    (void)artifact_name;
+
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+__attribute__((weak)) mender_err_t
+mender_storage_get_artifact_name(char **artifact_name) {
+
+    (void)artifact_name;
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;

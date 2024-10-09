@@ -1,7 +1,7 @@
-# @file      CMakeLists.txt
-# @brief     zephyr mock CMakeLists file
+# @file      CMake_defaults.txt
+# @brief     CMake defaults
 #
-# Copyright joelguittet and mender-mcu-client contributors
+# Copyright Northern.tech AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Add sources
-file(GLOB_RECURSE SOURCES_TEMP "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
-target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES_TEMP})
-
-# Add include directories
-include_directories("${CMAKE_CURRENT_LIST_DIR}/include")
+set(CONFIG_MENDER_CLIENT_INVENTORY ON CACHE BOOL "Inventory")
+set(CONFIG_MENDER_FULL_PARSE_ARTIFACT ON CACHE BOOL "Full parse artifact")
+set(CONFIG_MENDER_PROVIDES_DEPENDS ON CACHE BOOL "Provides depends")
+set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors")

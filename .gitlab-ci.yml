@@ -26,13 +26,24 @@ test:static:format:
     - ./.github/workflows/check_equivalence_tests.sh
     - ./.github/workflows/check_code_format.sh
 
-test:smoke-build:
+test:smoke-build:posix:
   stage: test
   image: debian:12-slim
   needs: []
   before_script:
     - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev
   script:
-    - cmake -C CMake_posix_defaults.txt -B build tests
+    - cmake -C cmake/CMake_posix_defaults.txt -B build tests
+    - cmake --build build --parallel $(nproc --all)
+    - ./build/mender-mcu-client.elf --help
+
+test:smoke-build:weak:
+  stage: test
+  image: debian:12-slim
+  needs: []
+  before_script:
+    - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev
+  script:
+    - cmake -C cmake/CMake_weak_defaults.txt -B build tests
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help

@@ -3,6 +3,7 @@
  * @brief     Mender flash interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@
 #include "mender-flash.h"
 
 __attribute__((weak)) mender_err_t
-mender_flash_open(char *name, size_t size, void **handle) {
+mender_flash_open(const char *name, size_t size, void **handle) {
 
     (void)name;
     (void)size;
@@ -31,7 +32,7 @@ mender_flash_open(char *name, size_t size, void **handle) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_flash_write(void *handle, void *data, size_t index, size_t length) {
+mender_flash_write(void *handle, const void *data, size_t index, size_t length) {
 
     (void)handle;
     (void)data;

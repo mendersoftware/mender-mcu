@@ -129,6 +129,21 @@ mender_err_t mender_client_ensure_authenticated(void);
  */
 mender_err_t mender_client_exit(void);
 
+/**
+ * @brief Callback function to be invoked to perform the treatment of the data from the artifact
+ * @param id ID of the deployment
+ * @param artifact name Artifact name
+ * @param type Type from header-info payloads
+ * @param meta_data Meta-data from header tarball
+ * @param filename Artifact filename
+ * @param size Artifact file size
+ * @param data Artifact data
+ * @param index Artifact data index
+ * @param length Artifact data length
+ * @return MENDER_OK if the function succeeds, error code if an error occurred
+ */
+mender_err_t mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

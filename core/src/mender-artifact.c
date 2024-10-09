@@ -21,6 +21,7 @@
 #include <errno.h>
 
 #include "mender-artifact.h"
+#include "mender-deployment-data.h"
 #include "mender-log.h"
 
 /**
@@ -113,10 +114,16 @@ static mender_err_t artifact_read_meta_data(mender_artifact_ctx_t *ctx);
 /**
  * @brief Read data file of the artifact
  * @param ctx Artifact context
- * @param callback Callback function to be invoked to perform the treatment of the data from the artifact
+ * @param dl_data Download data for the artifact
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data);
+
+/**
+ * @brief Process chunk of artifact data
+ */
+static mender_err_t process_artifact_data_callback(
+    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length, mender_artifact_download_data_t *dl_data);
 
 /**
  * @brief Drop content of the current file of the artifact
@@ -294,13 +301,9 @@ is_compressed(const char *filename) {
 }
 
 mender_err_t
-mender_artifact_process_data(mender_artifact_ctx_t *ctx,
-                             void                  *input_data,
-                             size_t                 input_length,
-                             mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
+mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_t input_length, mender_artifact_download_data_t *dl_data) {
 
     assert(NULL != ctx);
-    assert(NULL != callback);
     mender_err_t ret = MENDER_OK;
     void        *tmp;
     size_t       new_size;
@@ -387,7 +390,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
             } else if (true == mender_utils_strbeginwith(ctx->file.name, "data")) {
 
                 /* Read data */
-                ret = artifact_read_data(ctx, callback);
+                ret = artifact_read_data(ctx, dl_data);
 
             } else if (false == mender_utils_strendwith(ctx->file.name, ".tar")) {
 
@@ -1027,10 +1030,74 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
+process_artifact_data_callback(
+    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length, mender_artifact_download_data_t *dl_data) {
+
+    assert(NULL != type);
+    mender_err_t ret = MENDER_FAIL;
+
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
+    if (size > 0) {
+        static size_t download_progress = 0;
+        /* New update */
+        if (0 == index) {
+            download_progress = 0;
+        }
+
+        /* Update every 10% */
+        if (((index * 10) / size) > download_progress) {
+            download_progress = (index * 10) / size;
+            mender_log_info("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
+        }
+    }
+#endif
+
+    dl_data->update_module = mender_update_module_get(type);
+    if (NULL == dl_data->update_module) {
+        /* Content is not supported by the mender-mcu-client */
+        mender_log_error("Unable to handle artifact type '%s'", type);
+        goto END;
+    }
+
+    /* Retrieve ID and artifact name */
+    const char *id;
+    if (MENDER_OK != mender_deployment_data_get_id(dl_data->deployment, &id)) {
+        mender_log_error("Unable to get ID from the deployment data");
+        goto END;
+    }
+    const char *artifact_name;
+    if (MENDER_OK != mender_deployment_data_get_artifact_name(dl_data->deployment, &artifact_name)) {
+        mender_log_error("Unable to get artifact name from the deployment data");
+        goto END;
+    }
+
+    /* Invoke update module download callback */
+    struct mender_update_download_state_data_s download_state_data = { id, artifact_name, type, meta_data, filename, size, data, index, length, false };
+    mender_update_state_data_t                 state_data          = { .download_state_data = &download_state_data };
+    if (MENDER_OK != (ret = dl_data->update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD](MENDER_UPDATE_STATE_DOWNLOAD, state_data))) {
+        mender_log_error("An error occurred while processing data of the artifact '%s' of type '%s'", artifact_name, type);
+        goto END;
+    }
+
+    /* Treatments related to the artifact type (once) */
+    if (0 == index) {
+        /* Add type to the deployment data */
+        if (MENDER_OK != (ret = mender_deployment_data_add_payload_type(dl_data->deployment, type))) {
+            /* Error already logged */
+            goto END;
+        }
+    }
+
+    ret = MENDER_OK;
+
+END:
+    return ret;
+}
+
+static mender_err_t
+artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data) {
 
     assert(NULL != ctx);
-    assert(NULL != callback);
     mender_err_t ret;
 
     /* Retrieve payload index. We expect "data/%u.tar" where %u is the index.
@@ -1062,7 +1129,8 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, 
     if (strlen("data/xxxx.tar") == strlen(ctx->file.name)) {
 
         /* Beginning of the data file */
-        if (MENDER_OK != (ret = callback(ctx->payloads.values[index].type, ctx->payloads.values[index].meta_data, NULL, 0, NULL, 0, 0))) {
+        if (MENDER_OK
+            != (ret = process_artifact_data_callback(ctx->payloads.values[index].type, ctx->payloads.values[index].meta_data, NULL, 0, NULL, 0, 0, dl_data))) {
             mender_log_error("An error occurred");
             return ret;
         }
@@ -1119,15 +1187,16 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, 
         }
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
-        /* Invoke callback */
-        if (MENDER_OK
-            != (ret = callback(ctx->payloads.values[index].type,
-                               ctx->payloads.values[index].meta_data,
-                               strstr(ctx->file.name, ".tar") + strlen(".tar") + 1,
-                               ctx->file.size,
-                               ctx->input.data,
-                               ctx->file.index,
-                               length))) {
+        /* Invoke the download artifact callback */
+        ret = process_artifact_data_callback(ctx->payloads.values[index].type,
+                                             ctx->payloads.values[index].meta_data,
+                                             strstr(ctx->file.name, ".tar") + strlen(".tar") + 1,
+                                             ctx->file.size,
+                                             ctx->input.data,
+                                             ctx->file.index,
+                                             length,
+                                             dl_data);
+        if (MENDER_OK != ret) {
             mender_log_error("An error occurred");
             return ret;
         }

@@ -18,6 +18,7 @@
  */
 
 #include "mender-http.h"
+#include "mender-utils.h"
 
 /* just some reasonable value, it's never used */
 __attribute__((weak)) const size_t mender_http_recv_buf_length = 512;
@@ -51,6 +52,11 @@ mender_http_perform(char                *jwt,
     (void)status;
 
     /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+__attribute__((weak)) mender_err_t
+mender_http_artifact_download(MENDER_ARG_UNUSED char *uri, MENDER_ARG_UNUSED mender_artifact_download_data_t *dl_data, MENDER_ARG_UNUSED int *status) {
     return MENDER_NOT_IMPLEMENTED;
 }
 

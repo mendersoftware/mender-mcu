@@ -61,26 +61,9 @@ static char *mender_api_jwt = NULL;
 static mender_err_t mender_api_http_text_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
 
 /**
- * @brief HTTP callback used to handle artifact content
- * @param event HTTP client event
- * @param data Data received
- * @param data_length Data length
- * @param params Callback parameters
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
-
-/**
  * @brief Artifact name variable
  */
 static char *artifact_name = NULL;
-
-/**
- * @brief Print response error
- * @param response HTTP response, NULL if not available
- * @param status HTTP status
- */
-static void mender_api_print_response_error(char *response, int status);
 
 mender_err_t
 mender_api_init(mender_api_config_t *config) {
@@ -515,34 +498,6 @@ END:
     return ret;
 }
 
-mender_err_t
-mender_api_download_artifact(char *uri, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
-
-    assert(NULL != uri);
-    assert(NULL != callback);
-    mender_err_t ret;
-    int          status = 0;
-
-    /* Perform HTTP request */
-    if (MENDER_OK != (ret = mender_http_perform(NULL, uri, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_artifact_callback, callback, &status))) {
-        mender_log_error("Unable to perform HTTP request");
-        goto END;
-    }
-
-    /* Treatment depending of the status */
-    if (200 == status) {
-        /* Nothing to do */
-        ret = MENDER_OK;
-    } else {
-        mender_api_print_response_error(NULL, status);
-        ret = MENDER_FAIL;
-    }
-
-END:
-
-    return ret;
-}
-
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 mender_err_t
@@ -705,68 +660,7 @@ mender_api_http_text_callback(mender_http_client_event_t event, void *data, size
     return ret;
 }
 
-static mender_err_t
-mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params) {
-
-    assert(NULL != params);
-    mender_err_t ret = MENDER_OK;
-
-    mender_artifact_ctx_t *mender_artifact_ctx = NULL;
-
-    /* Treatment depending of the event */
-    switch (event) {
-        case MENDER_HTTP_EVENT_CONNECTED:
-            /* Create new artifact context */
-            /* Having the context's internal buffer of size (2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE +
-               mender_http_recv_buf_length) means we will have enough space for 2 blocks of
-               unprocessed data and all data received in an HTTP response which is a good start. We
-               will likely need more, depending on the artifact's contents, but we don't know how
-               much upfront. */
-            if (NULL == (mender_artifact_ctx = mender_artifact_create_ctx(2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE + mender_http_recv_buf_length))) {
-                mender_log_error("Unable to create artifact context");
-                ret = MENDER_FAIL;
-                break;
-            }
-            break;
-        case MENDER_HTTP_EVENT_DATA_RECEIVED:
-            /* Check input data */
-            if ((NULL == data) || (0 == data_length)) {
-                mender_log_error("Invalid data received");
-                ret = MENDER_FAIL;
-                break;
-            }
-
-            /* Check artifact context */
-            if (MENDER_OK != mender_artifact_get_ctx(&mender_artifact_ctx)) {
-                mender_log_error("Unable to get artifact context");
-                ret = MENDER_FAIL;
-                break;
-            }
-            assert(NULL != mender_artifact_ctx);
-
-            /* Parse input data */
-            if (MENDER_OK != (ret = mender_artifact_process_data(mender_artifact_ctx, data, data_length, params))) {
-                mender_log_error("Unable to process data");
-                break;
-            }
-            break;
-        case MENDER_HTTP_EVENT_DISCONNECTED:
-            break;
-        case MENDER_HTTP_EVENT_ERROR:
-            /* Downloading the artifact fails */
-            mender_log_error("An error occurred");
-            ret = MENDER_FAIL;
-            break;
-        default:
-            /* Should not occur */
-            ret = MENDER_FAIL;
-            break;
-    }
-
-    return ret;
-}
-
-static void
+void
 mender_api_print_response_error(char *response, int status) {
 
     char *desc;

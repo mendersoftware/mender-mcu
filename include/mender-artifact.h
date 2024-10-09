@@ -3,6 +3,7 @@
  * @brief     Mender artifact parser
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "mender-artifact-download-data.h"
 #include "mender-utils.h"
 #include "mender-sha.h"
 
@@ -123,13 +125,10 @@ mender_err_t mender_artifact_get_ctx(mender_artifact_ctx_t **ctx);
  * @param ctx Artifact context
  * @param input_data Input data from the stream
  * @param input_length Length of the input data from the stream
- * @param callback Callback function to be invoked to perform the treatment of the data from the artifact
+ * @param dl_data Download data for the artifact
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_artifact_process_data(mender_artifact_ctx_t *ctx,
-                                          void                  *input_data,
-                                          size_t                 input_length,
-                                          mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+mender_err_t mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_t input_length, mender_artifact_download_data_t *dl_data);
 
 /**
  * @brief Do integrity checks by comparing the manifest checksums to the computed ones

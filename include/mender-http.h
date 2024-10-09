@@ -25,6 +25,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "mender-artifact-download-data.h"
+#include "mender-http-client-event.h"
 #include "mender-utils.h"
 
 /**
@@ -48,16 +50,6 @@ typedef enum {
     MENDER_HTTP_PUT,  /**< PUT */
     MENDER_HTTP_PATCH /**< PATCH */
 } mender_http_method_t;
-
-/**
- * @brief HTTP client events
- */
-typedef enum {
-    MENDER_HTTP_EVENT_CONNECTED,     /**< Connected to the server */
-    MENDER_HTTP_EVENT_DATA_RECEIVED, /**< Data received from the server */
-    MENDER_HTTP_EVENT_DISCONNECTED,  /**< Disconnected from the server */
-    MENDER_HTTP_EVENT_ERROR          /**< An error occurred */
-} mender_http_client_event_t;
 
 /**
  * @brief Initialize mender http
@@ -86,6 +78,14 @@ mender_err_t mender_http_perform(char                *jwt,
                                  mender_err_t (*callback)(mender_http_client_event_t, void *, size_t, void *),
                                  void *params,
                                  int  *status);
+
+/**
+ * @brief Perform HTTP artifact download request
+ * @param path Path of the request
+ * @param status Status code
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_http_artifact_download(char *path, mender_artifact_download_data_t *dl_data, int *status);
 
 /**
  * @brief Release mender http

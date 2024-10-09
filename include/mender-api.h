@@ -25,8 +25,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-utils.h"
 #include "mender-artifact.h"
+#include "mender-http.h"
+#include "mender-utils.h"
 
 /**
  * @brief Mender API configuration
@@ -82,12 +83,27 @@ mender_err_t mender_api_check_for_deployment(mender_api_deployment_data_t *deplo
 mender_err_t mender_api_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status);
 
 /**
+ * @brief Print response error
+ * @param response HTTP response, NULL if not available
+ * @param status HTTP status
+ */
+void mender_api_print_response_error(char *response, int status);
+
+/**
  * @brief Download artifact from the mender-server
  * @param uri URI of the deployment received from mender_api_check_for_deployment function
- * @param callback Callback function to be invoked to perform the treatment of the data from the artifact
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_api_download_artifact(char *uri, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+mender_err_t mender_api_download_artifact(char *uri);
+
+/**
+ * @brief HTTP callback used to handle artifact content
+ * @param event HTTP client event
+ * @param data Data received
+ * @param data_length Data length
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length);
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 

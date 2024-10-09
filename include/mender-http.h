@@ -82,6 +82,13 @@ mender_err_t mender_http_perform(char                *jwt,
                                  int  *status);
 
 /**
+ * @brief Perform HTTP artifact download request
+ * @param path Path of the request
+ * @param status Status code
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_http_artifact_download(char *path, int *status);
+/**
  * @brief Release mender http
  * @return MENDER_OK if the function succeeds, error code otherwise
  */

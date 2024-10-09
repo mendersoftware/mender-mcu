@@ -118,10 +118,7 @@ mender_err_t mender_artifact_get_ctx(mender_artifact_ctx_t **ctx);
  * @param callback Callback function to be invoked to perform the treatment of the data from the artifact
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_artifact_process_data(mender_artifact_ctx_t *ctx,
-                                          void                  *input_data,
-                                          size_t                 input_length,
-                                          mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+mender_err_t mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_t input_length);
 
 /**
  * @brief Do integrity checks by comparing the manifest checksums to the computed ones

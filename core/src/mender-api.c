@@ -61,16 +61,6 @@ static char *mender_api_jwt = NULL;
 static mender_err_t mender_api_http_text_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
 
 /**
- * @brief HTTP callback used to handle artifact content
- * @param event HTTP client event
- * @param data Data received
- * @param data_length Data length
- * @param params Callback parameters
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-static mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
-
-/**
  * @brief Artifact name variable
  */
 static char *artifact_name = NULL;
@@ -516,15 +506,14 @@ END:
 }
 
 mender_err_t
-mender_api_download_artifact(char *uri, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
+mender_api_download_artifact(char *uri) {
 
     assert(NULL != uri);
-    assert(NULL != callback);
     mender_err_t ret;
     int          status = 0;
 
     /* Perform HTTP request */
-    if (MENDER_OK != (ret = mender_http_perform(NULL, uri, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_artifact_callback, callback, &status))) {
+    if (MENDER_OK != (ret = mender_http_artifact_download(uri, &status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -705,10 +694,8 @@ mender_api_http_text_callback(mender_http_client_event_t event, void *data, size
     return ret;
 }
 
-static mender_err_t
-mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params) {
-
-    assert(NULL != params);
+mender_err_t
+mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length) {
     mender_err_t ret = MENDER_OK;
 
     mender_artifact_ctx_t *mender_artifact_ctx = NULL;
@@ -740,7 +727,7 @@ mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, 
             assert(NULL != mender_artifact_ctx);
 
             /* Parse input data */
-            if (MENDER_OK != (ret = mender_artifact_process_data(mender_artifact_ctx, data, data_length, params))) {
+            if (MENDER_OK != (ret = mender_artifact_process_data(mender_artifact_ctx, data, data_length))) {
                 mender_log_error("Unable to process data");
                 break;
             }

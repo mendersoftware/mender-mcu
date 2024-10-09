@@ -20,6 +20,7 @@
 #include <version.h>
 #include <zephyr/net/http/client.h>
 #include <zephyr/kernel.h>
+#include "mender-api.h"
 #include "mender-http.h"
 #include "mender-log.h"
 #include "mender-net.h"
@@ -60,6 +61,14 @@ static mender_http_config_t mender_http_config;
  * @param user_data User data, used to retrieve request context data
  */
 static void mender_http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
+
+/**
+ * @brief HTTP artifact response callback, invoked to handle data received
+ * @param response HTTP response structure
+ * @param final_call Indicate final call
+ * @param user_data User data, used to retrieve request context data
+ */
+static void artifact_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
 /**
  * @brief Convert mender HTTP method to Zephyr HTTP client method
@@ -232,6 +241,111 @@ END:
 }
 
 mender_err_t
+mender_http_artifact_download(char *path, int *status) {
+
+    assert(NULL != path);
+    assert(NULL != status);
+
+    mender_err_t        ret                = MENDER_FAIL;
+    struct http_request request            = { 0 };
+    mender_err_t        request_ret        = MENDER_OK;
+    const char         *header_fields[3]   = { NULL }; /* The list is NULL terminated; make sure the size reflects it */
+    size_t              header_fields_size = sizeof(header_fields) / sizeof(header_fields[0]);
+    char               *host               = NULL;
+    char               *port               = NULL;
+    char               *url                = NULL;
+    int                 sock               = -1;
+    int                 http_req_ret;
+
+    /* Headers to be added to the request */
+    char *host_header = NULL;
+
+    /* Retrieve host, port and url */
+    if (MENDER_OK != mender_net_get_host_port_url(path, mender_http_config.host, &host, &port, &url)) {
+        mender_log_error("Unable to retrieve host/port/url");
+        goto END;
+    }
+
+    /* Configuration of the client */
+    request.method   = mender_http_method_to_zephyr_http_client_method(MENDER_HTTP_GET);
+    request.url      = url;
+    request.host     = host;
+    request.protocol = "HTTP/1.1";
+    request.response = artifact_response_cb;
+    if (NULL == (request.recv_buf = (uint8_t *)malloc(MENDER_HTTP_RECV_BUF_LENGTH))) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+    request.recv_buf_len = MENDER_HTTP_RECV_BUF_LENGTH;
+
+    /* Add headers */
+    host_header = header_alloc_and_add(header_fields, header_fields_size, "Host: %s\r\n", host);
+    if (NULL == host_header) {
+        mender_log_error("Unable to add 'Host' header");
+        goto END;
+    }
+    if (MENDER_FAIL == header_add(header_fields, header_fields_size, MENDER_HEADER_HTTP_USER_AGENT)) {
+        mender_log_error("Unable to add 'User-Agent' header");
+        goto END;
+    }
+    request.header_fields = header_fields;
+
+    /* Connect to the server */
+    sock = mender_net_connect(host, port);
+    if (sock < 0) {
+        mender_log_error("Unable to open HTTP client connection");
+        goto END;
+    }
+    if (MENDER_OK != (ret = mender_api_http_artifact_callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0))) {
+        mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_CONNECTED' artifact callback");
+        goto END;
+    }
+
+    /* Perform HTTP request */
+    if ((http_req_ret = http_client_req(sock, &request, MENDER_HTTP_REQUEST_TIMEOUT, &request_ret)) < 0) {
+        mender_log_error("HTTP request failed: %s", strerror(-http_req_ret));
+        goto END;
+    }
+
+    /* Check if an error occured during the treatment of data */
+    if (MENDER_OK != (ret = request_ret)) {
+        goto END;
+    }
+
+    /* Read HTTP status code */
+    if (0 == request.internal.response.http_status_code) {
+        mender_log_error("An error occurred, connection has been closed");
+        mender_api_http_artifact_callback(MENDER_HTTP_EVENT_ERROR, NULL, 0);
+        goto END;
+    } else {
+        *status = request.internal.response.http_status_code;
+    }
+    if (MENDER_OK != (ret = mender_api_http_artifact_callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0))) {
+        mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_DISCONNECTED' artifact callback");
+        goto END;
+    }
+
+    ret = MENDER_OK;
+
+END:
+
+    /* Close connection */
+    if (sock >= 0) {
+        mender_net_disconnect(sock);
+    }
+
+    /* Release memory */
+    free(host);
+    free(port);
+    free(url);
+    free(host_header);
+
+    free(request.recv_buf);
+
+    return ret;
+}
+
+mender_err_t
 mender_http_exit(void) {
 
     /* Nothing to do */
@@ -255,6 +369,25 @@ mender_http_response_cb(struct http_response *response, enum http_final_call fin
         if (MENDER_OK
             != (request_context->ret = request_context->callback(
                     MENDER_HTTP_EVENT_DATA_RECEIVED, (void *)response->body_frag_start, response->body_frag_len, request_context->params))) {
+            mender_log_error("An error occurred, stop reading data");
+        }
+    }
+}
+
+static void
+artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_final_call final_call, void *user_data) {
+
+    assert(NULL != response);
+    assert(NULL != user_data);
+
+    /* Retrieve request context */
+    mender_err_t *request_ret = user_data;
+
+    /* Check if data is available */
+    if (response->body_found && (NULL != response->body_frag_start) && (0 != response->body_frag_len) && (MENDER_OK == (*request_ret))) {
+        /* Transmit data received to the upper layer */
+        *request_ret = mender_api_http_artifact_callback(MENDER_HTTP_EVENT_DATA_RECEIVED, (void *)response->body_frag_start, response->body_frag_len);
+        if (MENDER_OK != (*request_ret)) {
             mender_log_error("An error occurred, stop reading data");
         }
     }

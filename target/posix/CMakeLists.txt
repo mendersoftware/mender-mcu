@@ -170,40 +170,41 @@ endif()
 
 # List of sources
 file(GLOB SOURCES_TEMP
-    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-api.c"
-    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-artifact.c"
-    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-client.c"
-    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-utils.c"
-    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-deployment-data.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/scheduler/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/mender-scheduler.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/sha/${CONFIG_MENDER_PLATFORM_SHA_TYPE}/src/mender-sha.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-api.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-artifact.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-client.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-utils.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-deployment-data.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../platform/scheduler/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/mender-scheduler.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../../platform/sha/${CONFIG_MENDER_PLATFORM_SHA_TYPE}/src/mender-sha.c"
 )
 if (CONFIG_MENDER_CLIENT_INVENTORY)
     list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-inventory.c"
+        "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-inventory.c"
     )
 endif()
 if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
     list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-zephyr-image-update-module.c"
-        "${CMAKE_CURRENT_LIST_DIR}/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
+        "${CMAKE_CURRENT_LIST_DIR}/../../core/src/mender-zephyr-image-update-module.c"
+        "${CMAKE_CURRENT_LIST_DIR}/../../platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
+
     )
 endif()
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     list(APPEND SOURCES_TEMP
-        "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-net.c"
+        "${CMAKE_CURRENT_LIST_DIR}/../../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-net.c"
     )
 endif()
 target_sources(mender-mcu-client PRIVATE ${SOURCES_TEMP})
 
 # Add include directories
-target_include_directories(mender-mcu-client PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include")
+target_include_directories(mender-mcu-client PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../../include")
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
-    target_include_directories(mender-mcu-client PRIVATE "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/include")
+    target_include_directories(mender-mcu-client PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/include")
 endif()
 
 # cJSON location/options
@@ -223,5 +224,5 @@ if (CONFIG_MENDER_PLATFORM_TLS_TYPE STREQUAL "mbedtls")
 endif()
 
 # Define version
-file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/VERSION" MENDER_CLIENT_VERSION)
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../VERSION" MENDER_CLIENT_VERSION)
 add_definitions("-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\"")

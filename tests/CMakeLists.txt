@@ -2,6 +2,7 @@
 # @brief     Test application CMakeLists file
 #
 # Copyright joelguittet and mender-mcu-client contributors
+# Copyright Northern.tech AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,7 +62,7 @@ target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES_TEMP})
 include("${CMAKE_CURRENT_LIST_DIR}/mocks/CMakeLists.txt")
 
 # Include mender-mcu-client library
-include("${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../target/posix" build)
 
 # Add definitions to configure the client
 if(CONFIG_MENDER_PLATFORM_NET_TYPE MATCHES "zephyr")

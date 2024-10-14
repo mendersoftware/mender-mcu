@@ -1165,7 +1165,7 @@ artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length) {
     /* Shift data */
     if (length > 0) {
         if (ctx->input.length > length) {
-            memcpy(ctx->input.data, (void *)(((uint8_t *)ctx->input.data) + length), ctx->input.length - length);
+            memmove(ctx->input.data, (void *)(((uint8_t *)ctx->input.data) + length), ctx->input.length - length);
             if (NULL == (tmp = realloc(ctx->input.data, ctx->input.length - length))) {
                 mender_log_error("Unable to allocate memory");
                 return MENDER_FAIL;

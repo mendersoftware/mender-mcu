@@ -1,9 +1,8 @@
 build
-tests/build
-tests/mocks/cjson/cjson
-tests/mocks/mbedtls/mbedtls
-tests/_deps/
-tests/mender-mcu-client.elf
+_deps
+tests/smoke/mocks/cjson/cjson
+tests/smoke/mocks/mbedtls/mbedtls
+tests/smoke/mender-mcu-client.elf
 
 CMakeCache.txt
 CMakeFiles/

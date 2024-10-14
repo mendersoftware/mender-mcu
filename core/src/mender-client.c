@@ -96,8 +96,8 @@ static const struct mender_update_state_transition_s update_state_transitions[N_
     /* MENDER_UPDATE_STATE_COMMIT                 */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_ROLLBACK },
     /* MENDER_UPDATE_STATE_CLEANUP                */ { MENDER_UPDATE_STATE_END, MENDER_UPDATE_STATE_END },
     /* MENDER_UPDATE_STATE_ROLLBACK               */ { MENDER_UPDATE_STATE_ROLLBACK_REBOOT, MENDER_UPDATE_STATE_FAILURE },
-    /* MENDER_UPDATE_STATE_ROLLBACK_REBOOT        */ { MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, MENDER_UPDATE_STATE_FAILURE },
-    /* MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT */ { MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_ROLLBACK_REBOOT        */ { MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT },
+    /* MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT */ { MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_ROLLBACK_REBOOT },
     /* MENDER_UPDATE_STATE_FAILURE                */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_CLEANUP },
 };
 
@@ -1149,6 +1149,19 @@ mender_client_update_work_function(void) {
                 if (NULL != mender_update_module->callbacks[update_state]) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
+
+                if (MENDER_OK != ret) {
+                    /* If the rollback verify reboot fails,
+                     * we will retry the rollback reboot.
+                     *
+                     * TODO: fix this comment / document infinite
+                     * loop detection once MEN-7516 is implemented.
+                     * As it is now, the rollback will be retried
+                     * infinitely, or until it succeeds
+                     */
+                    mender_log_error("Rollback verify reboot failed. Retry rollback reboot");
+                }
+
                 NEXT_STATE;
                 /* fallthrough */
 

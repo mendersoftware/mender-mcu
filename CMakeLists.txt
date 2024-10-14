@@ -174,9 +174,7 @@ file(GLOB SOURCES_TEMP
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-artifact.c"
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-client.c"
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-utils.c"
-    "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-zephyr-image-update-module.c"
     "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-deployment-data.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform/scheduler/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/mender-scheduler.c"
@@ -192,6 +190,7 @@ endif()
 if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
     list(APPEND SOURCES_TEMP
         "${CMAKE_CURRENT_LIST_DIR}/core/src/mender-zephyr-image-update-module.c"
+        "${CMAKE_CURRENT_LIST_DIR}/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
     )
 endif()
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")

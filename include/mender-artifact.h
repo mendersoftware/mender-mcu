@@ -28,6 +28,11 @@ extern "C" {
 #include "mender-sha.h"
 
 /**
+ * @brief TAR block size
+ */
+#define MENDER_ARTIFACT_STREAM_BLOCK_SIZE (512)
+
+/**
  * @brief Artifact state machine used to process input data stream
  */
 typedef enum {
@@ -67,9 +72,11 @@ struct mender_artifact_checksum_t {
 typedef struct {
     mender_artifact_stream_state_t stream_state; /**< Stream state of the artifact processing */
     struct {
-        void  *data;   /**< Data received, concatenated chunk by chunk */
-        size_t length; /**< Length of the data received */
-    } input;           /**< Input data of the artifact */
+        void  *data;      /**< Data received, concatenated chunk by chunk */
+        size_t length;    /**< Length of the data received */
+        size_t size;      /**< Current size of the buffer */
+        size_t orig_size; /**< Original size of the buffer */
+    } input;              /**< Input data of the artifact */
     struct {
         size_t                     size;   /**< Number of payloads in the artifact */
         mender_artifact_payload_t *values; /**< Values of payloads in the artifact */
@@ -100,9 +107,10 @@ mender_err_t mender_artifact_get_device_type(mender_artifact_ctx_t *ctx, const c
 
 /**
  * @brief Function used to create a new artifact context
+ * @param buf_size Size of the internal buffer
  * @return Artifact context if the function succeeds, NULL otherwise
  */
-mender_artifact_ctx_t *mender_artifact_create_ctx(void);
+mender_artifact_ctx_t *mender_artifact_create_ctx(size_t buf_size);
 
 /**
  * @brief Function used to get the artifact context

@@ -164,6 +164,29 @@ mender_utils_deployment_status_to_string(mender_deployment_status_t deployment_s
     return NULL;
 }
 
+static inline unsigned char
+hexdigit_value(char digit) {
+    if (digit < 'a') {
+        return digit - '0';
+    } else {
+        return digit - 'a' + 10;
+    }
+}
+
+bool
+mender_utils_hexdump_to_bytes(const char *hexdump, unsigned char *bytes, size_t n_bytes) {
+    for (size_t i = 0; i < n_bytes; i++) {
+        size_t idx = 2 * i;
+        if (!(((hexdump[idx] >= '0') && (hexdump[idx] <= '9')) || ((hexdump[idx] >= 'a') && (hexdump[idx] <= 'f')))
+            || !(((hexdump[idx + 1] >= '0') && (hexdump[idx + 1] <= '9')) || ((hexdump[idx + 1] >= 'a') && (hexdump[idx + 1] <= 'f')))) {
+            mender_log_error("Invalid hex byte: %c%c", hexdump[idx], hexdump[idx + 1]);
+            return false;
+        }
+        bytes[i] = (hexdigit_value(hexdump[idx]) << 4) + hexdigit_value(hexdump[idx + 1]);
+    }
+    return true;
+}
+
 mender_keystore_t *
 mender_utils_keystore_new(size_t length) {
 

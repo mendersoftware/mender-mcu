@@ -166,6 +166,16 @@ bool mender_utils_strbeginwith(const char *s1, const char *s2);
 bool mender_utils_strendwith(const char *s1, const char *s2);
 
 /**
+ * @brief Convert a hexdump of bytes into the respective bytes
+ * @param hexdump String containing the hexdumped bytes
+ * @param bytes   An array to store the bytes in
+ * @param n_bytes The number of the bytes to convert (i.e. the size of #bytes and half the
+ *                length of #hexdump).
+ * @return %true if the conversion was successful, false otherwise
+ */
+bool mender_utils_hexdump_to_bytes(const char *hexdump, unsigned char *bytes, size_t n_bytes);
+
+/**
  * @brief Function used to create a key-store
  * @param length Length of the key-store
  * @return Key-store if the function succeeds, NULL otherwise

@@ -31,6 +31,10 @@
 #define MENDER_HTTP_USER_AGENT "mender-mcu-client (mender-http) curl/" LIBCURL_VERSION
 #endif /* MENDER_CLIENT_VERSION */
 
+/* CURL_MAX_WRITE_SIZE is the maximum amount of data curl passes to the
+   WRITEFUNCTION (see below) according to man:CURLOPT_WRITEFUNCTION(3). */
+const size_t mender_http_recv_buf_length = CURL_MAX_WRITE_SIZE;
+
 /**
  * @brief User data
  */

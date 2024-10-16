@@ -19,6 +19,9 @@
 
 #include "mender-http.h"
 
+/* just some reasonable value, it's never used */
+__attribute__((weak)) const size_t mender_http_recv_buf_length = 512;
+
 __attribute__((weak)) mender_err_t
 mender_http_init(mender_http_config_t *config) {
 

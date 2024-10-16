@@ -24,11 +24,6 @@
 #include "mender-log.h"
 
 /**
- * @brief TAR block size
- */
-#define MENDER_ARTIFACT_STREAM_BLOCK_SIZE (512)
-
-/**
  * @brief Device type key
  */
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
@@ -248,14 +243,22 @@ mender_artifact_check_integrity(mender_artifact_ctx_t *ctx) {
 }
 
 mender_artifact_ctx_t *
-mender_artifact_create_ctx(void) {
+mender_artifact_create_ctx(size_t buf_size) {
 
     mender_artifact_ctx_t *ctx;
 
     /* Create new context */
     if (NULL == (ctx = (mender_artifact_ctx_t *)calloc(1, sizeof(mender_artifact_ctx_t)))) {
+        mender_log_error("Unable to allocate memory for artifact context");
         return NULL;
     }
+    if (NULL == (ctx->input.data = malloc(buf_size))) {
+        mender_log_error("Unable to allocate memory for artifact context buffer");
+        free(ctx);
+        return NULL;
+    }
+    ctx->input.size      = buf_size;
+    ctx->input.orig_size = buf_size;
 
     /* Save context */
     artifact_ctx = ctx;
@@ -300,14 +303,37 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
     assert(NULL != callback);
     mender_err_t ret = MENDER_OK;
     void        *tmp;
+    size_t       new_size;
+    size_t       expected_required;
 
     /* Copy data to the end of the internal buffer */
     if ((NULL != input_data) && (0 != input_length)) {
-        if (NULL == (tmp = realloc(ctx->input.data, ctx->input.length + input_length))) {
-            /* Unable to allocate memory */
-            return MENDER_FAIL;
+        if ((ctx->input.length + input_length) > ctx->input.size) {
+            new_size = ctx->input.length + input_length;
+            /* data/ files are processed per block for which the original size of the buffer should
+               be enough, but metadata is processed as whole files so there we expect we will need
+               more. */
+            if (mender_utils_strbeginwith(ctx->file.name, "data/")) {
+                expected_required = ctx->input.orig_size;
+            } else {
+                expected_required = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE) + MENDER_ARTIFACT_STREAM_BLOCK_SIZE;
+            }
+            if (new_size > expected_required) {
+                mender_log_debug("Reallocating artifact context buffer to %zd [SHOULD NOT BE HAPPENING!]", new_size);
+            }
+            /* Let's try to get what we expect we will need anyway and if we don't get that much,
+               let's get the minimum required now, leaving us with a chance to get more later. */
+            if (NULL == (tmp = realloc(ctx->input.data, MAX(new_size, expected_required)))) {
+                if (NULL == (tmp = realloc(ctx->input.data, new_size))) {
+                    /* Unable to allocate memory */
+                    return MENDER_FAIL;
+                }
+                ctx->input.size = new_size;
+            } else {
+                ctx->input.size = MAX(new_size, expected_required);
+            }
+            ctx->input.data = tmp;
         }
-        ctx->input.data = tmp;
         memcpy((void *)(((uint8_t *)ctx->input.data) + ctx->input.length), input_data, input_length);
         ctx->input.length += input_length;
     }
@@ -1158,20 +1184,16 @@ static mender_err_t
 artifact_shift_data(mender_artifact_ctx_t *ctx, size_t length) {
 
     assert(NULL != ctx);
-    char *tmp;
 
     /* Shift data */
     if (length > 0) {
         if (ctx->input.length > length) {
-            memcpy(ctx->input.data, (void *)(((uint8_t *)ctx->input.data) + length), ctx->input.length - length);
-            if (NULL == (tmp = realloc(ctx->input.data, ctx->input.length - length))) {
-                mender_log_error("Unable to allocate memory");
-                return MENDER_FAIL;
-            }
-            ctx->input.data = tmp;
+            memmove(ctx->input.data, (void *)(((uint8_t *)ctx->input.data) + length), ctx->input.length - length);
             ctx->input.length -= length;
+            /* Here we could shrink the ctx->input.data buffer, but most likely, we would need to
+               grow it again when we receive another batch of data so there's little point in doing
+               so. */
         } else {
-            FREE_AND_NULL(ctx->input.data);
             ctx->input.length = 0;
         }
     }

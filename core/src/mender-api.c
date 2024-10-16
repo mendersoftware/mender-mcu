@@ -717,7 +717,12 @@ mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, 
     switch (event) {
         case MENDER_HTTP_EVENT_CONNECTED:
             /* Create new artifact context */
-            if (NULL == (mender_artifact_ctx = mender_artifact_create_ctx())) {
+            /* Having the context's internal buffer of size (2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE +
+               mender_http_recv_buf_length) means we will have enough space for 2 blocks of
+               unprocessed data and all data received in an HTTP response which is a good start. We
+               will likely need more, depending on the artifact's contents, but we don't know how
+               much upfront. */
+            if (NULL == (mender_artifact_ctx = mender_artifact_create_ctx(2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE + mender_http_recv_buf_length))) {
                 mender_log_error("Unable to create artifact context");
                 ret = MENDER_FAIL;
                 break;

@@ -30,14 +30,11 @@
 #define MENDER_HEADER_HTTP_USER_AGENT "User-Agent: Mender/" MENDER_CLIENT_VERSION " MCU Zephyr/" KERNEL_VERSION_STRING "\r\n"
 
 /**
- * @brief Receive buffer length
- */
-#define MENDER_HTTP_RECV_BUF_LENGTH (512)
-
-/**
  * @brief Request timeout (milliseconds)
  */
 #define MENDER_HTTP_REQUEST_TIMEOUT (60 * 1000)
+
+const size_t mender_http_recv_buf_length = 512;
 
 /**
  * @brief Request context
@@ -131,11 +128,11 @@ mender_http_perform(char                *jwt,
     request.payload     = payload;
     request.payload_len = (NULL != payload) ? strlen(payload) : 0;
     request.response    = mender_http_response_cb;
-    if (NULL == (request.recv_buf = (uint8_t *)malloc(MENDER_HTTP_RECV_BUF_LENGTH))) {
+    if (NULL == (request.recv_buf = (uint8_t *)malloc(mender_http_recv_buf_length))) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
-    request.recv_buf_len = MENDER_HTTP_RECV_BUF_LENGTH;
+    request.recv_buf_len = mender_http_recv_buf_length;
 
     /* Add headers */
     host_header = header_alloc_and_add(header_fields, header_fields_size, "Host: %s\r\n", host);

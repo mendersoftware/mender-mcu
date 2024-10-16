@@ -34,6 +34,10 @@ extern "C" {
 #include <assert.h>
 #include <cJSON.h>
 
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif /* !MAX */
+
 /**
  * @brief Macro for releasing a resource followed by setting it to NULL.
  */

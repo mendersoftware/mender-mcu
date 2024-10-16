@@ -678,11 +678,9 @@ artifact_read_manifest(mender_artifact_ctx_t *ctx) {
         }
 
         /* Populate with manifest checksum */
-        for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
-            if (1 != sscanf(checksum_str + (2 * i), "%02hhx", checksum->manifest + i)) {
-                mender_log_error("Bad checksum '%s' in manifest for file '%s'", checksum_str, filename);
-                return MENDER_FAIL;
-            }
+        if (!mender_utils_hexdump_to_bytes(checksum_str, checksum->manifest, MENDER_DIGEST_BUFFER_SIZE)) {
+            mender_log_error("Bad checksum '%s' in manifest for file '%s'", checksum_str, filename);
+            return MENDER_FAIL;
         }
 
         ///* Move to the next line */

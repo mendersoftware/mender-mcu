@@ -21,6 +21,7 @@
 #include <errno.h>
 
 #include "mender-artifact.h"
+#include "mender-client.h"
 #include "mender-log.h"
 
 /**
@@ -116,7 +117,7 @@ static mender_err_t artifact_read_meta_data(mender_artifact_ctx_t *ctx);
  * @param callback Callback function to be invoked to perform the treatment of the data from the artifact
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t));
+static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Drop content of the current file of the artifact
@@ -294,13 +295,9 @@ is_compressed(const char *filename) {
 }
 
 mender_err_t
-mender_artifact_process_data(mender_artifact_ctx_t *ctx,
-                             void                  *input_data,
-                             size_t                 input_length,
-                             mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
+mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_t input_length) {
 
     assert(NULL != ctx);
-    assert(NULL != callback);
     mender_err_t ret = MENDER_OK;
     void        *tmp;
     size_t       new_size;
@@ -387,7 +384,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx,
             } else if (true == mender_utils_strbeginwith(ctx->file.name, "data")) {
 
                 /* Read data */
-                ret = artifact_read_data(ctx, callback);
+                ret = artifact_read_data(ctx);
 
             } else if (false == mender_utils_strendwith(ctx->file.name, ".tar")) {
 
@@ -1027,10 +1024,9 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, cJSON *, char *, size_t, void *, size_t, size_t)) {
+artifact_read_data(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
-    assert(NULL != callback);
     mender_err_t ret;
 
     /* Retrieve payload index. We expect "data/%u.tar" where %u is the index.
@@ -1062,7 +1058,8 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, 
     if (strlen("data/xxxx.tar") == strlen(ctx->file.name)) {
 
         /* Beginning of the data file */
-        if (MENDER_OK != (ret = callback(ctx->payloads.values[index].type, ctx->payloads.values[index].meta_data, NULL, 0, NULL, 0, 0))) {
+        if (MENDER_OK
+            != (ret = mender_client_download_artifact_callback(ctx->payloads.values[index].type, ctx->payloads.values[index].meta_data, NULL, 0, NULL, 0, 0))) {
             mender_log_error("An error occurred");
             return ret;
         }
@@ -1119,15 +1116,15 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_err_t (*callback)(char *, 
         }
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
-        /* Invoke callback */
-        if (MENDER_OK
-            != (ret = callback(ctx->payloads.values[index].type,
-                               ctx->payloads.values[index].meta_data,
-                               strstr(ctx->file.name, ".tar") + strlen(".tar") + 1,
-                               ctx->file.size,
-                               ctx->input.data,
-                               ctx->file.index,
-                               length))) {
+        /* Invoke the download artifact callback */
+        ret = mender_client_download_artifact_callback(ctx->payloads.values[index].type,
+                                                       ctx->payloads.values[index].meta_data,
+                                                       strstr(ctx->file.name, ".tar") + strlen(".tar") + 1,
+                                                       ctx->file.size,
+                                                       ctx->input.data,
+                                                       ctx->file.index,
+                                                       length);
+        if (MENDER_OK != ret) {
             mender_log_error("An error occurred");
             return ret;
         }

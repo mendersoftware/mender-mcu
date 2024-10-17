@@ -217,22 +217,6 @@ static mender_err_t mender_check_device_compatibility(mender_artifact_ctx_t *men
 static mender_err_t mender_client_update_work_function(void);
 
 /**
- * @brief Callback function to be invoked to perform the treatment of the data from the artifact
- * @param id ID of the deployment
- * @param artifact name Artifact name
- * @param type Type from header-info payloads
- * @param meta_data Meta-data from header tarball
- * @param filename Artifact filename
- * @param size Artifact file size
- * @param data Artifact data
- * @param index Artifact data index
- * @param length Artifact data length
- * @return MENDER_OK if the function succeeds, error code if an error occurred
- */
-static mender_err_t mender_client_download_artifact_callback(
-    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length);
-
-/**
  * @brief Publish deployment status of the device to the mender-server and invoke deployment status callback
  * @param id ID of the deployment
  * @param deployment_status Deployment status
@@ -1001,7 +985,7 @@ mender_client_update_work_function(void) {
                 /* TODO: the actual update module's download callback is called
                  *       via 9 levels of indirection from here, refactoring
                  *       needed */
-                if (MENDER_OK == (ret = mender_api_download_artifact(deployment->uri, mender_client_download_artifact_callback))) {
+                if (MENDER_OK == (ret = mender_api_download_artifact(deployment->uri))) {
                     assert(NULL != mender_update_module);
 
                     /* Get artifact context if artifact download succeeded */
@@ -1193,7 +1177,7 @@ END:
     return ret;
 }
 
-static mender_err_t
+mender_err_t
 mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length) {
 
     assert(NULL != type);

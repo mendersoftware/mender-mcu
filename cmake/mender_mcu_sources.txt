@@ -129,6 +129,7 @@ file(GLOB MENDER_MCU_SOURCES
     "${MENDER_MCU_ROOT}/core/src/mender-api.c"
     "${MENDER_MCU_ROOT}/core/src/mender-artifact.c"
     "${MENDER_MCU_ROOT}/core/src/mender-client.c"
+    "${MENDER_MCU_ROOT}/core/src/mender-update-module.c"
     "${MENDER_MCU_ROOT}/core/src/mender-utils.c"
     "${MENDER_MCU_ROOT}/core/src/mender-deployment-data.c"
     "${MENDER_MCU_ROOT}/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"

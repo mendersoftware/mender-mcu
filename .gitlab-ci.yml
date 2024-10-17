@@ -33,7 +33,7 @@ test:smoke-build:posix:
   before_script:
     - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev
   script:
-    - cmake -C cmake/CMake_posix_defaults.txt -B build tests
+    - cmake -C cmake/CMake_posix_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help
 
@@ -44,6 +44,6 @@ test:smoke-build:weak:
   before_script:
     - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev
   script:
-    - cmake -C cmake/CMake_weak_defaults.txt -B build tests
+    - cmake -C cmake/CMake_weak_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help

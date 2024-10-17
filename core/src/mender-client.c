@@ -21,6 +21,7 @@
 #include "mender-api.h"
 #include "mender-client.h"
 #include "mender-artifact.h"
+#include "mender-artifact-download.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"
 #include "mender-storage.h"
@@ -927,13 +928,7 @@ mender_client_update_work_function(void) {
                 /* Set deployment_id */
                 deployment_id = deployment->id;
 
-                /* mender_client_download_artifact_callback() sets
-                 * mender_update_module if there is enough data to get
-                 * artifact type and there is a matching update module. */
-                /* TODO: the actual update module's download callback is called
-                 *       via 9 levels of indirection from here, refactoring
-                 *       needed */
-                if (MENDER_OK == (ret = mender_api_download_artifact(deployment->uri))) {
+                if (MENDER_OK == (ret = mender_download_artifact(deployment, &mender_update_module))) {
                     assert(NULL != mender_update_module);
 
                     /* Get artifact context if artifact download succeeded */

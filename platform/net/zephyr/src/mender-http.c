@@ -386,7 +386,7 @@ artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http
     /* Check if data is available */
     if (response->body_found && (NULL != response->body_frag_start) && (0 != response->body_frag_len) && (MENDER_OK == (*request_ret))) {
         /* Transmit data received to the upper layer */
-        *request_ret = mender_api_http_artifact_callback(MENDER_HTTP_EVENT_DATA_RECEIVED, (void *)response->body_frag_start, response->body_frag_len);
+        *request_ret = mender_artifact_download_callback(MENDER_HTTP_EVENT_DATA_RECEIVED, (void *)response->body_frag_start, response->body_frag_len);
         if (MENDER_OK != (*request_ret)) {
             mender_log_error("An error occurred, stop reading data");
         }

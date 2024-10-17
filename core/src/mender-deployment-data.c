@@ -108,7 +108,7 @@ mender_set_deployment_data(mender_deployment_data_t *deployment_data) {
     assert(NULL != item); /* Validation above should have catched this already */
     if (MAX_STATE_DATA_STORE_COUNT <= cJSON_GetNumberValue(item)) {
         mender_log_error("Reached max state data store count");
-        return MENDER_FAIL;
+        return MENDER_STATE_LOOP;
     }
 
     /* Increment state data store count */

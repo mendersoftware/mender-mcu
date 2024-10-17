@@ -83,23 +83,26 @@ mender_client_state_t mender_client_state = MENDER_CLIENT_STATE_INITIALIZATION;
 struct mender_update_state_transition_s {
     mender_update_state_t success;
     mender_update_state_t failure;
+    mender_update_state_t state_loop;
 };
 
 /**
  * @brief Mender Update (module) state transitions
  */
+/* clang-format off */
 static const struct mender_update_state_transition_s update_state_transitions[N_MENDER_UPDATE_STATES] = {
-    /* MENDER_UPDATE_STATE_DOWNLOAD               */ { MENDER_UPDATE_STATE_INSTALL, MENDER_UPDATE_STATE_CLEANUP },
-    /* MENDER_UPDATE_STATE_INSTALL                */ { MENDER_UPDATE_STATE_REBOOT, MENDER_UPDATE_STATE_FAILURE },
-    /* MENDER_UPDATE_STATE_REBOOT                 */ { MENDER_UPDATE_STATE_VERIFY_REBOOT, MENDER_UPDATE_STATE_ROLLBACK },
-    /* MENDER_UPDATE_STATE_VERIFY_REBOOT          */ { MENDER_UPDATE_STATE_COMMIT, MENDER_UPDATE_STATE_ROLLBACK },
-    /* MENDER_UPDATE_STATE_COMMIT                 */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_ROLLBACK },
-    /* MENDER_UPDATE_STATE_CLEANUP                */ { MENDER_UPDATE_STATE_END, MENDER_UPDATE_STATE_END },
-    /* MENDER_UPDATE_STATE_ROLLBACK               */ { MENDER_UPDATE_STATE_ROLLBACK_REBOOT, MENDER_UPDATE_STATE_FAILURE },
-    /* MENDER_UPDATE_STATE_ROLLBACK_REBOOT        */ { MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT },
-    /* MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT */ { MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_ROLLBACK_REBOOT },
-    /* MENDER_UPDATE_STATE_FAILURE                */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_CLEANUP },
+    /* MENDER_UPDATE_STATE_DOWNLOAD               */ { MENDER_UPDATE_STATE_INSTALL, MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_INSTALL                */ { MENDER_UPDATE_STATE_REBOOT, MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_REBOOT                 */ { MENDER_UPDATE_STATE_VERIFY_REBOOT, MENDER_UPDATE_STATE_ROLLBACK, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_VERIFY_REBOOT          */ { MENDER_UPDATE_STATE_COMMIT, MENDER_UPDATE_STATE_ROLLBACK, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_COMMIT                 */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_ROLLBACK, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_CLEANUP                */ { MENDER_UPDATE_STATE_END, MENDER_UPDATE_STATE_END, MENDER_UPDATE_STATE_END },
+    /* MENDER_UPDATE_STATE_ROLLBACK               */ { MENDER_UPDATE_STATE_ROLLBACK_REBOOT, MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_ROLLBACK_REBOOT        */ { MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT */ { MENDER_UPDATE_STATE_FAILURE, MENDER_UPDATE_STATE_ROLLBACK_REBOOT, MENDER_UPDATE_STATE_FAILURE },
+    /* MENDER_UPDATE_STATE_FAILURE                */ { MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_CLEANUP, MENDER_UPDATE_STATE_CLEANUP },
 };
+/* clang-format on */
 
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
 /* This is only needed for debug messages. */
@@ -899,18 +902,20 @@ set_and_store_state(const mender_update_state_t state) {
      * Set the state in `mender_client_deployment_data` and write it to the nvs
      */
 
+    mender_err_t ret = MENDER_OK;
+
     /* Set state in deployment data */
-    if (MENDER_OK != mender_deployment_data_set_state(mender_client_deployment_data, state)) {
+    if (MENDER_OK != (ret = mender_deployment_data_set_state(mender_client_deployment_data, state))) {
         mender_log_error("Failed to set deployment data state");
-        return MENDER_FAIL;
+        return ret;
     }
 
     /* Store deployment data */
-    if (MENDER_OK != mender_set_deployment_data(mender_client_deployment_data)) {
+    if (MENDER_OK != (ret = mender_set_deployment_data(mender_client_deployment_data))) {
         mender_log_error("Failed to store deployment data");
-        return MENDER_FAIL;
+        return ret;
     }
-    return MENDER_OK;
+    return ret;
 }
 
 static mender_err_t
@@ -959,21 +964,25 @@ mender_client_update_work_function(void) {
  *
  * mender_update_module is guaranteed be not NULL since the first
  * successful transition (from the DOWNLOAD state). */
-#define NEXT_STATE                                                             \
-    if (MENDER_OK == ret) {                                                    \
-        update_state = update_state_transitions[update_state].success;         \
-        assert(NULL != mender_update_module);                                  \
-        mender_log_debug("Entering state %s", update_state_str[update_state]); \
-        set_and_store_state(update_state);                                     \
-        ret = MENDER_OK;                                                       \
-    } else {                                                                   \
-        update_state = update_state_transitions[update_state].failure;         \
-        mender_log_debug("Entering state %s", update_state_str[update_state]); \
-        if (NULL != mender_update_module) {                                    \
-            set_and_store_state(update_state);                                 \
-        }                                                                      \
-        ret = MENDER_OK;                                                       \
-        continue;                                                              \
+#define NEXT_STATE                                                                \
+    if (MENDER_OK == ret) {                                                       \
+        update_state = update_state_transitions[update_state].success;            \
+        assert(NULL != mender_update_module);                                     \
+        mender_log_debug("Entering state %s", update_state_str[update_state]);    \
+        if (MENDER_STATE_LOOP == set_and_store_state(update_state)) {             \
+            update_state = update_state_transitions[update_state].state_loop;     \
+        }                                                                         \
+        ret = MENDER_OK;                                                          \
+    } else {                                                                      \
+        update_state = update_state_transitions[update_state].failure;            \
+        mender_log_debug("Entering state %s", update_state_str[update_state]);    \
+        if (NULL != mender_update_module) {                                       \
+            if (MENDER_STATE_LOOP == set_and_store_state(update_state)) {         \
+                update_state = update_state_transitions[update_state].state_loop; \
+            }                                                                     \
+        }                                                                         \
+        ret = MENDER_OK;                                                          \
+        continue;                                                                 \
     }
 
     while (MENDER_UPDATE_STATE_END != update_state) {
@@ -1154,10 +1163,8 @@ mender_client_update_work_function(void) {
                     /* If the rollback verify reboot fails,
                      * we will retry the rollback reboot.
                      *
-                     * TODO: fix this comment / document infinite
-                     * loop detection once MEN-7516 is implemented.
-                     * As it is now, the rollback will be retried
-                     * infinitely, or until it succeeds
+                     * The `rollback-reboot -> rollback-verify-reboot -> rollback-reboot -> ...`
+                     * loop is broken when a state loop is detected
                      */
                     mender_log_error("Rollback verify reboot failed. Retry rollback reboot");
                 }

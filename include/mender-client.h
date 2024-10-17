@@ -87,14 +87,6 @@ char *mender_client_version(void);
 mender_err_t mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks);
 
 /**
- * @brief Register update module
- * @param update_module The update module to register
- * @return MENDER_OK if the function succeeds, error code otherwise
- * @note Takes ownership of #update_module in case of success
- */
-mender_err_t mender_client_register_update_module(mender_update_module_t *update_module);
-
-/**
  * @brief Activate mender client
  * @return MENDER_OK if the function succeeds, error code otherwise
  */

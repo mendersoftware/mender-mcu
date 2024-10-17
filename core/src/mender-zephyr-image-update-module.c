@@ -82,9 +82,9 @@ mender_zephyr_image_register_update_module(void) {
     zephyr_image_umod->requires_reboot                                = true;
     zephyr_image_umod->supports_rollback                              = true;
 
-    if (MENDER_OK != (ret = mender_client_register_update_module(zephyr_image_umod))) {
+    if (MENDER_OK != (ret = mender_update_module_register(zephyr_image_umod))) {
         mender_log_error("Unable to register the 'zephyr-image' update module");
-        /* mender_client_register_update_module() takes ownership if it succeeds */
+        /* mender_update_module_register() takes ownership if it succeeds */
         free(zephyr_image_umod);
         return ret;
     }

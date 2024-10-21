@@ -6,6 +6,7 @@ include:
 
 stages:
   - test
+  - publish
 
 .test:static:
   stage: test
@@ -47,3 +48,93 @@ test:smoke-build:weak:
     - cmake -C cmake/CMake_weak_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help
+
+test:unit:
+  stage: test
+  image: debian:12
+  before_script:
+    - apt update && apt install -yyq g++ cmake git make lcov pkg-config curl
+  script:
+    - cmake -D COVERAGE=ON tests/unit/
+    - make --jobs=$(nproc --all) --keep-going coverage
+  tags:
+    - hetzner-amd-beefy
+  artifacts:
+    expire_in: 2w
+    reports:
+      junit: /tests/unit/reports/*.xml
+    paths:
+      - coverage.lcov
+
+.test:static:template:
+  stage: test
+  image: ubuntu:24.04
+  before_script:
+    - apt update && apt install -yyq clang ccache cmake git make pkg-config curl
+    # mender-artifact install
+    # Commented out for now, but likely needed when adding tests later on
+    # - apt-get install --assume-yes
+    #     apt-transport-https
+    #     ca-certificates
+    #     curl
+    #     gnupg-agent
+    #     software-properties-common
+    # - curl -fsSL https://downloads.mender.io/repos/debian/gpg >> /etc/apt/trusted.gpg.d/mender.asc
+    # - echo "deb [arch=$(dpkg --print-architecture)] https://downloads.mender.io/repos/debian ubuntu/jammy/experimental main"
+    #   > /etc/apt/sources.list.d/mender.list
+    # - apt-get update
+    # - apt install mender-artifact
+    - export CC=$(which clang)
+    - export CXX=$(which clang++)
+  script:
+    - cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} tests/unit
+    - make --jobs=$(nproc --all) --keep-going check
+  tags:
+    - hetzner-amd-beefy
+
+test:static:asan:
+  extends: .test:static:template
+  variables:
+    BUILD_TYPE: ASan
+
+test:static:threadsan:
+  extends: .test:static:template
+  variables:
+    BUILD_TYPE: ThreadSan
+
+test:static:undefinedsan:
+  extends: .test:static:template
+  variables:
+    BUILD_TYPE: UndefSan
+
+test:static:release:
+  extends: .test:static:template
+  variables:
+    BUILD_TYPE: Release
+
+publish:tests:
+  stage: publish
+  image: python:3.11
+  dependencies:
+    - test:unit
+  before_script:
+    # Install dependencies
+    - apt update && apt install -yyq lcov
+    - pip install cpp-coveralls pyyaml
+
+    # eddyxu/cpp-coveralls appears dead, but there doesn't seem to be an
+    # alternative. Use this patch from someone who attempted to fix it. An
+    # alternative to this is to use pyyaml<6, but it's better to use just one
+    # old component than two.
+    - curl -f https://github.com/eddyxu/cpp-coveralls/commit/067c837c04e039e8c70aa53bceda1cded6751408.patch | patch -f /usr/local/lib/python3.11/site-packages/cpp_coveralls/__init__.py
+
+    # Set "TRAVIS_*" variables based on GitLab ones
+    - export TRAVIS_BRANCH=$CI_COMMIT_BRANCH
+    - export TRAVIS_JOB_ID=$CI_PIPELINE_ID
+
+  script:
+    - 'echo "service_name: gitlab-ci" > .coveralls.yml'
+    - cpp-coveralls
+      --repo-token ${COVERALLS_TOKEN}
+      --no-gcov
+      --lcov-file coverage.lcov

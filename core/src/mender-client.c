@@ -21,6 +21,7 @@
 #include "mender-api.h"
 #include "mender-client.h"
 #include "mender-artifact.h"
+#include "mender-artifact-download.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"
 #include "mender-storage.h"
@@ -130,12 +131,6 @@ static bool mender_client_network_connected = false;
 static mender_deployment_data_t *mender_client_deployment_data = NULL;
 
 /**
- * @brief Mender client update modules list
- */
-static mender_update_module_t **mender_update_modules_list  = NULL;
-static size_t                   mender_update_modules_count = 0;
-
-/**
  * @brief Update module being used by the current deployment
  */
 static mender_update_module_t *mender_update_module = NULL;
@@ -215,22 +210,6 @@ static mender_err_t mender_check_device_compatibility(mender_artifact_ctx_t *men
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 static mender_err_t mender_client_update_work_function(void);
-
-/**
- * @brief Callback function to be invoked to perform the treatment of the data from the artifact
- * @param id ID of the deployment
- * @param artifact name Artifact name
- * @param type Type from header-info payloads
- * @param meta_data Meta-data from header tarball
- * @param filename Artifact filename
- * @param size Artifact file size
- * @param data Artifact data
- * @param index Artifact data index
- * @param length Artifact data length
- * @return MENDER_OK if the function succeeds, error code if an error occurred
- */
-static mender_err_t mender_client_download_artifact_callback(
-    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length);
 
 /**
  * @brief Publish deployment status of the device to the mender-server and invoke deployment status callback
@@ -343,29 +322,6 @@ END:
 }
 
 mender_err_t
-mender_client_register_update_module(mender_update_module_t *update_module) {
-
-    assert(NULL != update_module);
-
-    mender_update_module_t **tmp;
-    mender_err_t             ret = MENDER_OK;
-
-    /* Add mender artifact type to the list */
-    if (NULL == (tmp = (mender_update_module_t **)realloc(mender_update_modules_list, (mender_update_modules_count + 1) * sizeof(mender_update_module_t *)))) {
-        mender_log_error("Unable to allocate memory for update modules list");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    mender_update_modules_list                                = tmp;
-    mender_update_modules_list[mender_update_modules_count++] = update_module;
-    ret                                                       = MENDER_OK;
-
-END:
-
-    return ret;
-}
-
-mender_err_t
 mender_client_activate(void) {
 
     mender_err_t ret = MENDER_OK;
@@ -460,13 +416,7 @@ mender_client_exit(void) {
     mender_client_config.update_poll_interval         = 0;
     DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
 
-    if (NULL != mender_update_modules_list) {
-        for (size_t update_module_index = 0; update_module_index < mender_update_modules_count; update_module_index++) {
-            free(mender_update_modules_list[update_module_index]);
-        }
-        FREE_AND_NULL(mender_update_modules_list);
-    }
-    mender_update_modules_count = 0;
+    mender_update_module_unregister_all();
 
     return ret;
 }
@@ -788,23 +738,6 @@ END:
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
-static inline mender_update_module_t *
-mender_client_get_update_module(const char *artifact_type) {
-    mender_update_module_t *ret = NULL;
-
-    /* Treatment depending of the type */
-    if (NULL != mender_update_modules_list) {
-        for (size_t update_module_index = 0; (NULL == ret) && (update_module_index < mender_update_modules_count); update_module_index++) {
-            /* Check artifact type */
-            if (StringEqual(artifact_type, mender_update_modules_list[update_module_index]->artifact_type)) {
-                ret = mender_update_modules_list[update_module_index];
-            }
-        }
-    }
-
-    return ret;
-}
-
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 static mender_err_t
 mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, mender_api_deployment_data_t *deployment) {
@@ -941,7 +874,7 @@ mender_client_update_work_function(void) {
             && MENDER_OK == mender_deployment_data_get_payload_type(mender_client_deployment_data, &artifact_type)) {
             update_state = update_state_resume;
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
-            mender_update_module = mender_client_get_update_module(artifact_type);
+            mender_update_module = mender_update_module_get(artifact_type);
             if (NULL == mender_update_module) {
                 /* The artifact_type from the saved state does not match any update module */
                 mender_log_error("No update module found for artifact type '%s'", artifact_type);
@@ -1000,13 +933,7 @@ mender_client_update_work_function(void) {
                 /* Set deployment_id */
                 deployment_id = deployment->id;
 
-                /* mender_client_download_artifact_callback() sets
-                 * mender_update_module if there is enough data to get
-                 * artifact type and there is a matching update module. */
-                /* TODO: the actual update module's download callback is called
-                 *       via 9 levels of indirection from here, refactoring
-                 *       needed */
-                if (MENDER_OK == (ret = mender_api_download_artifact(deployment->uri, mender_client_download_artifact_callback))) {
+                if (MENDER_OK == (ret = mender_download_artifact(deployment->uri, mender_client_deployment_data, &mender_update_module))) {
                     assert(NULL != mender_update_module);
 
                     /* Get artifact context if artifact download succeeded */
@@ -1193,70 +1120,6 @@ END:
     DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
     mender_artifact_release_ctx(mender_artifact_ctx);
 
-    return ret;
-}
-
-static mender_err_t
-mender_client_download_artifact_callback(char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length) {
-
-    assert(NULL != type);
-    mender_err_t ret = MENDER_FAIL;
-
-#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
-    if (size > 0) {
-        static size_t download_progress = 0;
-        /* New update */
-        if (0 == index) {
-            download_progress = 0;
-        }
-
-        /* Update every 10% */
-        if (((index * 10) / size) > download_progress) {
-            download_progress = (index * 10) / size;
-            mender_log_info("Downloading '%s' %zu0%%... [%zu/%zu]", type, download_progress, index, size);
-        }
-    }
-#endif
-
-    mender_update_module = mender_client_get_update_module(type);
-    if (NULL == mender_update_module) {
-        /* Content is not supported by the mender-mcu-client */
-        mender_log_error("Unable to handle artifact type '%s'", type);
-        goto END;
-    }
-
-    /* Retrieve ID and artifact name */
-    const char *id;
-    if (MENDER_OK != mender_deployment_data_get_id(mender_client_deployment_data, &id)) {
-        mender_log_error("Unable to get ID from the deployment data");
-        goto END;
-    }
-    const char *artifact_name;
-    if (MENDER_OK != mender_deployment_data_get_artifact_name(mender_client_deployment_data, &artifact_name)) {
-        mender_log_error("Unable to get artifact name from the deployment data");
-        goto END;
-    }
-
-    /* Invoke update module download callback */
-    struct mender_update_download_state_data_s download_state_data = { id, artifact_name, type, meta_data, filename, size, data, index, length, false };
-    mender_update_state_data_t                 state_data          = { .download_state_data = &download_state_data };
-    if (MENDER_OK != (ret = mender_update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD](MENDER_UPDATE_STATE_DOWNLOAD, state_data))) {
-        mender_log_error("An error occurred while processing data of the artifact '%s' of type '%s'", artifact_name, type);
-        goto END;
-    }
-
-    /* Treatments related to the artifact type (once) */
-    if (0 == index) {
-        /* Add type to the deployment data */
-        if (MENDER_OK != (ret = mender_deployment_data_add_payload_type(mender_client_deployment_data, type))) {
-            /* Error already logged */
-            goto END;
-        }
-    }
-
-    ret = MENDER_OK;
-
-END:
     return ret;
 }
 

@@ -24,7 +24,11 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <cJSON.h>
+
+#include "mender-utils.h"
 
 typedef enum mender_update_state_t {
     MENDER_UPDATE_STATE_DOWNLOAD = 0,
@@ -124,6 +128,26 @@ typedef struct mender_update_module_s {
     bool                      requires_reboot;
     bool                      supports_rollback;
 } mender_update_module_t;
+
+/**
+ * @brief Register update module
+ * @param update_module The update module to register
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ * @note Takes ownership of #update_module in case of success
+ */
+mender_err_t mender_update_module_register(mender_update_module_t *update_module);
+
+/**
+ * @brief Unregister all registered update modules
+ */
+void mender_update_module_unregister_all(void);
+
+/**
+ * @brief Get update module for the given artifact type
+ * @param artifact_type Artifact type to get the update module for
+ * @return An update module or %NULL if no matching one found
+ */
+mender_update_module_t *mender_update_module_get(const char *artifact_type);
 
 #ifdef __cplusplus
 }

@@ -133,11 +133,10 @@ There are several outstanding known issues with the current code:
 - CMake
 - libcurl
 - cJSON
-- mbedTLS
 
 Example for Ubuntu/Debian:
 ```
-apt install cmake libcurl4-openssl-dev libmbedtls-dev
+apt install cmake libcurl4-openssl-dev libcjson-dev
 ```
 ### Building the Client
 

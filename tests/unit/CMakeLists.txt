@@ -18,24 +18,6 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(mender-mcu-tests-unit)
 
-# TODO: move somewhere shared with smoke tests and remove the other fetch method
-include(FetchContent)
-FetchContent_Declare(
-  cjson
-  GIT_REPOSITORY https://github.com/DaveGamble/cJSON
-  GIT_TAG        v1.7.15
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-set(ENABLE_CJSON_TEST OFF CACHE INTERNAL "Turn off tests")
-FetchContent_MakeAvailable(cjson)
-
-# TODO: Investigate a better way to do this. Maybe a more recent version of cJSON better
-# supports build as external library?
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/_deps/cjson-src/)
-
-# TODO: Add mbedTLS dependency
-
 # Include mender-mcu-client library, forcing warnings and errors
 set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors" FORCE)
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../target/posix" build)
@@ -136,7 +118,6 @@ add_dependencies(tests main_test)
 add_executable(core_test EXCLUDE_FROM_ALL core/mender-utils_test.cpp)
 target_link_libraries(core_test PUBLIC
   mender-mcu-client
-  cjson
   gtest
   main_test
 )

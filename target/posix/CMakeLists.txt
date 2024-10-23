@@ -74,14 +74,29 @@ if (CONFIG_MENDER_PROVIDES_DEPENDS)
     target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_PROVIDES_DEPENDS)
 endif()
 
-# cJSON location/options
-find_package(PkgConfig)
-if (PKG_CONFIG_FOUND)
-  pkg_check_modules(cjson libcjson)
-  if (cjson_FOUND)
-    target_compile_options(mender-mcu-client PRIVATE ${cjson_CFLAGS})
-  endif()
-endif()
+find_package(PkgConfig REQUIRED)
+
+# Depencency: cJSON. Rely on the system provided package
+pkg_check_modules(cjson REQUIRED libcjson)
+target_compile_options(mender-mcu-client PUBLIC ${cjson_CFLAGS})
+target_link_libraries(mender-mcu-client PRIVATE cjson)
+
+# Depencency: Mbed TLS. Fetch the project from upstream
+# This is because the popular Linux distributions (Fedora, Ubuntu) are stuck in 2.x version
+# due to an breaking API change in 3.x. As Zephyr project uses 3.x, we want to avoid poluting
+# the code with many ifdefs for the two major versions
+include(FetchContent)
+FetchContent_Declare(
+  MbedTLS
+  GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls
+  GIT_TAG        v3.6.2
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  FIND_PACKAGE_ARGS NAMES MbedTLS
+)
+message(STATUS "Fetching MbedTLS...")
+FetchContent_MakeAvailable(MbedTLS)
+find_package(MbedTLS REQUIRED)
+target_link_libraries(mender-mcu-client PRIVATE MbedTLS::mbedtls)
 
 # mbedtls error strings
 option(MENDER_MBEDTLS_ERROR_STR "Enable mbedtls error strings" OFF)

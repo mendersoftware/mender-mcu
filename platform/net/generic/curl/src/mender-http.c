@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE // asprintf
 #include <curl/curl.h>
 #include "mender-http.h"
 #include "mender-log.h"
@@ -119,13 +120,11 @@ mender_http_perform(char                *jwt,
 
     /* Compute URL if required */
     if (!mender_utils_strbeginwith(path, "http://") && !mender_utils_strbeginwith(path, "https://")) {
-        size_t str_length = strlen(mender_http_config.host) + strlen(path) + 1;
-        if (NULL == (url = (char *)malloc(str_length))) {
-            mender_log_error("Unable to allocate memory");
+        if (-1 == asprintf(&url, "%s%s", mender_http_config.host, path)) {
+            mender_log_error("Unable to allocate memory for URL");
             ret = MENDER_FAIL;
             goto END;
         }
-        snprintf(url, str_length, "%s%s", mender_http_config.host, path);
     }
 
     /* Initialization of the client */
@@ -254,13 +253,11 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
 
     /* Compute URL if required */
     if (!mender_utils_strbeginwith(uri, "http://") && !mender_utils_strbeginwith(uri, "https://")) {
-        size_t str_length = strlen(mender_http_config.host) + strlen(uri) + 1;
-        if (NULL == (url = (char *)malloc(str_length))) {
+        if (-1 == asprintf(&url, "%s%s", mender_http_config.host, uri)) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
         }
-        snprintf(url, str_length, "%s%s", mender_http_config.host, uri);
     }
 
     /* Initialization of the client */

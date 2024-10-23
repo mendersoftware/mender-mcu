@@ -50,7 +50,7 @@ typedef struct {
 /**
  * @brief Mender HTTP configuration
  */
-static mender_http_config_t mender_http_config;
+static mender_http_config_t http_config;
 
 /**
  * @brief HTTP response callback, invoked to handle data received
@@ -58,7 +58,7 @@ static mender_http_config_t mender_http_config;
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
  */
-static void mender_http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
+static void http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
 /**
  * @brief HTTP artifact response callback, invoked to handle data received
@@ -73,7 +73,7 @@ static void artifact_response_cb(struct http_response *response, enum http_final
  * @param method Mender HTTP method
  * @return Zephyr HTTP client method if the function succeeds, -1 otherwise
  */
-static enum http_method mender_http_method_to_zephyr_http_client_method(mender_http_method_t method);
+static enum http_method http_method_to_zephyr_http_client_method(mender_http_method_t method);
 
 mender_err_t
 mender_http_init(mender_http_config_t *config) {
@@ -82,7 +82,7 @@ mender_http_init(mender_http_config_t *config) {
     assert(NULL != config->host);
 
     /* Save configuration */
-    memcpy(&mender_http_config, config, sizeof(mender_http_config_t));
+    memcpy(&http_config, config, sizeof(mender_http_config_t));
 
     return MENDER_OK;
 }
@@ -125,19 +125,19 @@ mender_http_perform(char                *jwt,
     char *signature_header = NULL;
 
     /* Retrieve host, port and url */
-    if (MENDER_OK != mender_net_get_host_port_url(path, mender_http_config.host, &host, &port, &url)) {
+    if (MENDER_OK != mender_net_get_host_port_url(path, http_config.host, &host, &port, &url)) {
         mender_log_error("Unable to retrieve host/port/url");
         goto END;
     }
 
     /* Configuration of the client */
-    request.method      = mender_http_method_to_zephyr_http_client_method(method);
+    request.method      = http_method_to_zephyr_http_client_method(method);
     request.url         = url;
     request.host        = host;
     request.protocol    = "HTTP/1.1";
     request.payload     = payload;
     request.payload_len = (NULL != payload) ? strlen(payload) : 0;
-    request.response    = mender_http_response_cb;
+    request.response    = http_response_cb;
     if (NULL == (request.recv_buf = (uint8_t *)malloc(mender_http_recv_buf_length))) {
         mender_log_error("Unable to allocate memory");
         goto END;
@@ -258,13 +258,13 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     char *host_header = NULL;
 
     /* Retrieve host, port and url */
-    if (MENDER_OK != mender_net_get_host_port_url(uri, mender_http_config.host, &host, &port, &url)) {
+    if (MENDER_OK != mender_net_get_host_port_url(uri, http_config.host, &host, &port, &url)) {
         mender_log_error("Unable to retrieve host/port/url");
         goto END;
     }
 
     /* Configuration of the client */
-    request.method   = mender_http_method_to_zephyr_http_client_method(MENDER_HTTP_GET);
+    request.method   = http_method_to_zephyr_http_client_method(MENDER_HTTP_GET);
     request.url      = url;
     request.host     = host;
     request.protocol = "HTTP/1.1";
@@ -350,7 +350,7 @@ mender_http_exit(void) {
 }
 
 static void
-mender_http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data) {
+http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data) {
 
     assert(NULL != response);
     (void)final_call;
@@ -392,7 +392,7 @@ artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http
 }
 
 static enum http_method
-mender_http_method_to_zephyr_http_client_method(mender_http_method_t method) {
+http_method_to_zephyr_http_client_method(mender_http_method_t method) {
 
     /* Convert method */
     switch (method) {

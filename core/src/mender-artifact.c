@@ -122,8 +122,14 @@ static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifa
 /**
  * @brief Process chunk of artifact data
  */
-static mender_err_t process_artifact_data_callback(
-    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length, mender_artifact_download_data_t *dl_data);
+static mender_err_t process_artifact_data_callback(const char                      *type,
+                                                   const cJSON                     *meta_data,
+                                                   const char                      *filename,
+                                                   size_t                           size,
+                                                   void                            *data,
+                                                   size_t                           index,
+                                                   size_t                           length,
+                                                   mender_artifact_download_data_t *dl_data);
 
 /**
  * @brief Drop content of the current file of the artifact
@@ -1030,8 +1036,14 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 }
 
 static mender_err_t
-process_artifact_data_callback(
-    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length, mender_artifact_download_data_t *dl_data) {
+process_artifact_data_callback(const char                      *type,
+                               const cJSON                     *meta_data,
+                               const char                      *filename,
+                               size_t                           size,
+                               void                            *data,
+                               size_t                           index,
+                               size_t                           length,
+                               mender_artifact_download_data_t *dl_data) {
 
     assert(NULL != type);
     mender_err_t ret = MENDER_FAIL;

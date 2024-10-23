@@ -36,8 +36,12 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/_deps/cjson-src/)
 
 # TODO: Add mbedTLS dependency
 
-# Include mender-mcu-client library
+# Include mender-mcu-client library, forcing warnings and errors
+set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors" FORCE)
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../target/posix" build)
+
+# And add the same flags for the test targets too
+add_compile_options(-Wall -Wextra -Werror -Wpointer-arith)
 
 enable_testing()
 

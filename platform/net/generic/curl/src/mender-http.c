@@ -224,7 +224,7 @@ mender_http_perform(char                *jwt,
     }
     *status = (int)response_code;
     if (MENDER_OK != (ret = callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, params))) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing HTTP disconnection");
         goto END;
     }
 
@@ -331,7 +331,7 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     }
     *status = (int)response_code;
     if (MENDER_OK != (ret = dl_data->artifact_download_callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, dl_data))) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing disconnection in artifact download");
         goto END;
     }
 
@@ -372,7 +372,7 @@ mender_http_prereq_callback(void *params, char *conn_primary_ip, char *conn_loca
 
     /* Invoke callback */
     if (MENDER_OK != user_data->callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, user_data->params)) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing HTTP connection");
         return CURL_PREREQFUNC_ABORT;
     }
 
@@ -409,7 +409,7 @@ artifact_prereq_callback(void *user_data, char *conn_primary_ip, char *conn_loca
 
     /* Invoke callback */
     if (MENDER_OK != dl_data->artifact_download_callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, dl_data)) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing HTTP connection on artifact download");
         return CURL_PREREQFUNC_ABORT;
     }
 

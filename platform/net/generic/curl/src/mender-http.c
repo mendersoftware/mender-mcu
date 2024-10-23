@@ -118,7 +118,7 @@ mender_http_perform(char                *jwt,
     struct curl_slist *headers         = NULL;
 
     /* Compute URL if required */
-    if ((false == mender_utils_strbeginwith(path, "http://")) && (false == mender_utils_strbeginwith(path, "https://"))) {
+    if (!mender_utils_strbeginwith(path, "http://") && !mender_utils_strbeginwith(path, "https://")) {
         size_t str_length = strlen(mender_http_config.host) + strlen(path) + 1;
         if (NULL == (url = (char *)malloc(str_length))) {
             mender_log_error("Unable to allocate memory");
@@ -231,21 +231,11 @@ mender_http_perform(char                *jwt,
 END:
 
     /* Release memory */
-    if (NULL != curl) {
-        curl_easy_cleanup(curl);
-    }
-    if (NULL != headers) {
-        curl_slist_free_all(headers);
-    }
-    if (NULL != x_men_signature) {
-        free(x_men_signature);
-    }
-    if (NULL != bearer) {
-        free(bearer);
-    }
-    if (NULL != url) {
-        free(url);
-    }
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    free(x_men_signature);
+    free(bearer);
+    free(url);
 
     return ret;
 }
@@ -263,7 +253,7 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     struct curl_slist *headers = NULL;
 
     /* Compute URL if required */
-    if ((false == mender_utils_strbeginwith(uri, "http://")) && (false == mender_utils_strbeginwith(uri, "https://"))) {
+    if (!mender_utils_strbeginwith(uri, "http://") && !mender_utils_strbeginwith(uri, "https://")) {
         size_t str_length = strlen(mender_http_config.host) + strlen(uri) + 1;
         if (NULL == (url = (char *)malloc(str_length))) {
             mender_log_error("Unable to allocate memory");
@@ -338,15 +328,9 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
 END:
 
     /* Release memory */
-    if (NULL != curl) {
-        curl_easy_cleanup(curl);
-    }
-    if (NULL != headers) {
-        curl_slist_free_all(headers);
-    }
-    if (NULL != url) {
-        free(url);
-    }
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    free(url);
 
     return ret;
 }

@@ -33,8 +33,12 @@
  * @brief Deployment data version number.
  * @note cJSON stores numbers as double, so we might as well define this
  *       constant as a double to avoid type casting.
+ *       This number is based on the maximum state transition count
+ *       from the Mender C++ client. It's a number that won't loop
+ *       too many times and still give some wiggle room.
+ *       If this number is exceeded, the update will be aborted.
  */
-#define MAX_STATE_DATA_STORE_COUNT 50.0 /* TODO: What should this constant be? */
+#define MAX_STATE_DATA_STORE_COUNT 28.0
 
 /**
  * @brief Validate deployment data
@@ -107,8 +111,10 @@ mender_set_deployment_data(mender_deployment_data_t *deployment_data) {
     cJSON *item = cJSON_GetObjectItemCaseSensitive(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE_DATA_STORE_COUNT);
     assert(NULL != item); /* Validation above should have catched this already */
     if (MAX_STATE_DATA_STORE_COUNT <= cJSON_GetNumberValue(item)) {
+        /* Reset state data store count */
+        cJSON_SetNumberValue(item, 0.0);
         mender_log_error("Reached max state data store count");
-        return MENDER_FAIL;
+        return MENDER_LOOP_DETECTED;
     }
 
     /* Increment state data store count */

@@ -2,6 +2,7 @@
 # @brief     Test application CMakeLists file
 #
 # Copyright joelguittet and mender-mcu-client contributors
+# Copyright Northern.tech AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +34,7 @@ set(PROJECT_BASE_NAME mender-mcu-client)
 message("Configuring for ${PROJECT_BASE_NAME} - Build type is ${CMAKE_BUILD_TYPE}")
 
 # Define VERSION_NUMBER
-file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../VERSION" VERSION_NUMBER LIMIT_COUNT 1)
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../VERSION" VERSION_NUMBER LIMIT_COUNT 1)
 set_property(DIRECTORY . APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_LIST_DIR}/../VERSION)
 STRING(REGEX REPLACE "^([0-9]+)\\.([0-9]+)\\.([0-9]+)-rc[0-9]+" "\\1.\\2.\\3" VERSION_NUMBER "${VERSION_NUMBER}")
 
@@ -61,7 +62,7 @@ target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES_TEMP})
 include("${CMAKE_CURRENT_LIST_DIR}/mocks/CMakeLists.txt")
 
 # Include mender-mcu-client library
-include("${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../target/posix" build)
 
 # Add definitions to configure the client
 if(CONFIG_MENDER_PLATFORM_NET_TYPE MATCHES "zephyr")

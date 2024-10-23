@@ -342,14 +342,14 @@ mender_http_exit(void) {
 }
 
 static int
-mender_http_prereq_callback(void *params, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port) {
+mender_http_prereq_callback(void                   *params,
+                            MENDER_ARG_UNUSED char *conn_primary_ip,
+                            MENDER_ARG_UNUSED char *conn_local_ip,
+                            MENDER_ARG_UNUSED int   conn_primary_port,
+                            MENDER_ARG_UNUSED int   conn_local_port) {
 
     assert(NULL != params);
     mender_http_curl_user_data_t *user_data = (mender_http_curl_user_data_t *)params;
-    (void)conn_primary_ip;
-    (void)conn_local_ip;
-    (void)conn_primary_port;
-    (void)conn_local_port;
 
     /* Invoke callback */
     if (MENDER_OK != user_data->callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, user_data->params)) {
@@ -379,14 +379,14 @@ mender_http_write_callback(char *data, size_t size, size_t nmemb, void *params) 
 }
 
 static int
-artifact_prereq_callback(void *user_data, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port) {
+artifact_prereq_callback(void                   *user_data,
+                         MENDER_ARG_UNUSED char *conn_primary_ip,
+                         MENDER_ARG_UNUSED char *conn_local_ip,
+                         MENDER_ARG_UNUSED int   conn_primary_port,
+                         MENDER_ARG_UNUSED int   conn_local_port) {
     assert(NULL != user_data);
 
     mender_artifact_download_data_t *dl_data = user_data;
-    (void)conn_primary_ip;
-    (void)conn_local_ip;
-    (void)conn_primary_port;
-    (void)conn_local_port;
 
     /* Invoke callback */
     if (MENDER_OK != dl_data->artifact_download_callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, dl_data)) {

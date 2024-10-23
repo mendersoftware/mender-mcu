@@ -14,7 +14,7 @@ Makefile
 Testing
 lib
 tests/unit/reports
-coverage.lcov
+*.lcov
 
 # This file specifies folder icon positions, and other visual information in the
 # macOS Finder app (i.e., the file explorer). The file is created automatically

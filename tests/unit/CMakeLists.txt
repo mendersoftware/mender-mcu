@@ -81,13 +81,31 @@ else()
   )
 endif()
 
+set(MENDER_COVERAGE_EXCLUDE_FLAGS
+  --exclude '/usr/*'
+  --exclude '*/googletest/*'
+  --exclude '*_test.*'
+#  --exclude '*/googlemock/*'
+)
+# Following the recipe from lcov man page, genearte
+# an initial report and then the tests one, so that the
+# source files with 0% coverage are also reported. See:
+# https://linux.die.net/man/1/lcov
 add_custom_target(coverage
+  COMMAND lcov --add-tracefile initial.info --add-tracefile tests.info --output-file coverage.lcov
+  DEPENDS coverage-tests coverage-initial
+)
+add_custom_target(coverage-initial
   COMMAND lcov --capture --quiet --directory .
-               --output-file coverage.lcov
-               --exclude '/usr/*'
-               --exclude '*/googletest/*'
-               --exclude '*_test.*'
-#               --exclude '*/googlemock/*'
+               --initial
+               --output-file initial.info
+               ${MENDER_COVERAGE_EXCLUDE_FLAGS}
+  DEPENDS coverage_enabled tests
+)
+add_custom_target(coverage-tests
+  COMMAND lcov --capture --quiet --directory .
+               --output-file tests.info
+               ${MENDER_COVERAGE_EXCLUDE_FLAGS}
   DEPENDS coverage_enabled check
 )
 

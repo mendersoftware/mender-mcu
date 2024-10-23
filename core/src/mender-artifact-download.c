@@ -74,30 +74,27 @@ mender_download_artifact_callback(mender_http_client_event_t event, void *data, 
             /* Create new artifact context */
             if (NULL == (mender_artifact_ctx = mender_artifact_create_ctx(2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE + mender_http_recv_buf_length))) {
                 mender_log_error("Unable to create artifact context");
-                ret = MENDER_FAIL;
-                break;
+                return MENDER_FAIL;
             }
             break;
         case MENDER_HTTP_EVENT_DATA_RECEIVED:
             /* Check input data */
             if ((NULL == data) || (0 == data_length)) {
                 mender_log_error("Invalid data received");
-                ret = MENDER_FAIL;
-                break;
+                return MENDER_FAIL;
             }
 
             /* Check artifact context */
             if (MENDER_OK != mender_artifact_get_ctx(&mender_artifact_ctx)) {
                 mender_log_error("Unable to get artifact context");
-                ret = MENDER_FAIL;
-                break;
+                return MENDER_FAIL;
             }
             assert(NULL != mender_artifact_ctx);
 
             /* Parse input data */
             if (MENDER_OK != (ret = mender_artifact_process_data(mender_artifact_ctx, data, data_length, dl_data))) {
                 mender_log_error("Unable to process data");
-                break;
+                return ret;
             }
             break;
         case MENDER_HTTP_EVENT_DISCONNECTED:
@@ -105,12 +102,10 @@ mender_download_artifact_callback(mender_http_client_event_t event, void *data, 
         case MENDER_HTTP_EVENT_ERROR:
             /* Downloading the artifact fails */
             mender_log_error("An error occurred");
-            ret = MENDER_FAIL;
-            break;
+            return MENDER_FAIL;
         default:
             /* Should not occur */
-            ret = MENDER_FAIL;
-            break;
+            return MENDER_FAIL;
     }
 
     return ret;

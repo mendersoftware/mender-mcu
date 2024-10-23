@@ -1068,19 +1068,19 @@ process_artifact_data_callback(const char                      *type,
     if (NULL == dl_data->update_module) {
         /* Content is not supported by the mender-mcu-client */
         mender_log_error("Unable to handle artifact type '%s'", type);
-        goto END;
+        return MENDER_FAIL;
     }
 
     /* Retrieve ID and artifact name */
     const char *id;
     if (MENDER_OK != mender_deployment_data_get_id(dl_data->deployment, &id)) {
         mender_log_error("Unable to get ID from the deployment data");
-        goto END;
+        return MENDER_FAIL;
     }
     const char *artifact_name;
     if (MENDER_OK != mender_deployment_data_get_artifact_name(dl_data->deployment, &artifact_name)) {
         mender_log_error("Unable to get artifact name from the deployment data");
-        goto END;
+        return MENDER_FAIL;
     }
 
     /* Invoke update module download callback */
@@ -1088,7 +1088,7 @@ process_artifact_data_callback(const char                      *type,
     mender_update_state_data_t                 state_data          = { .download_state_data = &download_state_data };
     if (MENDER_OK != (ret = dl_data->update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD](MENDER_UPDATE_STATE_DOWNLOAD, state_data))) {
         mender_log_error("An error occurred while processing data of the artifact '%s' of type '%s'", artifact_name, type);
-        goto END;
+        return ret;
     }
 
     /* Treatments related to the artifact type (once) */
@@ -1096,14 +1096,11 @@ process_artifact_data_callback(const char                      *type,
         /* Add type to the deployment data */
         if (MENDER_OK != (ret = mender_deployment_data_add_payload_type(dl_data->deployment, type))) {
             /* Error already logged */
-            goto END;
+            return ret;
         }
     }
 
-    ret = MENDER_OK;
-
-END:
-    return ret;
+    return MENDER_OK;
 }
 
 static mender_err_t

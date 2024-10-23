@@ -31,7 +31,7 @@ static mender_err_t mender_download_artifact_callback(mender_http_client_event_t
                                                       mender_artifact_download_data_t *dl_data);
 
 mender_err_t
-mender_download_artifact(char *uri, mender_deployment_data_t *deployment_data, mender_update_module_t **update_module) {
+mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_data, mender_update_module_t **update_module) {
     assert(NULL != uri);
     assert(NULL != deployment_data);
     assert(NULL != update_module);

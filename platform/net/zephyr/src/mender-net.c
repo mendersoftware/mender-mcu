@@ -37,14 +37,14 @@
 #define RESOLVE_ATTEMPTS (10)
 
 mender_err_t
-mender_net_get_host_port_url(char *path, char *config_host, char **host, char **port, char **url) {
+mender_net_get_host_port_url(const char *path, char *config_host, char **host, char **port, char **url) {
 
     assert(NULL != path);
     assert(NULL != host);
     assert(NULL != port);
 
-    char *path_no_prefix = NULL;
-    bool  is_https       = false;
+    const char *path_no_prefix = NULL;
+    bool        is_https       = false;
 
     /* Check if the path start with protocol (meaning we have the full path); alternatively we have only URL (path/to/resource) */
     if ((false == mender_utils_strbeginwith(path, "http://")) && (false == mender_utils_strbeginwith(path, "https://"))) {

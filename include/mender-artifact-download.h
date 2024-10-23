@@ -34,7 +34,7 @@ extern "C" {
  * @param deployment_data Deployment data to extend with artifact metadata
  * @param update_module A place to store the update module selected for the artifact
  */
-mender_err_t mender_download_artifact(char *uri, mender_deployment_data_t *deployment_data, mender_update_module_t **update_module);
+mender_err_t mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_data, mender_update_module_t **update_module);
 
 #ifdef __cplusplus
 }

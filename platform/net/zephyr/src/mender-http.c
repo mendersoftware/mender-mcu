@@ -239,7 +239,7 @@ END:
 }
 
 mender_err_t
-mender_http_artifact_download(char *uri, mender_artifact_download_data_t *dl_data, int *status) {
+mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *dl_data, int *status) {
     assert(NULL != dl_data);
     assert(NULL != status);
 

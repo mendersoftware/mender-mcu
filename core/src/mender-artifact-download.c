@@ -48,22 +48,18 @@ mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_d
     /* Perform HTTP request */
     if (MENDER_OK != (ret = mender_http_artifact_download(uri, &dl_data, &status))) {
         mender_log_error("Unable to perform HTTP request");
-        goto END;
+        return ret;
     }
 
     /* Treatment depending of the status */
     if (200 == status) {
         /* Nothing to do */
-        ret            = MENDER_OK;
         *update_module = dl_data.update_module;
+        return MENDER_OK;
     } else {
         mender_api_print_response_error(NULL, status);
-        ret = MENDER_FAIL;
+        return MENDER_FAIL;
     }
-
-END:
-
-    return ret;
 }
 
 static mender_err_t

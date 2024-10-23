@@ -1035,6 +1035,18 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
     return MENDER_DONE;
 }
 
+/**
+ * @brief Callback function to be invoked to perform the treatment of the data from the artifact
+ * @param type Type from header-info payloads
+ * @param meta_data Meta-data from header tarball
+ * @param filename Artifact filename
+ * @param size Artifact file size
+ * @param data Artifact data
+ * @param index Artifact data index
+ * @param length Artifact data length
+ * @param dl_data Download data for the artifact
+ * @return MENDER_OK if the function succeeds, error code if an error occurred
+ */
 static mender_err_t
 process_artifact_data_callback(const char                      *type,
                                const cJSON                     *meta_data,

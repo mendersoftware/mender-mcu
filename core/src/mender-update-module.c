@@ -33,6 +33,13 @@ mender_update_module_register(mender_update_module_t *update_module) {
     mender_update_module_t **tmp;
     mender_err_t             ret = MENDER_OK;
 
+    for (size_t i = 0; i < update_modules_count; i++) {
+        if (StringEqual(update_module->artifact_type, update_modules_list[i]->artifact_type)) {
+            mender_log_error("Not registering another update module for artifact type: %s", update_module->artifact_type);
+            return MENDER_FAIL;
+        }
+    }
+
     /* Add mender artifact type to the list */
     if (NULL == (tmp = (mender_update_module_t **)realloc(update_modules_list, (update_modules_count + 1) * sizeof(mender_update_module_t *)))) {
         mender_log_error("Unable to allocate memory for update modules list");

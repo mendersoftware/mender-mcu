@@ -216,6 +216,11 @@ api_check_for_deployment_v2(int *status, void *response) {
     mender_err_t ret          = MENDER_FAIL;
     cJSON       *json_payload = NULL;
     char        *payload      = NULL;
+#ifdef CONFIG_MENDER_PROVIDES_DEPENDS
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    mender_key_value_list_t *provides = NULL;
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+#endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 
     /* Create payload */
     if (NULL == (json_payload = cJSON_CreateObject())) {
@@ -238,7 +243,6 @@ api_check_for_deployment_v2(int *status, void *response) {
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
     /* Add provides from storage */
-    mender_key_value_list_t *provides = NULL;
     if (MENDER_FAIL == mender_storage_get_provides(&provides)) {
         mender_log_error("Unable to get provides");
         goto END;

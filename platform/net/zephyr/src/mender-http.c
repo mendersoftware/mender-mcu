@@ -350,10 +350,8 @@ mender_http_exit(void) {
 }
 
 static void
-http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data) {
-
+http_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_final_call final_call, void *user_data) {
     assert(NULL != response);
-    (void)final_call;
     assert(NULL != user_data);
 
     /* Retrieve request context */

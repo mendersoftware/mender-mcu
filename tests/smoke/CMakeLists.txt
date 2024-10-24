@@ -58,9 +58,6 @@ endif()
 file(GLOB_RECURSE SOURCES_TEMP "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
 target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES_TEMP})
 
-# Include mocks
-include("${CMAKE_CURRENT_LIST_DIR}/mocks/CMakeLists.txt")
-
 # Include mender-mcu-client library
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../target/posix" build)
 
@@ -75,10 +72,10 @@ endif()
 
 # Link the mender-mcu-client library
 if(CONFIG_MENDER_PLATFORM_NET_TYPE MATCHES "generic/curl")
-    target_link_libraries(mender-mcu-client curl)
+    target_link_libraries(mender-mcu-client PRIVATE curl)
 endif()
 if(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE MATCHES "posix")
-    target_link_libraries(mender-mcu-client rt)
+    target_link_libraries(mender-mcu-client PRIVATE rt)
 endif()
 
 # Link the executable with the mender-mcu-client library

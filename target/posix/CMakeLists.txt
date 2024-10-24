@@ -30,15 +30,15 @@ if (CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS)
     add_compile_options(-Wall -Wextra -Werror -Wpointer-arith)
 endif()
 
-option(COVERAGE "Turn coverage instrumentation on (Default: OFF)" OFF)
-if($CACHE{COVERAGE})
-  set(CMAKE_C_FLAGS "--coverage $CACHE{CMAKE_C_FLAGS}")
-endif()
-
 # Creation of the library
 add_library(mender-mcu-client STATIC)
 target_sources(mender-mcu-client PRIVATE ${MENDER_MCU_SOURCES})
 target_include_directories(mender-mcu-client PUBLIC ${MENDER_MCU_INCLUDE})
+
+option(COVERAGE "Turn coverage instrumentation on (Default: OFF)" OFF)
+if($CACHE{COVERAGE})
+  target_compile_options(mender-mcu-client PRIVATE --coverage)
+endif()
 
 # POSIX definitions, mimicking what KConfig defines for Zephyr OS builds
 if (CONFIG_MENDER_SERVER_HOST)

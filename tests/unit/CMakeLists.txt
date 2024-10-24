@@ -74,9 +74,8 @@ endif()
 
 set(MENDER_COVERAGE_EXCLUDE_FLAGS
   --exclude '/usr/*'
-  --exclude '*/googletest/*'
+  --exclude '*/_deps/*'
   --exclude '*_test.*'
-#  --exclude '*/googlemock/*'
 )
 # Following the recipe from lcov man page, genearte
 # an initial report and then the tests one, so that the

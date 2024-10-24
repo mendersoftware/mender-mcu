@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#define _GNU_SOURCE // asprintf
 #include <curl/curl.h>
 #include "mender-http.h"
 #include "mender-log.h"
@@ -46,7 +47,7 @@ typedef struct {
 /**
  * @brief Mender HTTP configuration
  */
-static mender_http_config_t mender_http_config;
+static mender_http_config_t http_config;
 
 /**
  * @brief HTTP PREREQ callback, used to inform the client is connected to the server
@@ -57,7 +58,7 @@ static mender_http_config_t mender_http_config;
  * @param conn_local_port Originating port number of the connection
  * @return CURL_PREREQFUNC_OK if the function succeeds, CURL_PREREQFUNC_ABORT otherwise
  */
-static int mender_http_prereq_callback(void *params, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port);
+static int http_prereq_callback(void *params, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port);
 
 /**
  * @brief HTTP write callback, used to retrieve data from the server
@@ -67,17 +68,17 @@ static int mender_http_prereq_callback(void *params, char *conn_primary_ip, char
  * @param params User data
  * @return Real size of data if the function succeeds, -1 otherwise
  */
-static size_t mender_http_write_callback(char *data, size_t size, size_t nmemb, void *params);
+static size_t http_write_callback(char *data, size_t size, size_t nmemb, void *params);
 
 /**
  * @brief HTTP PREREQ callback for artifact
- * @see mender_http_prereq_callback()
+ * @see http_prereq_callback()
  */
 static int artifact_prereq_callback(void *user_data, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port);
 
 /**
  * @brief HTTP write callback for artifact
- * @see mender_http_write_callback()
+ * @see http_write_callback()
  */
 static size_t artifact_write_callback(char *data, size_t size, size_t nmemb, void *user_data);
 
@@ -88,7 +89,7 @@ mender_http_init(mender_http_config_t *config) {
     assert(NULL != config->host);
 
     /* Save configuration */
-    memcpy(&mender_http_config, config, sizeof(mender_http_config_t));
+    memcpy(&http_config, config, sizeof(mender_http_config_t));
 
     /* Initialization of curl */
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -118,14 +119,12 @@ mender_http_perform(char                *jwt,
     struct curl_slist *headers         = NULL;
 
     /* Compute URL if required */
-    if ((false == mender_utils_strbeginwith(path, "http://")) && (false == mender_utils_strbeginwith(path, "https://"))) {
-        size_t str_length = strlen(mender_http_config.host) + strlen(path) + 1;
-        if (NULL == (url = (char *)malloc(str_length))) {
-            mender_log_error("Unable to allocate memory");
+    if (!mender_utils_strbeginwith(path, "http://") && !mender_utils_strbeginwith(path, "https://")) {
+        if (-1 == asprintf(&url, "%s%s", http_config.host, path)) {
+            mender_log_error("Unable to allocate memory for URL");
             ret = MENDER_FAIL;
             goto END;
         }
-        snprintf(url, str_length, "%s%s", mender_http_config.host, path);
     }
 
     /* Initialization of the client */
@@ -152,7 +151,7 @@ mender_http_perform(char                *jwt,
         goto END;
     }
     mender_http_curl_user_data_t user_data = { .callback = callback, .params = params };
-    if (CURLE_OK != (err = curl_easy_setopt(curl, CURLOPT_PREREQFUNCTION, &mender_http_prereq_callback))) {
+    if (CURLE_OK != (err = curl_easy_setopt(curl, CURLOPT_PREREQFUNCTION, &http_prereq_callback))) {
         mender_log_error("Unable to set HTTP PREREQ function: %s", curl_easy_strerror(err));
         ret = MENDER_FAIL;
         goto END;
@@ -162,7 +161,7 @@ mender_http_perform(char                *jwt,
         ret = MENDER_FAIL;
         goto END;
     }
-    if (CURLE_OK != (err = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &mender_http_write_callback))) {
+    if (CURLE_OK != (err = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &http_write_callback))) {
         mender_log_error("Unable to set HTTP write function: %s", curl_easy_strerror(err));
         ret = MENDER_FAIL;
         goto END;
@@ -224,34 +223,24 @@ mender_http_perform(char                *jwt,
     }
     *status = (int)response_code;
     if (MENDER_OK != (ret = callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, params))) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing HTTP disconnection");
         goto END;
     }
 
 END:
 
     /* Release memory */
-    if (NULL != curl) {
-        curl_easy_cleanup(curl);
-    }
-    if (NULL != headers) {
-        curl_slist_free_all(headers);
-    }
-    if (NULL != x_men_signature) {
-        free(x_men_signature);
-    }
-    if (NULL != bearer) {
-        free(bearer);
-    }
-    if (NULL != url) {
-        free(url);
-    }
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    free(x_men_signature);
+    free(bearer);
+    free(url);
 
     return ret;
 }
 
 mender_err_t
-mender_http_artifact_download(char *uri, mender_artifact_download_data_t *dl_data, int *status) {
+mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *dl_data, int *status) {
     assert(NULL != uri);
     assert(NULL != dl_data);
     assert(NULL != status);
@@ -263,14 +252,12 @@ mender_http_artifact_download(char *uri, mender_artifact_download_data_t *dl_dat
     struct curl_slist *headers = NULL;
 
     /* Compute URL if required */
-    if ((false == mender_utils_strbeginwith(uri, "http://")) && (false == mender_utils_strbeginwith(uri, "https://"))) {
-        size_t str_length = strlen(mender_http_config.host) + strlen(uri) + 1;
-        if (NULL == (url = (char *)malloc(str_length))) {
+    if (!mender_utils_strbeginwith(uri, "http://") && !mender_utils_strbeginwith(uri, "https://")) {
+        if (-1 == asprintf(&url, "%s%s", http_config.host, uri)) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
         }
-        snprintf(url, str_length, "%s%s", mender_http_config.host, uri);
     }
 
     /* Initialization of the client */
@@ -331,22 +318,16 @@ mender_http_artifact_download(char *uri, mender_artifact_download_data_t *dl_dat
     }
     *status = (int)response_code;
     if (MENDER_OK != (ret = dl_data->artifact_download_callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, dl_data))) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing disconnection in artifact download");
         goto END;
     }
 
 END:
 
     /* Release memory */
-    if (NULL != curl) {
-        curl_easy_cleanup(curl);
-    }
-    if (NULL != headers) {
-        curl_slist_free_all(headers);
-    }
-    if (NULL != url) {
-        free(url);
-    }
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    free(url);
 
     return ret;
 }
@@ -361,18 +342,18 @@ mender_http_exit(void) {
 }
 
 static int
-mender_http_prereq_callback(void *params, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port) {
+http_prereq_callback(void                   *params,
+                     MENDER_ARG_UNUSED char *conn_primary_ip,
+                     MENDER_ARG_UNUSED char *conn_local_ip,
+                     MENDER_ARG_UNUSED int   conn_primary_port,
+                     MENDER_ARG_UNUSED int   conn_local_port) {
 
     assert(NULL != params);
     mender_http_curl_user_data_t *user_data = (mender_http_curl_user_data_t *)params;
-    (void)conn_primary_ip;
-    (void)conn_local_ip;
-    (void)conn_primary_port;
-    (void)conn_local_port;
 
     /* Invoke callback */
     if (MENDER_OK != user_data->callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, user_data->params)) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing HTTP connection");
         return CURL_PREREQFUNC_ABORT;
     }
 
@@ -380,7 +361,7 @@ mender_http_prereq_callback(void *params, char *conn_primary_ip, char *conn_loca
 }
 
 static size_t
-mender_http_write_callback(char *data, size_t size, size_t nmemb, void *params) {
+http_write_callback(char *data, size_t size, size_t nmemb, void *params) {
 
     assert(NULL != params);
     mender_http_curl_user_data_t *user_data = (mender_http_curl_user_data_t *)params;
@@ -398,18 +379,18 @@ mender_http_write_callback(char *data, size_t size, size_t nmemb, void *params) 
 }
 
 static int
-artifact_prereq_callback(void *user_data, char *conn_primary_ip, char *conn_local_ip, int conn_primary_port, int conn_local_port) {
+artifact_prereq_callback(void                   *user_data,
+                         MENDER_ARG_UNUSED char *conn_primary_ip,
+                         MENDER_ARG_UNUSED char *conn_local_ip,
+                         MENDER_ARG_UNUSED int   conn_primary_port,
+                         MENDER_ARG_UNUSED int   conn_local_port) {
     assert(NULL != user_data);
 
     mender_artifact_download_data_t *dl_data = user_data;
-    (void)conn_primary_ip;
-    (void)conn_local_ip;
-    (void)conn_primary_port;
-    (void)conn_local_port;
 
     /* Invoke callback */
     if (MENDER_OK != dl_data->artifact_download_callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, dl_data)) {
-        mender_log_error("An error occurred");
+        mender_log_error("An error occurred when processing HTTP connection on artifact download");
         return CURL_PREREQFUNC_ABORT;
     }
 

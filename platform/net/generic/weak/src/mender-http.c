@@ -56,7 +56,7 @@ mender_http_perform(char                *jwt,
 }
 
 __attribute__((weak)) mender_err_t
-mender_http_artifact_download(MENDER_ARG_UNUSED char *uri, MENDER_ARG_UNUSED mender_artifact_download_data_t *dl_data, MENDER_ARG_UNUSED int *status) {
+mender_http_artifact_download(MENDER_ARG_UNUSED const char *uri, MENDER_ARG_UNUSED mender_artifact_download_data_t *dl_data, MENDER_ARG_UNUSED int *status) {
     return MENDER_NOT_IMPLEMENTED;
 }
 

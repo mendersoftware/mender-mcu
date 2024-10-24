@@ -122,8 +122,14 @@ static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifa
 /**
  * @brief Process chunk of artifact data
  */
-static mender_err_t process_artifact_data_callback(
-    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length, mender_artifact_download_data_t *dl_data);
+static mender_err_t process_artifact_data_callback(const char                      *type,
+                                                   const cJSON                     *meta_data,
+                                                   const char                      *filename,
+                                                   size_t                           size,
+                                                   void                            *data,
+                                                   size_t                           index,
+                                                   size_t                           length,
+                                                   mender_artifact_download_data_t *dl_data);
 
 /**
  * @brief Drop content of the current file of the artifact
@@ -1029,9 +1035,27 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
     return MENDER_DONE;
 }
 
+/**
+ * @brief Callback function to be invoked to perform the treatment of the data from the artifact
+ * @param type Type from header-info payloads
+ * @param meta_data Meta-data from header tarball
+ * @param filename Artifact filename
+ * @param size Artifact file size
+ * @param data Artifact data
+ * @param index Artifact data index
+ * @param length Artifact data length
+ * @param dl_data Download data for the artifact
+ * @return MENDER_OK if the function succeeds, error code if an error occurred
+ */
 static mender_err_t
-process_artifact_data_callback(
-    char *type, cJSON *meta_data, char *filename, size_t size, void *data, size_t index, size_t length, mender_artifact_download_data_t *dl_data) {
+process_artifact_data_callback(const char                      *type,
+                               const cJSON                     *meta_data,
+                               const char                      *filename,
+                               size_t                           size,
+                               void                            *data,
+                               size_t                           index,
+                               size_t                           length,
+                               mender_artifact_download_data_t *dl_data) {
 
     assert(NULL != type);
     mender_err_t ret = MENDER_FAIL;
@@ -1056,19 +1080,19 @@ process_artifact_data_callback(
     if (NULL == dl_data->update_module) {
         /* Content is not supported by the mender-mcu-client */
         mender_log_error("Unable to handle artifact type '%s'", type);
-        goto END;
+        return MENDER_FAIL;
     }
 
     /* Retrieve ID and artifact name */
     const char *id;
     if (MENDER_OK != mender_deployment_data_get_id(dl_data->deployment, &id)) {
         mender_log_error("Unable to get ID from the deployment data");
-        goto END;
+        return MENDER_FAIL;
     }
     const char *artifact_name;
     if (MENDER_OK != mender_deployment_data_get_artifact_name(dl_data->deployment, &artifact_name)) {
         mender_log_error("Unable to get artifact name from the deployment data");
-        goto END;
+        return MENDER_FAIL;
     }
 
     /* Invoke update module download callback */
@@ -1076,7 +1100,7 @@ process_artifact_data_callback(
     mender_update_state_data_t                 state_data          = { .download_state_data = &download_state_data };
     if (MENDER_OK != (ret = dl_data->update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD](MENDER_UPDATE_STATE_DOWNLOAD, state_data))) {
         mender_log_error("An error occurred while processing data of the artifact '%s' of type '%s'", artifact_name, type);
-        goto END;
+        return ret;
     }
 
     /* Treatments related to the artifact type (once) */
@@ -1084,14 +1108,11 @@ process_artifact_data_callback(
         /* Add type to the deployment data */
         if (MENDER_OK != (ret = mender_deployment_data_add_payload_type(dl_data->deployment, type))) {
             /* Error already logged */
-            goto END;
+            return ret;
         }
     }
 
-    ret = MENDER_OK;
-
-END:
-    return ret;
+    return MENDER_OK;
 }
 
 static mender_err_t

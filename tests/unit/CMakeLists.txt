@@ -18,6 +18,11 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(mender-mcu-tests-unit)
 
+# Include sanitizers options for CMAKE_BUILD_TYPE
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/asan.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/threadsan.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/undefsan.cmake")
+
 # Include mender-mcu-client library, forcing warnings and errors
 set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors" FORCE)
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../target/posix" build)

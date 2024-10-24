@@ -16,6 +16,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE //vasprintf
+#include <stdio.h>  //vasprintf
 
 #include <errno.h>
 #include <zephyr/net/socket.h>

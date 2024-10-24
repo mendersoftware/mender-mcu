@@ -32,7 +32,9 @@ test:smoke-build:posix:
   image: debian:12-slim
   needs: []
   before_script:
-    - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev libcjson-dev
+    - apt-get update && apt-get install -yqq
+      cmake git make pkg-config python3
+      libcurl4-openssl-dev libcjson-dev
   script:
     - cmake -C cmake/CMake_posix_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
@@ -43,7 +45,9 @@ test:smoke-build:weak:
   image: debian:12-slim
   needs: []
   before_script:
-    - apt-get update && apt-get install -y git cmake libcurl4-openssl-dev libcjson-dev
+    - apt-get update && apt-get install -yqq
+      cmake git make pkg-config python3
+      libcjson-dev
   script:
     - cmake -C cmake/CMake_weak_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
@@ -51,9 +55,13 @@ test:smoke-build:weak:
 
 test:unit:
   stage: test
-  image: debian:12
+  image: debian:12-slim
   before_script:
-    - apt update && apt install -yyq g++ cmake git make lcov pkg-config curl libcjson-dev
+    - apt update && apt install -yyq
+      cmake git make pkg-config python3
+      libcurl4-openssl-dev libcjson-dev
+      g++
+      lcov
   script:
     - cmake -D COVERAGE=ON tests/unit/
     - make --jobs=$(nproc --all) --keep-going coverage
@@ -70,7 +78,10 @@ test:unit:
   stage: test
   image: ubuntu:24.04
   before_script:
-    - apt update && apt install -yyq clang ccache cmake git make pkg-config curl libcjson-dev
+    - apt update && apt install -yyq
+      cmake git make pkg-config python3
+      libcurl4-openssl-dev libcjson-dev
+      clang
     # mender-artifact install
     # Commented out for now, but likely needed when adding tests later on
     # - apt-get install --assume-yes

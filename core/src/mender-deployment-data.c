@@ -61,7 +61,7 @@ validate_deployment_data(const cJSON *deployment_data) {
         { .key = MENDER_DEPLOYMENT_DATA_KEY_ARTIFACT_NAME, .type = cJSON_IsString },          /* Name of artifact */
         { .key = MENDER_DEPLOYMENT_DATA_KEY_PAYLOAD_TYPES, .type = cJSON_IsArray },           /* Types of payloads embedded in artifact */
         { .key = MENDER_DEPLOYMENT_DATA_KEY_PROVIDES, .type = cJSON_IsString },               /* Artifact provides (filtered on clears provides) */
-        /* { .key = MENDER_DEPLOYMENT_DATA_KEY_STATE, .type = cJSON_IsString }, */            /* TODO: MEN-7515: State name */
+        { .key = MENDER_DEPLOYMENT_DATA_KEY_STATE, .type = cJSON_IsNumber },                  /* State */
         { .key = MENDER_DEPLOYMENT_DATA_KEY_STATE_DATA_STORE_COUNT, .type = cJSON_IsNumber }, /* State data store count */
     };
 

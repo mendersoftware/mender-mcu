@@ -100,7 +100,6 @@ mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int3
     k_thread_name_set(k_work_queue_thread_get(&mender_scheduler_work_queue_handle), "mender_scheduler_work_queue");
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
-    mender_log_debug("Entering activate function; here the magic begins!");
     k_work_init_delayable(&mender_work_handle, mender_work_function);
 
     return MENDER_OK;

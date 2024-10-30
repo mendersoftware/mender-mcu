@@ -117,7 +117,7 @@ mender_scheduler_alt_work_start(void) {
 #ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_reschedule_for_queue(&mender_scheduler_work_queue_handle, &mender_work_handle, K_NO_WAIT);
 #else
-    k_work_reschedule(&mender_work_handle, K_NO_WAIT);
+    k_work_reschedule(&mender_work_handle, K_SECONDS(1));
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     return MENDER_OK;

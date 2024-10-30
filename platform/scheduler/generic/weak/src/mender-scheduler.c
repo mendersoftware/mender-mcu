@@ -21,82 +21,24 @@
 #include "mender-scheduler.h"
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval) {
-
-    (void)func;
-    (void)interval;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-__attribute__((weak)) mender_err_t
-mender_scheduler_alt_work_start() {
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_scheduler_init(void) {
+mender_scheduler_init(MENDER_ARG_UNUSED mender_scheduler_work_function_t func, MENDER_ARG_UNUSED int32_t interval) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, void **handle) {
-
-    (void)work_params;
-    (void)handle;
+mender_scheduler_activate(void) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_activate(void *handle) {
-
-    (void)handle;
+mender_scheduler_exit(void) {
 
     /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_scheduler_work_set_period(void *handle, uint32_t period) {
-
-    (void)handle;
-    (void)period;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_scheduler_work_execute(void *handle) {
-
-    (void)handle;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_scheduler_work_deactivate(void *handle) {
-
-    (void)handle;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_scheduler_work_delete(void *handle) {
-
-    (void)handle;
-
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
+    return MENDER_OK;
 }
 
 __attribute__((weak)) mender_err_t
@@ -134,11 +76,4 @@ mender_scheduler_mutex_delete(void *handle) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
-}
-
-__attribute__((weak)) mender_err_t
-mender_scheduler_exit(void) {
-
-    /* Nothing to do */
-    return MENDER_OK;
 }

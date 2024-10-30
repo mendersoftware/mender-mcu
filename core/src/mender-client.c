@@ -136,11 +136,6 @@ static mender_deployment_data_t *mender_client_deployment_data = NULL;
 static mender_update_module_t *mender_update_module = NULL;
 
 /**
- * @brief Mender client work handle
- */
-static void *mender_client_work_handle = NULL;
-
-/**
  * @brief Mender client work function
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
@@ -283,7 +278,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
 
     /* Initializations */
     // TODO: what to do with the authentication interval?
-    if (MENDER_OK != (ret = mender_scheduler_alt_work_create(mender_client_work_function, mender_client_config.update_poll_interval))) {
+    if (MENDER_OK != (ret = mender_scheduler_init(mender_client_work_function, mender_client_config.update_poll_interval))) {
         mender_log_error("Unable to initialize scheduler");
         goto END;
     }
@@ -326,7 +321,7 @@ mender_client_activate(void) {
 
     mender_err_t ret = MENDER_OK;
 
-    mender_scheduler_alt_work_start();
+    mender_scheduler_activate();
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     /* Activate inventory work */
@@ -390,16 +385,15 @@ mender_client_exit(void) {
 
     mender_err_t ret = MENDER_OK;
 
+    /* Stop scheduling new work */
+    mender_scheduler_exit();
+
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     if (MENDER_OK != (ret = mender_inventory_exit())) {
         mender_log_error("Unable to cleanup after the inventory functionality");
         /* keep going on, we want to do as much cleanup as possible */
     }
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
-
-    /* Delete mender client work */
-    mender_scheduler_work_delete(mender_client_work_handle);
-    mender_client_work_handle = NULL;
 
     /* Release all modules */
     mender_api_exit();

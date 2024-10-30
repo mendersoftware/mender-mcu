@@ -27,71 +27,25 @@ extern "C" {
 
 #include "mender-utils.h"
 
-/**
- * @brief Alternative scheduler: simple delayable tasks with no resource protection. See MEN-7536
- */
-typedef mender_err_t (*mender_scheduler_alt_work_function_t)(void);
-mender_err_t mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval);
-mender_err_t mender_scheduler_alt_work_start();
+typedef mender_err_t (*mender_scheduler_work_function_t)(void);
 
 /**
- * @brief Work parameters
- */
-typedef struct {
-    mender_err_t (*function)(void); /**< Work function */
-    int32_t period;                 /**< Work period (seconds), negative or null value permits to disable periodic execution */
-    char   *name;                   /**< Work name */
-} mender_scheduler_work_params_t;
-
-/**
- * @brief Initialization of the scheduler
+ * @brief Initializate the scheduler
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_scheduler_init(void);
+mender_err_t mender_scheduler_init(mender_scheduler_work_function_t func, int32_t interval);
 
 /**
- * @brief Function used to register a new work
- * @param work_params Work parameters
- * @param handle Work handle if the function succeeds, NULL otherwise
+ * @brief Activate the Mender work
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, void **handle);
+mender_err_t mender_scheduler_activate(void);
 
 /**
- * @brief Function used to activate a work
- * @param handle Work handle
+ * @brief Release the scheduler
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_scheduler_work_activate(void *handle);
-
-/**
- * @brief Function used to set work period
- * @param handle Work handle
- * @param period Work period (seconds)
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_scheduler_work_set_period(void *handle, uint32_t period);
-
-/**
- * @brief Function used to trigger execution of the work
- * @param handle Work handle
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_scheduler_work_execute(void *handle);
-
-/**
- * @brief Function used to deactivate a work
- * @param handle Work handle
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_scheduler_work_deactivate(void *handle);
-
-/**
- * @brief Function used to delete a work
- * @param handle Work handle
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_scheduler_work_delete(void *handle);
+mender_err_t mender_scheduler_exit(void);
 
 /**
  * @brief Function used to create a mutex
@@ -121,12 +75,6 @@ mender_err_t mender_scheduler_mutex_give(void *handle);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_scheduler_mutex_delete(void *handle);
-
-/**
- * @brief Release mender scheduler
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_scheduler_exit(void);
 
 #ifdef __cplusplus
 }

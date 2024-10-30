@@ -1,7 +1,7 @@
-# @file      CMakeLists.txt
-# @brief     Mocks CMakeLists file
+# @file      asan.cmake
+# @brief     Address Sanitizer options
 #
-# Copyright joelguittet and mender-mcu-client contributors
+# Copyright Northern.tech AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Include all mocks
-include("${CMAKE_CURRENT_LIST_DIR}/cjson/CMakeLists.txt")
-if(CONFIG_MENDER_PLATFORM_TLS_TYPE MATCHES "generic/mbedtls")
-    include("${CMAKE_CURRENT_LIST_DIR}/mbedtls/CMakeLists.txt")
+include(${CMAKE_CURRENT_LIST_DIR}/helper.cmake)
+
+if (CMAKE_BUILD_TYPE STREQUAL "ASan")
+  sanitizer_add_compiler_and_linker_flags(ASAN
+    "-fsanitize=address -fno-omit-frame-pointer -fsanitize-address-use-after-scope"
+    "-fsanitize=address")
 endif()

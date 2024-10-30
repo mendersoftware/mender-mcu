@@ -18,26 +18,17 @@
 cmake_minimum_required(VERSION 3.16.3)
 project(mender-mcu-tests-unit)
 
-# TODO: move somewhere shared with smoke tests and remove the other fetch method
-include(FetchContent)
-FetchContent_Declare(
-  cjson
-  GIT_REPOSITORY https://github.com/DaveGamble/cJSON
-  GIT_TAG        v1.7.15
-  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
+# Include sanitizers options for CMAKE_BUILD_TYPE
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/asan.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/threadsan.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/undefsan.cmake")
 
-set(ENABLE_CJSON_TEST OFF CACHE INTERNAL "Turn off tests")
-FetchContent_MakeAvailable(cjson)
-
-# TODO: Investigate a better way to do this. Maybe a more recent version of cJSON better
-# supports build as external library?
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/_deps/cjson-src/)
-
-# TODO: Add mbedTLS dependency
-
-# Include mender-mcu-client library
+# Include mender-mcu-client library, forcing warnings and errors
+set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors" FORCE)
 add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../target/posix" build)
+
+# And add the same flags for the test targets too
+add_compile_options(-Wall -Wextra -Werror -Wpointer-arith)
 
 enable_testing()
 
@@ -83,9 +74,8 @@ endif()
 
 set(MENDER_COVERAGE_EXCLUDE_FLAGS
   --exclude '/usr/*'
-  --exclude '*/googletest/*'
+  --exclude '*/_deps/*'
   --exclude '*_test.*'
-#  --exclude '*/googlemock/*'
 )
 # Following the recipe from lcov man page, genearte
 # an initial report and then the tests one, so that the
@@ -132,7 +122,6 @@ add_dependencies(tests main_test)
 add_executable(core_test EXCLUDE_FROM_ALL core/mender-utils_test.cpp)
 target_link_libraries(core_test PUBLIC
   mender-mcu-client
-  cjson
   gtest
   main_test
 )

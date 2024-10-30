@@ -71,6 +71,11 @@ struct mender_update_download_state_data_s {
     bool           done;
 };
 
+#ifdef __clang__
+/* The empty structs below will differ in size between C and C++; disable the warning */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wextern-c-compat"
+#endif
 struct mender_update_install_state_data_s {
     /* TBD; a NULL pointer in the union below until there is something here */
 };
@@ -102,6 +107,9 @@ struct mender_update_rollback_reboot_state_data_s {
 struct mender_update_failure_state_data_s {
     /* TBD; a NULL pointer in the union below until there is something here */
 };
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 /* The last member allows to type-cast NULL to mender_update_state_data_t,
  * otherwise we would have to type-cast NULL to one of the other member types

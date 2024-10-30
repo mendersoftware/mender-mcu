@@ -27,6 +27,32 @@
 #include "mender-scheduler.h"
 #include "mender-utils.h"
 
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+/**
+ * @brief Default work queue stack size (kB)
+ */
+#ifndef CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE
+#define CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE (12)
+#endif /* CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE */
+
+/**
+ * @brief Default work queue priority
+ */
+#ifndef CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY
+#define CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY (5)
+#endif /* CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY */
+
+/**
+ * @brief Mender scheduler work queue handle
+ */
+static struct k_work_q mender_scheduler_work_queue_handle;
+
+/**
+ * @brief Mender scheduler work queue stack
+ */
+K_THREAD_STACK_DEFINE(mender_scheduler_work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024);
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
+
 /**
  * @brief User parameters
  */
@@ -45,7 +71,11 @@ mender_work_function(struct k_work *work) {
     MENDER_NDEBUG_UNUSED mender_err_t status = (*user_function)();
     mender_log_debug("Executed work function [%d]", status);
 
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+    k_work_reschedule_for_queue(&mender_scheduler_work_queue_handle, &mender_work_handle, K_SECONDS(user_interval));
+#else
     k_work_reschedule(&mender_work_handle, K_SECONDS(user_interval));
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 }
 
 /**
@@ -58,6 +88,17 @@ mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int3
 
     user_function = func;
     user_interval = interval;
+
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+    /* Create and start work queue */
+    k_work_queue_init(&mender_scheduler_work_queue_handle);
+    k_work_queue_start(&mender_scheduler_work_queue_handle,
+                       mender_scheduler_work_queue_stack,
+                       CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024,
+                       CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY,
+                       NULL);
+    k_thread_name_set(k_work_queue_thread_get(&mender_scheduler_work_queue_handle), "mender_scheduler_work_queue");
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     mender_log_debug("Entering activate function; here the magic begins!");
     k_work_init_delayable(&mender_work_handle, mender_work_function);
@@ -73,26 +114,16 @@ mender_scheduler_alt_work_start(void) {
 
     assert(NULL != user_function);
 
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+    k_work_reschedule_for_queue(&mender_scheduler_work_queue_handle, &mender_work_handle, K_NO_WAIT);
+#else
     k_work_reschedule(&mender_work_handle, K_NO_WAIT);
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     return MENDER_OK;
 }
 
 #if 0
-
-/**
- * @brief Default work queue stack size (kB)
- */
-#ifndef CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE
-#define CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE (12)
-#endif /* CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE */
-
-/**
- * @brief Default work queue priority
- */
-#ifndef CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY
-#define CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY (5)
-#endif /* CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY */
 
 /**
  * @brief Work context
@@ -106,11 +137,6 @@ typedef struct {
 } mender_scheduler_work_context_t;
 
 /**
- * @brief Mender scheduler work queue stack
- */
-K_THREAD_STACK_DEFINE(mender_scheduler_work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024);
-
-/**
  * @brief Function used to handle work context timer when it expires
  * @param handle Timer handler
  */
@@ -121,26 +147,6 @@ static void mender_scheduler_timer_callback(struct k_timer *handle);
  * @param handle Work handler
  */
 static void mender_scheduler_work_handler(struct k_work *handle);
-
-/**
- * @brief Mender scheduler work queue handle
- */
-static struct k_work_q mender_scheduler_work_queue_handle;
-
-mender_err_t
-mender_scheduler_init(void) {
-
-    /* Create and start work queue */
-    k_work_queue_init(&mender_scheduler_work_queue_handle);
-    k_work_queue_start(&mender_scheduler_work_queue_handle,
-                       mender_scheduler_work_queue_stack,
-                       CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024,
-                       CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY,
-                       NULL);
-    k_thread_name_set(k_work_queue_thread_get(&mender_scheduler_work_queue_handle), "mender_scheduler_work_queue");
-
-    return MENDER_OK;
-}
 
 mender_err_t
 mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, void **handle) {

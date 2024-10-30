@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/fs/nvs.h>
+#include <zephyr/sys/crc.h>
 #include <zephyr/storage/flash_map.h>
 #include "mender-log.h"
 #include "mender-storage.h"
@@ -82,6 +83,50 @@ checked_nvs_write(struct nvs_fs *fs, uint16_t id, const void *data, size_t len) 
      *    When a rewrite of the same data already stored is attempted, nothing is written to flash, thus 0 is returned.
      */
     return (len == ret) || (0 == ret);
+}
+
+static mender_err_t
+crc_add(char **data, size_t *data_len) {
+
+    assert(NULL != data);
+    assert(NULL != data_len);
+
+    uint32_t crc = crc32_ieee(*data, *data_len);
+    char    *tmp = realloc(*data, *data_len + sizeof(crc));
+    if (NULL == tmp) {
+        mender_log_error("Unable to allocate memory for deployment data");
+        return MENDER_FAIL;
+    }
+    memcpy(tmp + *data_len, &crc, sizeof(crc));
+    *data_len += sizeof(crc);
+    *data = tmp;
+
+    return MENDER_OK;
+}
+
+static mender_err_t
+crc_check(const unsigned char *data, const size_t data_len) {
+
+    assert(NULL != data);
+
+    if (data_len > sizeof(uint32_t)) {
+
+        /* Extract the CRC  */
+        uint32_t crc = *(uint32_t *)(data + data_len - sizeof(crc));
+
+        /* Compute CRC of the loaded data */
+        uint32_t computed_crc = crc32_ieee(data, data_len - sizeof(crc));
+
+        if (computed_crc != crc) {
+            mender_log_error("CRC mismatch in deployment data");
+            return MENDER_FAIL;
+        }
+    } else {
+        mender_log_error("Invalid deployment data size (too small for CRC)");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
 }
 
 mender_err_t
@@ -181,8 +226,16 @@ mender_storage_set_deployment_data(char *deployment_data) {
 
     assert(NULL != deployment_data);
 
-    /* Write deployment data */
-    if (nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, deployment_data, strlen(deployment_data) + 1) < 0) {
+    size_t data_len = strlen(deployment_data) + 1;
+
+#ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
+    if (MENDER_OK != crc_add(&deployment_data, &data_len)) {
+        return MENDER_FAIL;
+    }
+#endif /* CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC */
+
+    /* Write deployment data  */
+    if (nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_DEPLOYMENT_DATA, deployment_data, data_len) < 0) {
         mender_log_error("Unable to write deployment data");
         return MENDER_FAIL;
     }
@@ -206,6 +259,12 @@ mender_storage_get_deployment_data(char **deployment_data) {
         }
         return ret;
     }
+
+#ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
+    if (MENDER_OK != crc_check(*deployment_data, deployment_data_length)) {
+        return MENDER_FAIL;
+    }
+#endif /* CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC */
 
     return MENDER_OK;
 }

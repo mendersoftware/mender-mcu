@@ -304,6 +304,12 @@ if MENDER_MCU_CLIENT
                 help
                     Number of sectors of the mender_storage partition, must match the configuration of the partition.
 
+           config MENDER_STORAGE_DEPLOYMENT_DATA_CRC
+                bool "Enable CRC check for deployment data"
+                default y
+                help
+                    Enable CRC check for deployment data, this will add a CRC element to the end of the deployment data, which is verified when the data is read.
+
         endmenu
 
     endif

@@ -28,7 +28,7 @@ mender_scheduler_init(void) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_activate(MENDER_ARG_UNUSED mender_scheduler_work_function_t func, MENDER_ARG_UNUSED int32_t interval) {
+mender_scheduler_activate(MENDER_ARG_UNUSED mender_scheduler_work_function_t func, MENDER_ARG_UNUSED uint32_t interval) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;

@@ -191,8 +191,9 @@ FAIL:
 }
 
 mender_err_t
-mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, int32_t interval) {
+mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, uint32_t interval) {
     assert(NULL != main_work_func);
+    assert(0 != interval);
 
     mender_scheduler_work_params_t work_params = { .function = main_work_func, .period = interval, .name = "mender_main" };
 

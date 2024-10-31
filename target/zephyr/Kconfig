@@ -54,11 +54,10 @@ if MENDER_MCU_CLIENT
 
         config MENDER_CLIENT_UPDATE_POLL_INTERVAL
             int "Mender client Update poll interval (seconds)"
-            range 0 86400
+            range 1 86400
             default 1800
             help
                 Interval used to periodically check for new deployments on the Mender server.
-                Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
         module = MENDER
         module-str = Log Level for mender

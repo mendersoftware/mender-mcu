@@ -57,7 +57,7 @@ K_THREAD_STACK_DEFINE(work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK
  * @brief User parameters
  */
 static mender_scheduler_work_function_t user_function = NULL;
-static int32_t                          user_interval = 0;
+static uint32_t                         user_interval = 0;
 
 /**
  * @brief Work item
@@ -94,8 +94,9 @@ mender_scheduler_init(void) {
  * @brief Start work
  */
 mender_err_t
-mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, int32_t interval) {
+mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, uint32_t interval) {
     assert(NULL != main_work_func);
+    assert(0 != interval);
 
     user_function = main_work_func;
     user_interval = interval;

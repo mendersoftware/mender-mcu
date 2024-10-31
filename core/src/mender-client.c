@@ -278,7 +278,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
 
     /* Initializations */
     // TODO: what to do with the authentication interval?
-    if (MENDER_OK != (ret = mender_scheduler_init(mender_client_work_function, mender_client_config.update_poll_interval))) {
+    if (MENDER_OK != (ret = mender_scheduler_init())) {
         mender_log_error("Unable to initialize scheduler");
         goto END;
     }
@@ -321,7 +321,7 @@ mender_client_activate(void) {
 
     mender_err_t ret = MENDER_OK;
 
-    mender_scheduler_activate();
+    mender_scheduler_activate(mender_client_work_function, mender_client_config.update_poll_interval);
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     /* Activate inventory work */

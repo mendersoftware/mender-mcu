@@ -33,13 +33,15 @@ typedef mender_err_t (*mender_scheduler_work_function_t)(void);
  * @brief Initializate the scheduler
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_scheduler_init(mender_scheduler_work_function_t func, int32_t interval);
+mender_err_t mender_scheduler_init(void);
 
 /**
  * @brief Activate the Mender work
+ * @param main_work_func The main Mender work function
+ * @param interval The interval for the Mender work
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_scheduler_activate(void);
+mender_err_t mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, int32_t interval);
 
 /**
  * @brief Release the scheduler

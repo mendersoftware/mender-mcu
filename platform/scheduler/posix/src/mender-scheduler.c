@@ -50,12 +50,6 @@
 #endif /* CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH */
 
 /**
- * @brief User parameters
- */
-static mender_scheduler_work_function_t user_function = NULL;
-static int32_t                          user_interval = 0;
-
-/**
  * @brief Work context
  */
 typedef struct {
@@ -107,12 +101,7 @@ static pthread_t mender_scheduler_work_queue_thread_handle;
 static mender_scheduler_work_context_t main_work_context;
 
 mender_err_t
-mender_scheduler_init(mender_scheduler_work_function_t func, int32_t interval) {
-    assert(NULL != func);
-
-    user_function = func;
-    user_interval = interval;
-
+mender_scheduler_init(void) {
     int ret;
 
     /* Create and start work queue */
@@ -202,10 +191,10 @@ FAIL:
 }
 
 mender_err_t
-mender_scheduler_activate(void) {
-    assert(NULL != user_function);
+mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, int32_t interval) {
+    assert(NULL != main_work_func);
 
-    mender_scheduler_work_params_t work_params = { .function = user_function, .period = user_interval, .name = "mender_client_update" };
+    mender_scheduler_work_params_t work_params = { .function = main_work_func, .period = interval, .name = "mender_main" };
 
     if (MENDER_OK != mender_scheduler_work_create(&work_params, &main_work_context)) {
         return MENDER_FAIL;

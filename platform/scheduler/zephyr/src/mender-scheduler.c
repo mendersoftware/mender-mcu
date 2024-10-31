@@ -79,20 +79,13 @@ mender_work_function(MENDER_ARG_UNUSED struct k_work *work) {
 }
 
 mender_err_t
-mender_scheduler_init(mender_scheduler_work_function_t func, int32_t interval) {
-    assert(NULL != func);
-
-    user_function = func;
-    user_interval = interval;
-
+mender_scheduler_init(void) {
 #ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     /* Create and start work queue */
     k_work_queue_init(&work_queue);
     k_work_queue_start(&work_queue, work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY, NULL);
     k_thread_name_set(k_work_queue_thread_get(&work_queue), "mender_scheduler_work_queue");
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
-
-    k_work_init_delayable(&delayable_work_item, mender_work_function);
 
     return MENDER_OK;
 }
@@ -101,8 +94,13 @@ mender_scheduler_init(mender_scheduler_work_function_t func, int32_t interval) {
  * @brief Start work
  */
 mender_err_t
-mender_scheduler_activate(void) {
-    assert(NULL != user_function);
+mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, int32_t interval) {
+    assert(NULL != main_work_func);
+
+    user_function = main_work_func;
+    user_interval = interval;
+
+    k_work_init_delayable(&delayable_work_item, mender_work_function);
 
 #ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_reschedule_for_queue(&work_queue, &delayable_work_item, K_NO_WAIT);

@@ -21,14 +21,14 @@
 #include "mender-scheduler.h"
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_init(MENDER_ARG_UNUSED mender_scheduler_work_function_t func, MENDER_ARG_UNUSED int32_t interval) {
+mender_scheduler_init(void) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_activate(void) {
+mender_scheduler_activate(MENDER_ARG_UNUSED mender_scheduler_work_function_t func, MENDER_ARG_UNUSED int32_t interval) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;

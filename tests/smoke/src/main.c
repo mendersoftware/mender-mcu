@@ -286,11 +286,10 @@ main(int argc, char **argv) {
 
     /* Initialize mender-client */
     mender_identity.value                       = mac_address;
-    mender_client_config_t mender_client_config = { .device_type                  = device_type,
-                                                    .host                         = NULL,
-                                                    .tenant_token                 = tenant_token,
-                                                    .authentication_poll_interval = 0,
-                                                    .update_poll_interval         = 0,
+    mender_client_config_t mender_client_config = { .device_type          = device_type,
+                                                    .host                 = NULL,
+                                                    .tenant_token         = tenant_token,
+                                                    .update_poll_interval = 0,
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
                                                     .inventory_update_interval = 0,
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */

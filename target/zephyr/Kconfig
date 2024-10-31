@@ -52,14 +52,6 @@ if MENDER_MCU_CLIENT
             help
                 The type of device, used to ensure compatibility between the hardware and software.
 
-        config MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL
-            int "Mender client Authentication poll interval (seconds)"
-            range 0 3600
-            default 600
-            help
-                Interval used to periodically try to authenticate to the Mender server until it succeeds.
-                Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
         config MENDER_CLIENT_UPDATE_POLL_INTERVAL
             int "Mender client Update poll interval (seconds)"
             range 0 86400

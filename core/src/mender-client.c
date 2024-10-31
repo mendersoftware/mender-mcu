@@ -56,13 +56,6 @@
 #endif /* CONFIG_MENDER_DEVICE_TYPE */
 
 /**
- * @brief Default authentication poll interval (seconds)
- */
-#ifndef CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL
-#define CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL (600)
-#endif /* CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL */
-
-/**
  * @brief Default update poll interval (seconds)
  */
 #ifndef CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL
@@ -261,11 +254,6 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     if ((NULL != mender_client_config.tenant_token) && (0 == strlen(mender_client_config.tenant_token))) {
         mender_client_config.tenant_token = NULL;
     }
-    if (0 != config->authentication_poll_interval) {
-        mender_client_config.authentication_poll_interval = config->authentication_poll_interval;
-    } else {
-        mender_client_config.authentication_poll_interval = CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL;
-    }
     if (0 != config->update_poll_interval) {
         mender_client_config.update_poll_interval = config->update_poll_interval;
     } else {
@@ -403,11 +391,10 @@ mender_client_exit(void) {
     mender_client_network_release();
 
     /* Release memory */
-    mender_client_config.device_type                  = NULL;
-    mender_client_config.host                         = NULL;
-    mender_client_config.tenant_token                 = NULL;
-    mender_client_config.authentication_poll_interval = 0;
-    mender_client_config.update_poll_interval         = 0;
+    mender_client_config.device_type          = NULL;
+    mender_client_config.host                 = NULL;
+    mender_client_config.tenant_token         = NULL;
+    mender_client_config.update_poll_interval = 0;
     DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
 
     mender_update_module_unregister_all();

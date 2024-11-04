@@ -936,10 +936,13 @@ mender_client_update_work_function(void) {
                     goto END;
                 }
 
-                mender_log_info("Downloading deployment artifact with id '%s', artifact name '%s' and uri '%s'",
-                                deployment->id,
-                                deployment->artifact_name,
-                                deployment->uri);
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
+                if (strlen(deployment->id) > 10) {
+                    mender_log_info("Downloading artifact with id '%.7s...', name '%s', uri '%s'", deployment->id, deployment->artifact_name, deployment->uri);
+                } else {
+                    mender_log_info("Downloading artifact with id '%s', name '%s', uri '%s'", deployment->id, deployment->artifact_name, deployment->uri);
+                }
+#endif
                 mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
 
                 /* Set deployment_id */

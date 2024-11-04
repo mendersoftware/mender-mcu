@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(CONFIG_MENDER_CLIENT_INVENTORY ON CACHE BOOL "Inventory")
+set(CONFIG_MENDER_CLIENT_INVENTORY OFF CACHE BOOL "Inventory")
 set(CONFIG_MENDER_FULL_PARSE_ARTIFACT ON CACHE BOOL "Full parse artifact")
 set(CONFIG_MENDER_PROVIDES_DEPENDS ON CACHE BOOL "Provides depends")
 set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors")

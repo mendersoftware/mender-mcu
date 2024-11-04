@@ -56,13 +56,6 @@
 #endif /* CONFIG_MENDER_DEVICE_TYPE */
 
 /**
- * @brief Default authentication poll interval (seconds)
- */
-#ifndef CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL
-#define CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL (600)
-#endif /* CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL */
-
-/**
  * @brief Default update poll interval (seconds)
  */
 #ifndef CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL
@@ -134,11 +127,6 @@ static mender_deployment_data_t *mender_client_deployment_data = NULL;
  * @brief Update module being used by the current deployment
  */
 static mender_update_module_t *mender_update_module = NULL;
-
-/**
- * @brief Mender client work handle
- */
-static void *mender_client_work_handle = NULL;
 
 /**
  * @brief Mender client work function
@@ -266,11 +254,6 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     if ((NULL != mender_client_config.tenant_token) && (0 == strlen(mender_client_config.tenant_token))) {
         mender_client_config.tenant_token = NULL;
     }
-    if (0 != config->authentication_poll_interval) {
-        mender_client_config.authentication_poll_interval = config->authentication_poll_interval;
-    } else {
-        mender_client_config.authentication_poll_interval = CONFIG_MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL;
-    }
     if (0 != config->update_poll_interval) {
         mender_client_config.update_poll_interval = config->update_poll_interval;
     } else {
@@ -283,7 +266,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
 
     /* Initializations */
     // TODO: what to do with the authentication interval?
-    if (MENDER_OK != (ret = mender_scheduler_alt_work_create(mender_client_work_function, mender_client_config.update_poll_interval))) {
+    if (MENDER_OK != (ret = mender_scheduler_init())) {
         mender_log_error("Unable to initialize scheduler");
         goto END;
     }
@@ -326,7 +309,7 @@ mender_client_activate(void) {
 
     mender_err_t ret = MENDER_OK;
 
-    mender_scheduler_alt_work_start();
+    mender_scheduler_activate(mender_client_work_function, mender_client_config.update_poll_interval);
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     /* Activate inventory work */
@@ -390,16 +373,15 @@ mender_client_exit(void) {
 
     mender_err_t ret = MENDER_OK;
 
+    /* Stop scheduling new work */
+    mender_scheduler_exit();
+
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     if (MENDER_OK != (ret = mender_inventory_exit())) {
         mender_log_error("Unable to cleanup after the inventory functionality");
         /* keep going on, we want to do as much cleanup as possible */
     }
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
-
-    /* Delete mender client work */
-    mender_scheduler_work_delete(mender_client_work_handle);
-    mender_client_work_handle = NULL;
 
     /* Release all modules */
     mender_api_exit();
@@ -409,11 +391,10 @@ mender_client_exit(void) {
     mender_client_network_release();
 
     /* Release memory */
-    mender_client_config.device_type                  = NULL;
-    mender_client_config.host                         = NULL;
-    mender_client_config.tenant_token                 = NULL;
-    mender_client_config.authentication_poll_interval = 0;
-    mender_client_config.update_poll_interval         = 0;
+    mender_client_config.device_type          = NULL;
+    mender_client_config.host                 = NULL;
+    mender_client_config.tenant_token         = NULL;
+    mender_client_config.update_poll_interval = 0;
     DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
 
     mender_update_module_unregister_all();

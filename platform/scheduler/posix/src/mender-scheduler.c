@@ -53,6 +53,12 @@
  * @brief Work context
  */
 typedef struct {
+    mender_err_t (*function)(void); /**< Work function */
+    int32_t period;                 /**< Work period (seconds), negative or null value permits to disable periodic execution */
+    char   *name;                   /**< Work name */
+} mender_scheduler_work_params_t;
+
+typedef struct {
     mender_scheduler_work_params_t params;       /**< Work parameters */
     pthread_mutex_t                sem_handle;   /**< Semaphore used to indicate work is pending or executing */
     timer_t                        timer_handle; /**< Timer used to periodically execute work */
@@ -89,9 +95,13 @@ static mqd_t mender_scheduler_work_queue_handle;
  */
 static pthread_t mender_scheduler_work_queue_thread_handle;
 
+/**
+ * @brief Work context
+ */
+static mender_scheduler_work_context_t main_work_context;
+
 mender_err_t
 mender_scheduler_init(void) {
-
     int ret;
 
     /* Create and start work queue */
@@ -127,20 +137,23 @@ mender_scheduler_init(void) {
     return MENDER_OK;
 }
 
-mender_err_t
-mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, void **handle) {
+static mender_err_t
+mender_scheduler_work_delete(mender_scheduler_work_context_t *work_context) {
+    /* Release memory */
+    timer_delete(work_context->timer_handle);
+    pthread_mutex_destroy(&work_context->sem_handle);
+    free(work_context->params.name);
 
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender_scheduler_work_context_t *work_context) {
     assert(NULL != work_params);
     assert(NULL != work_params->function);
     assert(NULL != work_params->name);
-    assert(NULL != handle);
 
     /* Create work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)malloc(sizeof(mender_scheduler_work_context_t));
-    if (NULL == work_context) {
-        mender_log_error("Unable to allocate memory");
-        goto FAIL;
-    }
     memset(work_context, 0, sizeof(mender_scheduler_work_context_t));
 
     /* Copy work parameters */
@@ -168,113 +181,61 @@ mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, void *
         goto FAIL;
     }
 
-    /* Return handle to the new work */
-    *handle = (void *)work_context;
-
     return MENDER_OK;
 
 FAIL:
 
-    /* Release memory */
-    if (NULL != work_context) {
-        timer_delete(work_context->timer_handle);
-        pthread_mutex_destroy(&work_context->sem_handle);
-        free(work_context->params.name);
-        free(work_context);
-    }
+    mender_scheduler_work_delete(work_context);
 
     return MENDER_FAIL;
 }
 
 mender_err_t
-mender_scheduler_work_activate(void *handle) {
+mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, uint32_t interval) {
+    assert(NULL != main_work_func);
+    assert(0 != interval);
 
-    assert(NULL != handle);
+    mender_scheduler_work_params_t work_params = { .function = main_work_func, .period = interval, .name = "mender_main" };
 
-    /* Get work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
+    if (MENDER_OK != mender_scheduler_work_create(&work_params, &main_work_context)) {
+        return MENDER_FAIL;
+    }
 
     /* Give semaphore used to protect the work function */
-    if (0 != pthread_mutex_unlock(&work_context->sem_handle)) {
+    if (0 != pthread_mutex_unlock(&main_work_context.sem_handle)) {
         mender_log_error("Unable to give semaphore");
         return MENDER_FAIL;
     }
 
     /* Check the timer period */
-    if (work_context->params.period > 0) {
+    if (main_work_context.params.period > 0) {
 
         /* Start the timer to handle the work */
         struct itimerspec its;
         memset(&its, 0, sizeof(struct itimerspec));
-        its.it_value.tv_sec    = work_context->params.period;
-        its.it_interval.tv_sec = work_context->params.period;
-        if (0 != timer_settime(work_context->timer_handle, 0, &its, NULL)) {
+        its.it_value.tv_sec    = main_work_context.params.period;
+        its.it_interval.tv_sec = main_work_context.params.period;
+        if (0 != timer_settime(main_work_context.timer_handle, 0, &its, NULL)) {
             mender_log_error("Unable to start timer");
             return MENDER_FAIL;
         }
 
         /* Execute the work now */
         union sigval timer_data;
-        timer_data.sival_ptr = (void *)work_context;
+        timer_data.sival_ptr = (void *)&main_work_context;
         mender_scheduler_timer_callback(timer_data);
     }
 
     /* Indicate the work has been activated */
-    work_context->activated = true;
+    main_work_context.activated = true;
 
     return MENDER_OK;
 }
 
-mender_err_t
-mender_scheduler_work_set_period(void *handle, uint32_t period) {
-
-    assert(NULL != handle);
-
-    /* Get work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
-
-    /* Set timer period */
-    work_context->params.period = period;
-    struct itimerspec its;
-    memset(&its, 0, sizeof(struct itimerspec));
-    if (work_context->params.period > 0) {
-        its.it_value.tv_sec    = work_context->params.period;
-        its.it_interval.tv_sec = work_context->params.period;
-    }
-    if (0 != timer_settime(work_context->timer_handle, 0, &its, NULL)) {
-        mender_log_error("Unable to set timer period");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_scheduler_work_execute(void *handle) {
-
-    assert(NULL != handle);
-
-    /* Get work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
-
-    /* Execute the work now */
-    union sigval timer_data;
-    timer_data.sival_ptr = (void *)work_context;
-    mender_scheduler_timer_callback(timer_data);
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_scheduler_work_deactivate(void *handle) {
-
-    assert(NULL != handle);
-
-    /* Get work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
-
+static mender_err_t
+mender_scheduler_work_deactivate(mender_scheduler_work_context_t *work_context) {
     /* Check if the work was activated */
-    if (true == work_context->activated) {
+    if (work_context->activated) {
 
         /* Stop the timer used to periodically execute the work (if it is running) */
         struct itimerspec its;
@@ -298,18 +259,19 @@ mender_scheduler_work_deactivate(void *handle) {
 }
 
 mender_err_t
-mender_scheduler_work_delete(void *handle) {
+mender_scheduler_exit(void) {
+    mender_scheduler_work_deactivate(&main_work_context);
+    mender_scheduler_work_delete(&main_work_context);
 
-    assert(NULL != handle);
+    /* Submit empty work to the work queue, this ask the work queue thread to terminate */
+    mender_scheduler_work_context_t *work_context = NULL;
+    if (0 != mq_send(mender_scheduler_work_queue_handle, (const char *)&work_context, sizeof(mender_scheduler_work_context_t *), 0)) {
+        mender_log_error("Unable to submit empty work to the work queue");
+        return MENDER_FAIL;
+    }
 
-    /* Get work context */
-    mender_scheduler_work_context_t *work_context = (mender_scheduler_work_context_t *)handle;
-
-    /* Release memory */
-    timer_delete(work_context->timer_handle);
-    pthread_mutex_destroy(&work_context->sem_handle);
-    free(work_context->params.name);
-    free(work_context);
+    /* Wait end of execution of the work queue thread */
+    pthread_join(mender_scheduler_work_queue_thread_handle, NULL);
 
     return MENDER_OK;
 }
@@ -378,22 +340,6 @@ mender_scheduler_mutex_delete(void *handle) {
     return MENDER_OK;
 }
 
-mender_err_t
-mender_scheduler_exit(void) {
-
-    /* Submit empty work to the work queue, this ask the work queue thread to terminate */
-    mender_scheduler_work_context_t *work_context = NULL;
-    if (0 != mq_send(mender_scheduler_work_queue_handle, (const char *)&work_context, sizeof(mender_scheduler_work_context_t *), 0)) {
-        mender_log_error("Unable to submit empty work to the work queue");
-        return MENDER_FAIL;
-    }
-
-    /* Wait end of execution of the work queue thread */
-    pthread_join(mender_scheduler_work_queue_thread_handle, NULL);
-
-    return MENDER_OK;
-}
-
 static void
 mender_scheduler_timer_callback(union sigval timer_data) {
 
@@ -417,9 +363,7 @@ mender_scheduler_timer_callback(union sigval timer_data) {
 }
 
 __attribute__((noreturn)) static void *
-mender_scheduler_work_queue_thread(void *arg) {
-
-    (void)arg;
+mender_scheduler_work_queue_thread(MENDER_ARG_UNUSED void *arg) {
     mender_scheduler_work_context_t *work_context = NULL;
 
     /* Handle work to be executed */
@@ -453,23 +397,4 @@ END:
 
     /* Terminate work queue thread */
     pthread_exit(NULL);
-}
-
-/**
- * @brief Dummy implementation
- */
-mender_err_t
-mender_scheduler_alt_work_create(mender_scheduler_alt_work_function_t func, int32_t interval) {
-    (void)func;
-    (void)interval;
-
-    return MENDER_FAIL;
-}
-
-/**
- * @brief Dummy implementation
- */
-mender_err_t
-mender_scheduler_alt_work_start() {
-    return MENDER_FAIL;
 }

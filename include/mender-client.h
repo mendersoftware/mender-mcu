@@ -46,11 +46,10 @@ extern mender_client_state_t mender_client_state;
  * @brief Mender client configuration
  */
 typedef struct {
-    char   *device_type;                  /**< Device type */
-    char   *host;                         /**< URL of the mender server */
-    char   *tenant_token;                 /**< Tenant token used to authenticate on the mender server (optional) */
-    int32_t authentication_poll_interval; /**< Authentication poll interval, default is 60 seconds, -1 permits to disable periodic execution */
-    int32_t update_poll_interval;         /**< Update poll interval, default is 1800 seconds, -1 permits to disable periodic execution */
+    char    *device_type;          /**< Device type */
+    char    *host;                 /**< URL of the mender server */
+    char    *tenant_token;         /**< Tenant token used to authenticate on the mender server (optional) */
+    uint32_t update_poll_interval; /**< Update poll interval, default is 1800 seconds, must be > 0 */
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
 #endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY */

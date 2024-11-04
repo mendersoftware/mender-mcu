@@ -52,21 +52,12 @@ if MENDER_MCU_CLIENT
             help
                 The type of device, used to ensure compatibility between the hardware and software.
 
-        config MENDER_CLIENT_AUTHENTICATION_POLL_INTERVAL
-            int "Mender client Authentication poll interval (seconds)"
-            range 0 3600
-            default 600
-            help
-                Interval used to periodically try to authenticate to the Mender server until it succeeds.
-                Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
         config MENDER_CLIENT_UPDATE_POLL_INTERVAL
             int "Mender client Update poll interval (seconds)"
-            range 0 86400
+            range 1 86400
             default 1800
             help
                 Interval used to periodically check for new deployments on the Mender server.
-                Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
         module = MENDER
         module-str = Log Level for mender
@@ -275,10 +266,17 @@ if MENDER_MCU_CLIENT
 
         menu "Scheduler options (ADVANCED)"
 
+            config MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+                bool "Use a separate work queue"
+                default n
+                help
+                    Makes Mender start and use its own work queue instead of the system one
+
             config MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE
                 int "Mender Scheduler Work Queue Stack Size (kB)"
                 range 0 64
                 default 12
+                depends on MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
                 help
                     Mender scheduler work queue stack size, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
 
@@ -286,6 +284,7 @@ if MENDER_MCU_CLIENT
                 int "Mender Scheduler Work Queue Priority"
                 range 0 128
                 default 5
+                depends on MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
                 help
                     Mender scheduler work queue priority, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
 

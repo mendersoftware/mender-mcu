@@ -929,7 +929,10 @@ mender_client_update_work_function(void) {
 
                 /* Check for deployment */
                 if (MENDER_OK != (ret = mender_client_check_deployment(&deployment))) {
-                    /* No deployment available */
+                    /* No deployment available, but we are not done, we need to keep checking. */
+                    if (MENDER_DONE == ret) {
+                        ret = MENDER_OK;
+                    }
                     goto END;
                 }
 
@@ -1121,7 +1124,7 @@ mender_client_update_work_function(void) {
     }
 #undef NEXT_STATE /* should not be used anywhere else */
 
-    ret = MENDER_DONE;
+    ret = MENDER_OK;
 
 END:
     /* Release memory */

@@ -66,6 +66,15 @@ static mender_err_t mender_api_http_text_callback(mender_http_client_event_t eve
 static char *artifact_name = NULL;
 
 mender_err_t
+mender_api_artifact_name_load() {
+    if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
+        mender_log_error("Unable to get artifact name");
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+mender_err_t
 mender_api_init(mender_api_config_t *config) {
 
     assert(NULL != config);
@@ -74,8 +83,7 @@ mender_api_init(mender_api_config_t *config) {
     mender_err_t ret;
 
     /* Load and set artifact_name here */
-    if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
-        mender_log_error("Unable to get artifact name");
+    if (MENDER_OK != mender_api_artifact_name_load()) {
         return MENDER_FAIL;
     }
     /* Save configuration */

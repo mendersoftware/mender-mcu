@@ -485,6 +485,11 @@ mender_commit_artifact_data(void) {
         return MENDER_FAIL;
     }
 
+    if (MENDER_OK != mender_api_artifact_name_load()) {
+        /* Error already logged */
+        return MENDER_FAIL;
+    }
+
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
     /* Get provides from the deployment data */

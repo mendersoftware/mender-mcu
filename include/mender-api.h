@@ -50,6 +50,12 @@ typedef struct {
 } mender_api_deployment_data_t;
 
 /**
+ * @brief Load or re-loads the artifact_name from the persistent store
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_api_artifact_name_load();
+
+/**
  * @brief Initialization of the API
  * @param config Mender API configuration
  * @return MENDER_OK if the function succeeds, error code otherwise

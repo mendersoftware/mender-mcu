@@ -115,7 +115,7 @@ mender_err_t mender_storage_set_artifact_name(const char *artifact_name);
  * @brief Get artifact name
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_storage_get_artifact_name(char **artifact_name);
+mender_err_t mender_storage_get_artifact_name(const char **artifact_name);
 
 /**
  * @brief Release mender storage

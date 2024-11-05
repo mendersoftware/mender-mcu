@@ -43,6 +43,11 @@
 #define MENDER_STORAGE_NVS_ARTICACT_NAME   5
 
 /**
+ * @brief Cached Artifact name
+ */
+static char *cached_artifact_name = NULL;
+
+/**
  * @brief NVS storage handle
  */
 static struct nvs_fs mender_storage_nvs_handle;
@@ -354,6 +359,9 @@ mender_storage_set_artifact_name(const char *artifact_name) {
         return MENDER_FAIL;
     }
 
+    free(cached_artifact_name);
+    cached_artifact_name = NULL;
+
     return MENDER_OK;
 }
 
@@ -361,6 +369,12 @@ mender_err_t
 mender_storage_get_artifact_name(char **artifact_name) {
 
     assert(NULL != artifact_name);
+
+    if (NULL != cached_artifact_name) {
+        *artifact_name = cached_artifact_name;
+        return MENDER_OK;
+    }
+
     size_t artifact_name_length;
 
     /* Read artifact_name */
@@ -381,6 +395,7 @@ mender_storage_get_artifact_name(char **artifact_name) {
 mender_err_t
 mender_storage_exit(void) {
 
-    /* Nothing to do */
+    FREE_AND_NULL(cached_artifact_name);
+
     return MENDER_OK;
 }

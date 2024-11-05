@@ -105,28 +105,6 @@ After writing the code, you need to register the Update Module into the Mender M
 update module function in [`mender-client.h`](include/mender-client.h).
 
 
-## Known issues
-
-There are several outstanding known issues with the current code:
-
-* No proper scheduler. Internal ticket at [MEN-7536](https://northerntech.atlassian.net/browse/MEN-7536).
-  So far we have written a minimal scheduling single threaded logic, that only allow for one
-  operation at a time. The client run gets scheduled every polling interval and would conduct the
-  full update (if any) at once. We plan to redesign it better to allow for re-entry and resource
-  protection, so that we could have inventory being reported independently, for example.
-
-* The inventory feature is disabled.
-  Related to the above, there is no inventory reporting at the moment.
-
-* Freeze during a deployment. Internal ticket at MEN-7562](https://northerntech.atlassian.net/browse/MEN-7562).
-  We are experiencing that the client can freeze during context switch, when attending a kernel's
-  ISR, for example. This can happen during the download of the update.
-
-* Logging disabled.
-  Related to the above, as a temporary mitigation we have disabled logging from the client which
-  makes the risk of these freezes very small, although not completely gone.
-
-
 ## Experimental: testing the Mender MCU Client with POSIX
 
 ### Dependencies

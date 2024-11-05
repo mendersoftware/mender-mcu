@@ -43,84 +43,203 @@
 #endif /* CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY */
 
 /**
- * @brief Mender scheduler work queue
- */
-static struct k_work_q work_queue;
-
-/**
  * @brief Mender scheduler work queue stack
  */
 K_THREAD_STACK_DEFINE(work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024);
+
+/**
+ * @brief Mender work queue
+ */
+static struct k_work_q            work_queue;
+static struct k_work_queue_config work_queue_config;
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
 /**
- * @brief User parameters
+ * @brief Work context
  */
-static mender_scheduler_work_function_t user_function = NULL;
-static uint32_t                         user_interval = 0;
+typedef struct mender_platform_work_t {
+    mender_scheduler_work_params_t params;    /**< Work parameters */
+    struct k_work_delayable        delayable; /**< The delayable work item executing the work function */
+    bool                           activated; /**< Flag indicating the work is activated */
+} mender_platform_work_t;
 
-/**
- * @brief Work item
- */
-static struct k_work_delayable delayable_work_item;
-
-static void
-mender_work_function(MENDER_ARG_UNUSED struct k_work *work) {
-    assert(NULL != user_function);
-
-    MENDER_NDEBUG_UNUSED mender_err_t status = (*user_function)();
-    mender_log_debug("Executed work function [%d]", status);
-
-#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
-    k_work_reschedule_for_queue(&work_queue, &delayable_work_item, K_SECONDS(user_interval));
-#else
-    k_work_reschedule(&delayable_work_item, K_SECONDS(user_interval));
-#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
-}
+static void mender_scheduler_work_handler(struct k_work *work_item);
 
 mender_err_t
 mender_scheduler_init(void) {
 #ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     /* Create and start work queue */
+    work_queue_config.name      = "mender_work_queue";
+    work_queue_config.no_yield  = false;
+    work_queue_config.essential = true; /* TODO: configurable? */
+
     k_work_queue_init(&work_queue);
-    k_work_queue_start(&work_queue, work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY, NULL);
-    k_thread_name_set(k_work_queue_thread_get(&work_queue), "mender_scheduler_work_queue");
+    k_work_queue_start(
+        &work_queue, work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY, &work_queue_config);
+    k_thread_name_set(k_work_queue_thread_get(&work_queue), "mender_work_queue");
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     return MENDER_OK;
 }
 
-/**
- * @brief Start work
- */
 mender_err_t
-mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, uint32_t interval) {
-    assert(NULL != main_work_func);
-    assert(0 != interval);
+mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender_work_t **work) {
+    assert(NULL != work_params);
+    assert(NULL != work_params->function);
+    assert(NULL != work_params->name);
+    assert(NULL != work);
 
-    user_function = main_work_func;
-    user_interval = interval;
+    /* Create work context */
+    mender_platform_work_t *work_context = calloc(1, sizeof(mender_platform_work_t));
+    if (NULL == work_context) {
+        mender_log_error("Unable to allocate memory");
+        goto FAIL;
+    }
 
-    k_work_init_delayable(&delayable_work_item, mender_work_function);
+    /* Copy work parameters */
+    work_context->params.function = work_params->function;
+    work_context->params.period   = work_params->period;
+    if (NULL == (work_context->params.name = strdup(work_params->name))) {
+        mender_log_error("Unable to allocate memory");
+        goto FAIL;
+    }
+
+    k_work_init_delayable(&(work_context->delayable), mender_scheduler_work_handler);
+
+    /* Return handle to the new work context */
+    *work = work_context;
+
+    return MENDER_OK;
+
+FAIL:
+
+    /* Release memory */
+    if (NULL != work_context) {
+        free(work_context->params.name);
+        free(work_context);
+    }
+
+    return MENDER_FAIL;
+}
+
+mender_err_t
+mender_scheduler_work_activate(mender_work_t *work) {
+    assert(NULL != work);
+    assert(0 != work->params.period);
+
+    mender_log_debug("Activating %s every %ju seconds", work->params.name, (uintmax_t)work->params.period);
 
 #ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
-    k_work_reschedule_for_queue(&work_queue, &delayable_work_item, K_NO_WAIT);
+    k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_NO_WAIT);
 #else
-    k_work_reschedule(&delayable_work_item, K_SECONDS(1));
+    k_work_reschedule(&(work->delayable), K_SECONDS(1));
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
+
+    /* Indicate the work has been activated */
+    work->activated = true;
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_scheduler_work_execute(mender_work_t *work) {
+    assert(NULL != work);
+
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+    k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_NO_WAIT);
+#else
+    k_work_reschedule(&(work->delayable), K_NO_WAIT);
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
+    assert(NULL != work);
+
+    /* Set timer period */
+    work->params.period = period;
+    if (work->params.period > 0) {
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+        k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_SECONDS(period));
+#else
+        k_work_reschedule(&(work->delayable), K_SECONDS(period));
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
+    } else {
+        k_work_cancel_delayable(&(work->delayable));
+        work->activated = false;
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_scheduler_work_deactivate(mender_work_t *work) {
+    assert(NULL != work);
+
+    /* Check if the work was activated */
+    if (work->activated) {
+        k_work_cancel_delayable(&(work->delayable));
+
+        /* Indicate the work has been deactivated */
+        work->activated = false;
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_scheduler_work_delete(mender_work_t *work) {
+    if (NULL == work) {
+        return MENDER_OK;
+    }
+
+    free(work->params.name);
+    free(work);
 
     return MENDER_OK;
 }
 
 mender_err_t
 mender_scheduler_exit(void) {
-    k_work_cancel_delayable(&delayable_work_item);
-
 #ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_queue_drain(&work_queue, true);
 #endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
-
     return MENDER_OK;
+}
+
+static void
+mender_scheduler_work_handler(struct k_work *work_item) {
+    assert(NULL != work_item);
+    mender_err_t ret;
+
+    /* Get work context */
+    struct k_work_delayable *delayable_item = k_work_delayable_from_work(work_item);
+    mender_platform_work_t  *work           = CONTAINER_OF(delayable_item, mender_platform_work_t, delayable);
+    assert(NULL != work);
+
+    if (!work->activated) {
+        /* nothing more to do */
+        return;
+    }
+
+    /* Call work function */
+    mender_log_debug("Executing %s work", work->params.name);
+    if (MENDER_DONE == (ret = work->params.function())) {
+        /* nothing more to do */
+        return;
+    }
+    if (MENDER_OK != ret) {
+        mender_log_error("Work %s failed", work->params.name);
+    }
+
+    /* Reschedule self for the next period */
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
+    k_work_reschedule_for_queue(&work_queue, delayable_item, K_SECONDS(work->params.period));
+#else
+    k_work_reschedule(delayable_item, K_SECONDS(work->params.period));
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 }
 
 mender_err_t

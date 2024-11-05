@@ -129,6 +129,11 @@ static mender_deployment_data_t *mender_client_deployment_data = NULL;
 static mender_update_module_t *mender_update_module = NULL;
 
 /**
+ * @brief The main Mender work item
+ */
+static mender_work_t *mender_client_work = NULL;
+
+/**
  * @brief Mender client work function
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
@@ -306,10 +311,19 @@ END:
 
 mender_err_t
 mender_client_activate(void) {
+    mender_err_t ret;
 
-    mender_err_t ret = MENDER_OK;
+    mender_scheduler_work_params_t work_params = {
+        .function = mender_client_work_function,
+        .period   = mender_client_config.update_poll_interval,
+        .name     = "mender_client_main",
+    };
 
-    mender_scheduler_activate(mender_client_work_function, mender_client_config.update_poll_interval);
+    if ((MENDER_OK != (ret = mender_scheduler_work_create(&work_params, &mender_client_work)))
+        || (MENDER_OK != (ret = mender_scheduler_work_activate(mender_client_work)))) {
+        mender_log_error("Unable to activate the main work");
+        return ret;
+    }
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     /* Activate inventory work */
@@ -370,16 +384,30 @@ mender_client_network_release(void) {
 
 mender_err_t
 mender_client_exit(void) {
+    bool some_error = false;
 
-    mender_err_t ret = MENDER_OK;
+    if (MENDER_OK != mender_scheduler_work_deactivate(mender_client_work)) {
+        mender_log_error("Failed to deactivate main work");
+        /* keep going on, we want to do as much cleanup as possible */
+        some_error = true;
+    }
+
+    if (MENDER_OK != mender_scheduler_work_delete(mender_client_work)) {
+        mender_log_error("Failed to delete main work");
+        /* keep going on, we want to do as much cleanup as possible */
+        some_error = true;
+    } else {
+        mender_client_work = NULL;
+    }
 
     /* Stop scheduling new work */
     mender_scheduler_exit();
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
-    if (MENDER_OK != (ret = mender_inventory_exit())) {
+    if (MENDER_OK != mender_inventory_exit()) {
         mender_log_error("Unable to cleanup after the inventory functionality");
         /* keep going on, we want to do as much cleanup as possible */
+        some_error = true;
     }
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
@@ -399,7 +427,7 @@ mender_client_exit(void) {
 
     mender_update_module_unregister_all();
 
-    return ret;
+    return some_error ? MENDER_FAIL : MENDER_OK;
 }
 
 static mender_err_t
@@ -901,7 +929,10 @@ mender_client_update_work_function(void) {
 
                 /* Check for deployment */
                 if (MENDER_OK != (ret = mender_client_check_deployment(&deployment))) {
-                    /* No deployment available */
+                    /* No deployment available, but we are not done, we need to keep checking. */
+                    if (MENDER_DONE == ret) {
+                        ret = MENDER_OK;
+                    }
                     goto END;
                 }
 
@@ -1093,7 +1124,7 @@ mender_client_update_work_function(void) {
     }
 #undef NEXT_STATE /* should not be used anywhere else */
 
-    ret = MENDER_DONE;
+    ret = MENDER_OK;
 
 END:
     /* Release memory */

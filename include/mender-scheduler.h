@@ -27,24 +27,73 @@ extern "C" {
 
 #include "mender-utils.h"
 
-typedef mender_err_t (*mender_scheduler_work_function_t)(void);
+/**
+ * @brief Work parameters
+ */
+typedef struct {
+    mender_err_t (*function)(void); /**< Work function */
+    uint32_t period;                /**< Work period (seconds), 0 to disable periodic execution */
+    char    *name;                  /**< Work name */
+} mender_scheduler_work_params_t;
 
 /**
- * @brief Initializate the scheduler
+ * @brief Work item
+ * @note  This is an opaque type the implementation of which is platform-dependent.
+ */
+typedef struct mender_platform_work_t mender_work_t;
+
+/**
+ * @brief Initialization of the scheduler
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_scheduler_init(void);
 
 /**
- * @brief Activate the Mender work
- * @param main_work_func The main Mender work function
- * @param interval The interval for the Mender work (must be > 0)
+ * @brief Function used to register a new work
+ * @param work_params Work parameters
+ * @param handle Work handle if the function succeeds, NULL otherwise
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_scheduler_activate(mender_scheduler_work_function_t main_work_func, uint32_t interval);
+mender_err_t mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender_work_t **work);
 
 /**
- * @brief Release the scheduler
+ * @brief Function used to activate a work
+ * @param handle Work handle
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_scheduler_work_activate(mender_work_t *work);
+
+/**
+ * @brief Function used to set work period
+ * @param handle Work handle
+ * @param period Work period (seconds)
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_scheduler_work_set_period(mender_work_t *work, uint32_t period);
+
+/**
+ * @brief Function used to trigger execution of the work
+ * @param handle Work handle
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_scheduler_work_execute(mender_work_t *work);
+
+/**
+ * @brief Function used to deactivate a work
+ * @param handle Work handle
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_scheduler_work_deactivate(mender_work_t *work);
+
+/**
+ * @brief Function used to delete a work
+ * @param handle Work handle
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_scheduler_work_delete(mender_work_t *work);
+
+/**
+ * @brief Release mender scheduler
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_scheduler_exit(void);

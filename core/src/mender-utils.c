@@ -139,8 +139,15 @@ mender_utils_strendwith(const char *s1, const char *s2) {
         return false;
     }
 
+    const size_t len1 = strlen(s1);
+    const size_t len2 = strlen(s2);
+
+    if (len1 < len2) {
+        return false;
+    }
+
     /* Compare the end of the string */
-    return (0 == strncmp(s1 + strlen(s1) - strlen(s2), s2, strlen(s2)));
+    return (0 == strncmp(s1 + len1 - len2, s2, len2));
 }
 
 char *

@@ -175,6 +175,11 @@ hexdigit_value(char digit) {
 
 bool
 mender_utils_hexdump_to_bytes(const char *hexdump, unsigned char *bytes, size_t n_bytes) {
+    if (NULL == hexdump) {
+        mender_log_error("Hexdump is NULL");
+        return false;
+    }
+
     for (size_t i = 0; i < n_bytes; i++) {
         size_t idx = 2 * i;
         if (!(((hexdump[idx] >= '0') && (hexdump[idx] <= '9')) || ((hexdump[idx] >= 'a') && (hexdump[idx] <= 'f')))

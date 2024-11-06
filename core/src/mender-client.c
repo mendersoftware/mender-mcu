@@ -531,10 +531,10 @@ mender_commit_artifact_data(void) {
     /* Replace the stored provides with the new provides */
     if (MENDER_OK != mender_storage_set_provides(new_provides)) {
         mender_log_error("Unable to set provides");
-        mender_utils_free_linked_list(new_provides);
+        mender_utils_key_value_list_free(new_provides);
         return MENDER_FAIL;
     }
-    mender_utils_free_linked_list(new_provides);
+    mender_utils_key_value_list_free(new_provides);
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
@@ -642,7 +642,7 @@ mender_filter_provides(mender_artifact_ctx_t *mender_artifact_ctx, mender_key_va
 
 END:
 
-    mender_utils_free_linked_list(*stored_provides);
+    mender_utils_key_value_list_free(*stored_provides);
     return ret;
 }
 
@@ -661,9 +661,9 @@ mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **n
 
     mender_key_value_list_t *provides = NULL;
     for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
-        if (MENDER_OK != mender_utils_append_list(&provides, &mender_artifact_ctx->payloads.values[i].provides)) {
+        if (MENDER_OK != mender_utils_key_value_list_append(&provides, &mender_artifact_ctx->payloads.values[i].provides)) {
             mender_log_error("Unable to merge provides");
-            mender_utils_free_linked_list(stored_provides);
+            mender_utils_key_value_list_free(stored_provides);
             return MENDER_FAIL;
         }
     }
@@ -678,7 +678,7 @@ mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **n
 
     if (NULL == *artifact_name) {
         mender_log_error("No artifact name found in provides");
-        mender_utils_free_linked_list(stored_provides);
+        mender_utils_key_value_list_free(stored_provides);
         return MENDER_FAIL;
     }
 
@@ -709,7 +709,7 @@ mender_check_device_compatibility(mender_artifact_ctx_t *mender_artifact_ctx) {
     /* Get depends */
     mender_key_value_list_t *depends = NULL;
     for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
-        if (MENDER_OK != mender_utils_append_list(&depends, &mender_artifact_ctx->payloads.values[i].depends)) {
+        if (MENDER_OK != mender_utils_key_value_list_append(&depends, &mender_artifact_ctx->payloads.values[i].depends)) {
             mender_log_error("Unable to append depends");
             goto END;
         }
@@ -741,7 +741,7 @@ mender_check_device_compatibility(mender_artifact_ctx_t *mender_artifact_ctx) {
     ret = MENDER_OK;
 
 END:
-    mender_utils_free_linked_list(stored_provides);
+    mender_utils_key_value_list_free(stored_provides);
     return ret;
 }
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */

@@ -247,17 +247,17 @@ mender_err_t mender_utils_keystore_delete(mender_keystore_t *keystore);
  * @brief Free linked list list
  * @param provides_depends List to clear
  */
-mender_err_t mender_utils_free_linked_list(mender_key_value_list_t *list);
+mender_err_t mender_utils_key_value_list_free(mender_key_value_list_t *list);
 
 /**
  * @brief Create a new key-value node
  */
-mender_err_t mender_utils_create_key_value_node(const char *type, const char *value, mender_key_value_list_t **list);
+mender_err_t mender_utils_key_value_list_create_node(const char *type, const char *value, mender_key_value_list_t **list);
 
 /**
  * @brief Append linked list - appends list2 to list1 and sets list2 to NULL
  */
-mender_err_t mender_utils_append_list(mender_key_value_list_t **list1, mender_key_value_list_t **list2);
+mender_err_t mender_utils_key_value_list_append(mender_key_value_list_t **list1, mender_key_value_list_t **list2);
 
 /**
  * @brief Convert linked list to string

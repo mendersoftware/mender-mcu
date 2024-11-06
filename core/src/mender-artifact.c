@@ -446,8 +446,8 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
                 cJSON_Delete(ctx->payloads.values[index].meta_data);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-                mender_utils_free_linked_list(ctx->payloads.values[index].provides);
-                mender_utils_free_linked_list(ctx->payloads.values[index].depends);
+                mender_utils_key_value_list_free(ctx->payloads.values[index].provides);
+                mender_utils_key_value_list_free(ctx->payloads.values[index].depends);
                 for (size_t i = 0; i < ctx->payloads.values[index].clears_provides_size; i++) {
                     free(ctx->payloads.values[index].clears_provides[i]);
                 }
@@ -458,8 +458,8 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
         }
         free(ctx->file.name);
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-        mender_utils_free_linked_list(ctx->artifact_info.provides);
-        mender_utils_free_linked_list(ctx->artifact_info.depends);
+        mender_utils_key_value_list_free(ctx->artifact_info.provides);
+        mender_utils_key_value_list_free(ctx->artifact_info.depends);
         for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
             free(checksum->filename);
             mender_sha256_finish(checksum->context, NULL);
@@ -742,14 +742,14 @@ artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_l
     cJSON *json_element = NULL;
     cJSON_ArrayForEach(json_element, json_provides_depends) {
         if (cJSON_IsString(json_element)) {
-            if (MENDER_OK != mender_utils_create_key_value_node(json_element->string, json_element->valuestring, provides_depends)) {
+            if (MENDER_OK != mender_utils_key_value_list_create_node(json_element->string, json_element->valuestring, provides_depends)) {
                 mender_log_error("Unable to create linked list node for string element");
                 goto ERROR;
             }
         } else if (cJSON_IsArray(json_element)) {
             cJSON *json_element_value = NULL;
             cJSON_ArrayForEach(json_element_value, json_element) {
-                if (MENDER_OK != mender_utils_create_key_value_node(json_element->string, json_element_value->valuestring, provides_depends)) {
+                if (MENDER_OK != mender_utils_key_value_list_create_node(json_element->string, json_element_value->valuestring, provides_depends)) {
                     mender_log_error("Unable to create linked list node for array element");
                     goto ERROR;
                 }
@@ -764,7 +764,7 @@ artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_l
 
 ERROR:
     /* Free linked list in case of error */
-    mender_utils_free_linked_list(*provides_depends);
+    mender_utils_key_value_list_free(*provides_depends);
     return MENDER_FAIL;
 }
 #endif

@@ -120,7 +120,7 @@ mender_utils_strrstr(const char *haystack, const char *needle) {
 }
 
 bool
-mender_utils_strbeginwith(const char *s1, const char *s2) {
+mender_utils_strbeginswith(const char *s1, const char *s2) {
 
     /* Check parameters */
     if ((NULL == s1) || (NULL == s2)) {
@@ -132,7 +132,7 @@ mender_utils_strbeginwith(const char *s1, const char *s2) {
 }
 
 bool
-mender_utils_strendwith(const char *s1, const char *s2) {
+mender_utils_strendswith(const char *s1, const char *s2) {
 
     /* Check parameters */
     if ((NULL == s1) || (NULL == s2)) {

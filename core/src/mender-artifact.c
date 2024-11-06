@@ -298,7 +298,7 @@ is_compressed(const char *filename) {
     static const char *compression_suffixes[] = { ".gz", ".xz", ".zst", NULL };
 
     for (size_t i = 0; NULL != compression_suffixes[i]; i++) {
-        if (mender_utils_strendwith(filename, compression_suffixes[i])) {
+        if (mender_utils_strendswith(filename, compression_suffixes[i])) {
             return true;
         }
     }
@@ -322,7 +322,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
             /* data/ files are processed per block for which the original size of the buffer should
                be enough, but metadata is processed as whole files so there we expect we will need
                more. */
-            if (mender_utils_strbeginwith(ctx->file.name, "data/")) {
+            if (mender_utils_strbeginswith(ctx->file.name, "data/")) {
                 expected_required = ctx->input.orig_size;
             } else {
                 expected_required = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE) + MENDER_ARTIFACT_STREAM_BLOCK_SIZE;
@@ -381,24 +381,24 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
                 /* Read header-info file */
                 ret = artifact_read_header_info(ctx);
 
-            } else if ((true == mender_utils_strbeginwith(ctx->file.name, "header.tar/headers"))
-                       && (true == mender_utils_strendwith(ctx->file.name, "meta-data"))) {
+            } else if ((true == mender_utils_strbeginswith(ctx->file.name, "header.tar/headers"))
+                       && (true == mender_utils_strendswith(ctx->file.name, "meta-data"))) {
 
                 /* Read meta-data file */
                 ret = artifact_read_meta_data(ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-            } else if (mender_utils_strbeginwith(ctx->file.name, "header.tar/headers") && mender_utils_strendwith(ctx->file.name, "type-info")) {
+            } else if (mender_utils_strbeginswith(ctx->file.name, "header.tar/headers") && mender_utils_strendswith(ctx->file.name, "type-info")) {
 
                 /* Read type-info file */
                 ret = artifact_read_type_info(ctx);
 #endif
-            } else if (true == mender_utils_strbeginwith(ctx->file.name, "data")) {
+            } else if (true == mender_utils_strbeginswith(ctx->file.name, "data")) {
 
                 /* Read data */
                 ret = artifact_read_data(ctx, dl_data);
 
-            } else if (false == mender_utils_strendwith(ctx->file.name, ".tar")) {
+            } else if (false == mender_utils_strendswith(ctx->file.name, ".tar")) {
 
                 /* Drop data, file is not relevant */
                 ret = artifact_drop_file(ctx);
@@ -988,7 +988,7 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
      * %u is the index. Yes sscanf(3) would be nice, but we've experienced
      * unexplained segmentation faults on some hardware when using it. */
     const char *const prefix = "header.tar/headers/";
-    if (!mender_utils_strbeginwith(ctx->file.name, prefix)) {
+    if (!mender_utils_strbeginswith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
@@ -1125,7 +1125,7 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
      * Yes sscanf(3) would be nice, but we've experienced unexplained
      * segmentation faults on some hardware when using it. */
     const char *const prefix = "data/";
-    if (!mender_utils_strbeginwith(ctx->file.name, prefix)) {
+    if (!mender_utils_strbeginswith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }

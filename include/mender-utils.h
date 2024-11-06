@@ -160,7 +160,7 @@ char *mender_utils_strrstr(const char *haystack, const char *needle);
  * @param s2 Substring to look for at the beginning of the string
  * @return true if the string begins with wanted substring, false otherwise
  */
-bool mender_utils_strbeginwith(const char *s1, const char *s2);
+bool mender_utils_strbeginswith(const char *s1, const char *s2);
 
 /**
  * @brief Function used to check if string ends with wanted substring
@@ -168,7 +168,7 @@ bool mender_utils_strbeginwith(const char *s1, const char *s2);
  * @param s2 Substring to look for at the end of the string
  * @return true if the string ends with wanted substring, false otherwise
  */
-bool mender_utils_strendwith(const char *s1, const char *s2);
+bool mender_utils_strendswith(const char *s1, const char *s2);
 
 /**
  * @brief Convert a hexdump of bytes into the respective bytes

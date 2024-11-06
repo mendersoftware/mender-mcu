@@ -91,8 +91,20 @@ FetchContent_Declare(
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   FIND_PACKAGE_ARGS NAMES MbedTLS
 )
+
+# We don't want to build MbedTLS tests and utilities. The only working way to do
+# so seems to be to preset the variables/options MbedTLS uses for this before we
+# "include" it. Unfortunately, they are not not prefixed and don't have very
+# specific names. See
+# https://github.com/Mbed-TLS/mbedtls/issues/2824#issuecomment-2457546685 for
+# details.
+set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+set(ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
 message(STATUS "Fetching MbedTLS...")
 FetchContent_MakeAvailable(MbedTLS)
+unset(ENABLE_TESTING CACHE)
+unset(ENABLE_PROGRAMS CACHE)
+
 find_package(MbedTLS REQUIRED)
 target_link_libraries(mender-mcu-client PRIVATE MbedTLS::mbedtls)
 

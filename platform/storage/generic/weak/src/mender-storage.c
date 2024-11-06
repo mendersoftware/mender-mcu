@@ -112,7 +112,7 @@ mender_storage_set_artifact_name(const char *artifact_name) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_storage_get_artifact_name(char **artifact_name) {
+mender_storage_get_artifact_name(const char **artifact_name) {
 
     (void)artifact_name;
 

@@ -205,7 +205,7 @@ api_check_for_deployment_v2(int *status, void *response) {
     mender_err_t ret           = MENDER_FAIL;
     cJSON       *json_payload  = NULL;
     char        *payload       = NULL;
-    char        *artifact_name = NULL;
+    const char  *artifact_name = NULL;
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
     mender_key_value_list_t *provides = NULL;
@@ -297,7 +297,7 @@ api_check_for_deployment_v1(int *status, void *response) {
 
     mender_err_t ret           = MENDER_FAIL;
     char        *path          = NULL;
-    char        *artifact_name = NULL;
+    const char  *artifact_name = NULL;
 
     if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
         mender_log_error("Unable to get artifact name");
@@ -511,7 +511,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
     char        *payload       = NULL;
     char        *response      = NULL;
     int          status        = 0;
-    char        *artifact_name = NULL;
+    const char  *artifact_name = NULL;
 
     if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
         mender_log_error("Unable to get artifact name");

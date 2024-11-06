@@ -253,7 +253,7 @@ mender_storage_set_artifact_name(const char *artifact_name) {
 }
 
 mender_err_t
-mender_storage_get_artifact_name(char **artifact_name) {
+mender_storage_get_artifact_name(const char **artifact_name) {
 
     assert(NULL != artifact_name);
 
@@ -261,7 +261,7 @@ mender_storage_get_artifact_name(char **artifact_name) {
     mender_err_t ret = mender_storage_read_file(MENDER_STORAGE_NVS_ARTICACT_NAME, (void **)artifact_name, &artifact_name_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            *artifact_name = strdup("unknown");
+            *artifact_name = "unknown";
             return MENDER_OK;
         } else {
             mender_log_error("Unable to read artifact_name");

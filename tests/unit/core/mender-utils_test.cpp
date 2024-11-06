@@ -21,7 +21,6 @@
 
 extern "C" {
 #include "mender-utils.h"
-#include "mender-client.h"
 }
 
 using namespace std;
@@ -32,8 +31,7 @@ typedef struct {
     bool   expected;
 } TestWildCard;
 
-TEST(MenderUtilsTest, WildcardComparision) {
-
+TEST(MenderUtilsTest, WildcardComparison) {
     TestWildCard test_wildcard[] = { { "wow", "wow", true },
                                      { "abc_123_def_456_ghi", "abc_123_def_456_g", false },
                                      { "abc_123_def_456_ghi", "abc*def*ghi", true },

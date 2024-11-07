@@ -49,7 +49,7 @@ mender_net_get_host_port_url(const char *path, char *config_host, char **host, c
     bool        is_https       = false;
 
     /* Check if the path start with protocol (meaning we have the full path); alternatively we have only URL (path/to/resource) */
-    if ((false == mender_utils_strbeginwith(path, "http://")) && (false == mender_utils_strbeginwith(path, "https://"))) {
+    if ((false == mender_utils_strbeginswith(path, "http://")) && (false == mender_utils_strbeginswith(path, "https://"))) {
 
         /* Path contains the URL only, retrieve host and port from configuration (config_host) */
         assert(NULL != url);
@@ -61,9 +61,9 @@ mender_net_get_host_port_url(const char *path, char *config_host, char **host, c
     }
 
     /* Determine protocol and default port */
-    if (mender_utils_strbeginwith(path, "http://")) {
+    if (mender_utils_strbeginswith(path, "http://")) {
         path_no_prefix = path + strlen("http://");
-    } else if (mender_utils_strbeginwith(path, "https://")) {
+    } else if (mender_utils_strbeginswith(path, "https://")) {
         path_no_prefix = path + strlen("https://");
         is_https       = true;
     }

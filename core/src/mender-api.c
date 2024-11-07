@@ -281,7 +281,7 @@ END:
 
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-    mender_utils_free_linked_list(provides);
+    mender_utils_key_value_list_free(provides);
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
     cJSON_Delete(json_payload);

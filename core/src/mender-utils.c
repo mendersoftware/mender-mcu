@@ -120,7 +120,7 @@ mender_utils_strrstr(const char *haystack, const char *needle) {
 }
 
 bool
-mender_utils_strbeginwith(const char *s1, const char *s2) {
+mender_utils_strbeginswith(const char *s1, const char *s2) {
 
     /* Check parameters */
     if ((NULL == s1) || (NULL == s2)) {
@@ -132,15 +132,22 @@ mender_utils_strbeginwith(const char *s1, const char *s2) {
 }
 
 bool
-mender_utils_strendwith(const char *s1, const char *s2) {
+mender_utils_strendswith(const char *s1, const char *s2) {
 
     /* Check parameters */
     if ((NULL == s1) || (NULL == s2)) {
         return false;
     }
 
+    const size_t len1 = strlen(s1);
+    const size_t len2 = strlen(s2);
+
+    if (len1 < len2) {
+        return false;
+    }
+
     /* Compare the end of the string */
-    return (0 == strncmp(s1 + strlen(s1) - strlen(s2), s2, strlen(s2)));
+    return (0 == strncmp(s1 + len1 - len2, s2, len2));
 }
 
 char *
@@ -175,6 +182,11 @@ hexdigit_value(char digit) {
 
 bool
 mender_utils_hexdump_to_bytes(const char *hexdump, unsigned char *bytes, size_t n_bytes) {
+    if (NULL == hexdump) {
+        mender_log_error("Hexdump is NULL");
+        return false;
+    }
+
     for (size_t i = 0; i < n_bytes; i++) {
         size_t idx = 2 * i;
         if (!(((hexdump[idx] >= '0') && (hexdump[idx] <= '9')) || ((hexdump[idx] >= 'a') && (hexdump[idx] <= 'f')))
@@ -375,7 +387,7 @@ mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object) {
 }
 
 mender_err_t
-mender_utils_free_linked_list(mender_key_value_list_t *list) {
+mender_utils_key_value_list_free(mender_key_value_list_t *list) {
     mender_key_value_list_t *item = list;
     while (NULL != item) {
         mender_key_value_list_t *next = item->next;
@@ -387,7 +399,7 @@ mender_utils_free_linked_list(mender_key_value_list_t *list) {
     return MENDER_OK;
 }
 mender_err_t
-mender_utils_create_key_value_node(const char *type, const char *value, mender_key_value_list_t **list) {
+mender_utils_key_value_list_create_node(const char *type, const char *value, mender_key_value_list_t **list) {
 
     assert(NULL != type);
     assert(NULL != value);
@@ -417,7 +429,7 @@ mender_utils_create_key_value_node(const char *type, const char *value, mender_k
     return MENDER_OK;
 
 ERROR:
-    mender_utils_free_linked_list(item);
+    mender_utils_key_value_list_free(item);
     return MENDER_FAIL;
 }
 
@@ -493,7 +505,7 @@ mender_utils_string_to_key_value_list(const char *key_value_str, mender_key_valu
         }
         /* Add null terminator to split key and value to get the key from the token */
         token[delimiter_pos - token] = '\0';
-        if (MENDER_OK != mender_utils_create_key_value_node(token, delimiter_pos + 1, list)) {
+        if (MENDER_OK != mender_utils_key_value_list_create_node(token, delimiter_pos + 1, list)) {
             mender_log_error("Unable to create key-value node");
             goto END;
         }
@@ -507,7 +519,7 @@ END:
 }
 
 mender_err_t
-mender_utils_append_list(mender_key_value_list_t **list1, mender_key_value_list_t **list2) {
+mender_utils_key_value_list_append(mender_key_value_list_t **list1, mender_key_value_list_t **list2) {
 
     /* Combine two linked lists by pointing the last element of the first list
      * to the first element of the second list

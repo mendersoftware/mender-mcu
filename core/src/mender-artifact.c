@@ -298,7 +298,7 @@ is_compressed(const char *filename) {
     static const char *compression_suffixes[] = { ".gz", ".xz", ".zst", NULL };
 
     for (size_t i = 0; NULL != compression_suffixes[i]; i++) {
-        if (mender_utils_strendwith(filename, compression_suffixes[i])) {
+        if (mender_utils_strendswith(filename, compression_suffixes[i])) {
             return true;
         }
     }
@@ -322,7 +322,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
             /* data/ files are processed per block for which the original size of the buffer should
                be enough, but metadata is processed as whole files so there we expect we will need
                more. */
-            if (mender_utils_strbeginwith(ctx->file.name, "data/")) {
+            if (mender_utils_strbeginswith(ctx->file.name, "data/")) {
                 expected_required = ctx->input.orig_size;
             } else {
                 expected_required = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE) + MENDER_ARTIFACT_STREAM_BLOCK_SIZE;
@@ -381,24 +381,24 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
                 /* Read header-info file */
                 ret = artifact_read_header_info(ctx);
 
-            } else if ((true == mender_utils_strbeginwith(ctx->file.name, "header.tar/headers"))
-                       && (true == mender_utils_strendwith(ctx->file.name, "meta-data"))) {
+            } else if ((true == mender_utils_strbeginswith(ctx->file.name, "header.tar/headers"))
+                       && (true == mender_utils_strendswith(ctx->file.name, "meta-data"))) {
 
                 /* Read meta-data file */
                 ret = artifact_read_meta_data(ctx);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-            } else if (mender_utils_strbeginwith(ctx->file.name, "header.tar/headers") && mender_utils_strendwith(ctx->file.name, "type-info")) {
+            } else if (mender_utils_strbeginswith(ctx->file.name, "header.tar/headers") && mender_utils_strendswith(ctx->file.name, "type-info")) {
 
                 /* Read type-info file */
                 ret = artifact_read_type_info(ctx);
 #endif
-            } else if (true == mender_utils_strbeginwith(ctx->file.name, "data")) {
+            } else if (true == mender_utils_strbeginswith(ctx->file.name, "data")) {
 
                 /* Read data */
                 ret = artifact_read_data(ctx, dl_data);
 
-            } else if (false == mender_utils_strendwith(ctx->file.name, ".tar")) {
+            } else if (false == mender_utils_strendswith(ctx->file.name, ".tar")) {
 
                 /* Drop data, file is not relevant */
                 ret = artifact_drop_file(ctx);
@@ -446,8 +446,8 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
                 cJSON_Delete(ctx->payloads.values[index].meta_data);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-                mender_utils_free_linked_list(ctx->payloads.values[index].provides);
-                mender_utils_free_linked_list(ctx->payloads.values[index].depends);
+                mender_utils_key_value_list_free(ctx->payloads.values[index].provides);
+                mender_utils_key_value_list_free(ctx->payloads.values[index].depends);
                 for (size_t i = 0; i < ctx->payloads.values[index].clears_provides_size; i++) {
                     free(ctx->payloads.values[index].clears_provides[i]);
                 }
@@ -458,8 +458,8 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
         }
         free(ctx->file.name);
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-        mender_utils_free_linked_list(ctx->artifact_info.provides);
-        mender_utils_free_linked_list(ctx->artifact_info.depends);
+        mender_utils_key_value_list_free(ctx->artifact_info.provides);
+        mender_utils_key_value_list_free(ctx->artifact_info.depends);
         for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
             free(checksum->filename);
             mender_sha256_finish(checksum->context, NULL);
@@ -742,14 +742,14 @@ artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_l
     cJSON *json_element = NULL;
     cJSON_ArrayForEach(json_element, json_provides_depends) {
         if (cJSON_IsString(json_element)) {
-            if (MENDER_OK != mender_utils_create_key_value_node(json_element->string, json_element->valuestring, provides_depends)) {
+            if (MENDER_OK != mender_utils_key_value_list_create_node(json_element->string, json_element->valuestring, provides_depends)) {
                 mender_log_error("Unable to create linked list node for string element");
                 goto ERROR;
             }
         } else if (cJSON_IsArray(json_element)) {
             cJSON *json_element_value = NULL;
             cJSON_ArrayForEach(json_element_value, json_element) {
-                if (MENDER_OK != mender_utils_create_key_value_node(json_element->string, json_element_value->valuestring, provides_depends)) {
+                if (MENDER_OK != mender_utils_key_value_list_create_node(json_element->string, json_element_value->valuestring, provides_depends)) {
                     mender_log_error("Unable to create linked list node for array element");
                     goto ERROR;
                 }
@@ -764,7 +764,7 @@ artifact_parse_provides_depends(cJSON *json_provides_depends, mender_key_value_l
 
 ERROR:
     /* Free linked list in case of error */
-    mender_utils_free_linked_list(*provides_depends);
+    mender_utils_key_value_list_free(*provides_depends);
     return MENDER_FAIL;
 }
 #endif
@@ -988,7 +988,7 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
      * %u is the index. Yes sscanf(3) would be nice, but we've experienced
      * unexplained segmentation faults on some hardware when using it. */
     const char *const prefix = "header.tar/headers/";
-    if (!mender_utils_strbeginwith(ctx->file.name, prefix)) {
+    if (!mender_utils_strbeginswith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }
@@ -1125,7 +1125,7 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
      * Yes sscanf(3) would be nice, but we've experienced unexplained
      * segmentation faults on some hardware when using it. */
     const char *const prefix = "data/";
-    if (!mender_utils_strbeginwith(ctx->file.name, prefix)) {
+    if (!mender_utils_strbeginswith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
     }

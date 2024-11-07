@@ -119,7 +119,7 @@ mender_http_perform(char                *jwt,
     struct curl_slist *headers         = NULL;
 
     /* Compute URL if required */
-    if (!mender_utils_strbeginwith(path, "http://") && !mender_utils_strbeginwith(path, "https://")) {
+    if (!mender_utils_strbeginswith(path, "http://") && !mender_utils_strbeginswith(path, "https://")) {
         if (-1 == asprintf(&url, "%s%s", http_config.host, path)) {
             mender_log_error("Unable to allocate memory for URL");
             ret = MENDER_FAIL;
@@ -252,7 +252,7 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     struct curl_slist *headers = NULL;
 
     /* Compute URL if required */
-    if (!mender_utils_strbeginwith(uri, "http://") && !mender_utils_strbeginwith(uri, "https://")) {
+    if (!mender_utils_strbeginswith(uri, "http://") && !mender_utils_strbeginswith(uri, "https://")) {
         if (-1 == asprintf(&url, "%s%s", http_config.host, uri)) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;

@@ -53,6 +53,16 @@ typedef struct {
     char prefix[155];
 } mender_artifact_tar_header_t;
 
+struct data_mdata_cache {
+    const char *filename;
+    char       *checksum_fname;
+    cJSON      *meta_data;
+    const char *deployment_id;
+    const char *artifact_name;
+    const char *payload_type;
+    bool        valid;
+};
+
 /**
  * @brief Supported artifact format and version
  */
@@ -115,14 +125,38 @@ static mender_err_t artifact_read_meta_data(mender_artifact_ctx_t *ctx);
  * @brief Read data file of the artifact
  * @param ctx Artifact context
  * @param dl_data Download data for the artifact
+ * @param mdata_cache Cache with metadata for the current data being processed
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data);
+static mender_err_t artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data, struct data_mdata_cache *mdata_cache);
+
+/**
+ * @brief Prepare a cache with metadata for the current data being processed
+ * @param ctx Artifact context
+ * @param dl_data Download data for the artifact
+ * @param mdata_cache Cache to populate
+ * @return MENDER_OK in case of success, error otherwise
+ */
+static mender_err_t artifact_read_data_prepare(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data, struct data_mdata_cache *mdata_cache);
+
+/**
+ * @brief Invalidate the cache with metadata for the current data being processed
+ * @param mdata_cache Cache to invalidate
+ */
+static inline void
+data_mdata_cache_invalidate(struct data_mdata_cache *mdata_cache) {
+    assert(NULL != mdata_cache);
+
+    FREE_AND_NULL(mdata_cache->checksum_fname);
+    mdata_cache->valid = false;
+}
 
 /**
  * @brief Process chunk of artifact data
  */
-static mender_err_t process_artifact_data_callback(const char                      *type,
+static mender_err_t process_artifact_data_callback(const char                      *deployment_id,
+                                                   const char                      *type,
+                                                   const char                      *artifact_name,
                                                    const cJSON                     *meta_data,
                                                    const char                      *filename,
                                                    size_t                           size,
@@ -306,6 +340,8 @@ is_compressed(const char *filename) {
     return false;
 }
 
+static struct data_mdata_cache data_mdata_cache = { 0 };
+
 mender_err_t
 mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_t input_length, mender_artifact_download_data_t *dl_data) {
 
@@ -362,6 +398,9 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
             /* Parse TAR header */
             ret = artifact_parse_tar_header(ctx);
 
+            /* Processing a new (data) file, invalidate the cache */
+            data_mdata_cache_invalidate(&data_mdata_cache);
+
         } else if (MENDER_ARTIFACT_STREAM_STATE_PARSING_DATA == ctx->stream_state) {
 
             /* Treatment depending of the file name */
@@ -393,11 +432,21 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
                 /* Read type-info file */
                 ret = artifact_read_type_info(ctx);
 #endif
-            } else if (true == mender_utils_strbeginswith(ctx->file.name, "data")) {
+            } else if ((mender_utils_strbeginswith(ctx->file.name, "data")) && (strlen(ctx->file.name) > strlen("data/xxxx.tar"))) {
+                /* Processing data. But the first "file" is data/0000.tar which
+                   is not a real file, it's just the beginning of the tarball
+                   for which we don't need to do anything here. Hence the
+                   strlen() check above. */
+                if (!data_mdata_cache.valid) {
+                    /* Populate the cache and do one-off things */
+                    ret = artifact_read_data_prepare(ctx, dl_data, &data_mdata_cache);
+                }
 
-                /* Read data */
-                ret = artifact_read_data(ctx, dl_data);
-
+                if (MENDER_OK == ret) {
+                    assert(data_mdata_cache.valid);
+                    /* Read data */
+                    ret = artifact_read_data(ctx, dl_data, &data_mdata_cache);
+                }
             } else if (false == mender_utils_strendswith(ctx->file.name, ".tar")) {
 
                 /* Drop data, file is not relevant */
@@ -1037,7 +1086,9 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
 
 /**
  * @brief Callback function to be invoked to perform the treatment of the data from the artifact
+ * @param deployment_id Deployment ID
  * @param type Type from header-info payloads
+ * @param artifact_name Artifact name
  * @param meta_data Meta-data from header tarball
  * @param filename Artifact filename
  * @param size Artifact file size
@@ -1048,7 +1099,9 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
  * @return MENDER_OK if the function succeeds, error code if an error occurred
  */
 static mender_err_t
-process_artifact_data_callback(const char                      *type,
+process_artifact_data_callback(const char                      *deployment_id,
+                               const char                      *type,
+                               const char                      *artifact_name,
                                const cJSON                     *meta_data,
                                const char                      *filename,
                                size_t                           size,
@@ -1076,53 +1129,22 @@ process_artifact_data_callback(const char                      *type,
     }
 #endif
 
-    dl_data->update_module = mender_update_module_get(type);
-    if (NULL == dl_data->update_module) {
-        /* Content is not supported by the mender-mcu-client */
-        mender_log_error("Unable to handle artifact type '%s'", type);
-        return MENDER_FAIL;
-    }
-
-    /* Retrieve ID and artifact name */
-    const char *id;
-    if (MENDER_OK != mender_deployment_data_get_id(dl_data->deployment, &id)) {
-        mender_log_error("Unable to get ID from the deployment data");
-        return MENDER_FAIL;
-    }
-    const char *artifact_name;
-    if (MENDER_OK != mender_deployment_data_get_artifact_name(dl_data->deployment, &artifact_name)) {
-        mender_log_error("Unable to get artifact name from the deployment data");
-        return MENDER_FAIL;
-    }
-
     /* Invoke update module download callback */
-    struct mender_update_download_state_data_s download_state_data = { id, artifact_name, type, meta_data, filename, size, data, index, length, false };
-    mender_update_state_data_t                 state_data          = { .download_state_data = &download_state_data };
+    struct mender_update_download_state_data_s download_state_data
+        = { deployment_id, artifact_name, type, meta_data, filename, size, data, index, length, false };
+    mender_update_state_data_t state_data = { .download_state_data = &download_state_data };
     if (MENDER_OK != (ret = dl_data->update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD](MENDER_UPDATE_STATE_DOWNLOAD, state_data))) {
         mender_log_error("An error occurred while processing data of the artifact '%s' of type '%s'", artifact_name, type);
         return ret;
-    }
-
-    /* Treatments related to the artifact type (once) */
-    if (0 == index) {
-        /* Add type to the deployment data */
-        if (MENDER_OK != (ret = mender_deployment_data_add_payload_type(dl_data->deployment, type))) {
-            /* Error already logged */
-            return ret;
-        }
     }
 
     return MENDER_OK;
 }
 
 static mender_err_t
-artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data) {
-
-    assert(NULL != ctx);
-    mender_err_t ret;
-
-    /* Retrieve payload index. We expect "data/%u.tar" where %u is the index.
-     * Yes sscanf(3) would be nice, but we've experienced unexplained
+artifact_read_data_prepare(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data, struct data_mdata_cache *mdata_cache) {
+    /* First, retrieve payload index. We expect "data/%u.tar" where %u is the
+     * index. Yes sscanf(3) would be nice, but we've experienced unexplained
      * segmentation faults on some hardware when using it. */
     const char *const prefix = "data/";
     if (!mender_utils_strbeginswith(ctx->file.name, prefix)) {
@@ -1146,18 +1168,60 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
     assert(NULL != end_ptr);
     assert(StringEqualN(end_ptr, ".tar", 4)); /* just one last sanity check */
 
-    /* Check if a file name is provided (we don't check the extension because we don't know it) */
-    if (strlen("data/xxxx.tar") == strlen(ctx->file.name)) {
+    const char *payload_type = ctx->payloads.values[index].type;
 
-        /* Beginning of the data file */
-        if (MENDER_OK
-            != (ret = process_artifact_data_callback(ctx->payloads.values[index].type, ctx->payloads.values[index].meta_data, NULL, 0, NULL, 0, 0, dl_data))) {
-            mender_log_error("An error occurred");
-            return ret;
-        }
-
-        return MENDER_DONE;
+    /* Choose update module */
+    dl_data->update_module = mender_update_module_get(payload_type);
+    if (NULL == dl_data->update_module) {
+        /* Content is not supported by the mender-mcu-client */
+        mender_log_error("Unable to handle artifact type '%s'", payload_type);
+        return MENDER_FAIL;
     }
+
+    /* Add the payload type to deployment data  */
+    if (MENDER_OK != mender_deployment_data_add_payload_type(dl_data->deployment, payload_type)) {
+        /* Error already logged */
+        return MENDER_FAIL;
+    }
+
+    /* Retrieve ID and artifact name */
+    if (MENDER_OK != mender_deployment_data_get_id(dl_data->deployment, &(mdata_cache->deployment_id))) {
+        mender_log_error("Unable to get ID from the deployment data");
+        return MENDER_FAIL;
+    }
+    if (MENDER_OK != mender_deployment_data_get_artifact_name(dl_data->deployment, &(mdata_cache->artifact_name))) {
+        mender_log_error("Unable to get artifact name from the deployment data");
+        return MENDER_FAIL;
+    }
+
+    mdata_cache->payload_type = payload_type;
+    mdata_cache->meta_data    = ctx->payloads.values[index].meta_data;
+    mdata_cache->filename     = strstr(ctx->file.name, ".tar") + strlen(".tar") + 1;
+
+    /* The filename will be something like
+     * 'data/0000.tar/zephyr.signed.bin'. But the manifest will hold
+     * 'data/0000/zephyr.signed.bin'. Hence, we need to remove the
+     * '.tar' extension from the string.
+     */
+    if (NULL == (mdata_cache->checksum_fname = strdup(ctx->file.name))) {
+        mender_log_error("Unable to allocate memory");
+        return MENDER_FAIL;
+    }
+    for (char *ch = strstr(mdata_cache->checksum_fname, ".tar"); (NULL != ch) && (*ch != '\0'); ch++) {
+        /* Don't worry! The call to strlen() on a static string should
+         * be optimized out by the compiler */
+        *ch = ch[strlen(".tar")];
+    }
+
+    mdata_cache->valid = true;
+    return MENDER_OK;
+}
+
+static mender_err_t
+artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data, struct data_mdata_cache *mdata_cache) {
+
+    assert(NULL != ctx);
+    mender_err_t ret;
 
     /* Check size of the data */
     if (0 == artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
@@ -1179,26 +1243,10 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         mender_artifact_checksum_t *checksum;
-        {
-            /* The filename will be something like
-             * 'data/0000.tar/zephyr.signed.bin'. But the manifest will hold
-             * 'data/0000/zephyr.signed.bin'. Hence, we need to remove the
-             * '.tar' extension from the string.
-             */
-            char filename[strlen(ctx->file.name) + 1];
-            strcpy(filename, ctx->file.name);
-
-            for (char *ch = strstr(filename, ".tar"); (NULL != ch) && (*ch != '\0'); ch++) {
-                /* Don't worry! The call to strlen() on a static string should
-                 * be optimized out by the compiler */
-                *ch = ch[strlen(".tar")];
-            }
-
-            /* Get checksum entry (create one if needed) */
-            if (NULL == (checksum = artifact_checksum_get_or_create(ctx, filename))) {
-                /* Error already logged */
-                return MENDER_FAIL;
-            }
+        /* Get checksum entry (create one if needed) */
+        if (NULL == (checksum = artifact_checksum_get_or_create(ctx, mdata_cache->checksum_fname))) {
+            /* Error already logged */
+            return MENDER_FAIL;
         }
 
         /* Update SHA-256 checksum */
@@ -1209,9 +1257,11 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
         /* Invoke the download artifact callback */
-        ret = process_artifact_data_callback(ctx->payloads.values[index].type,
-                                             ctx->payloads.values[index].meta_data,
-                                             strstr(ctx->file.name, ".tar") + strlen(".tar") + 1,
+        ret = process_artifact_data_callback(mdata_cache->deployment_id,
+                                             mdata_cache->payload_type,
+                                             mdata_cache->artifact_name,
+                                             mdata_cache->meta_data,
+                                             mdata_cache->filename,
                                              ctx->file.size,
                                              ctx->input.data,
                                              ctx->file.index,

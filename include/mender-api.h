@@ -58,15 +58,18 @@ typedef struct {
 mender_err_t mender_api_init(mender_api_config_t *config);
 
 /**
- * @brief Whether a successful authentication to a Mender server has been performed or not
- */
-bool mender_api_is_authenticated(void);
-
-/**
  * @brief Perform authentication of the device, retrieve token from mender-server used for the next requests
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_api_perform_authentication(void);
+
+/**
+ * @brief  Ensures being authenticated to a Mender server API
+ * @return MENDER_DONE if already authenticated,
+ *         MENDER_OK if successfully authenticated,
+ *         MENDER_FAIL otherwise
+ */
+mender_err_t mender_api_ensure_authenticated(void);
 
 /**
  * @brief Check for deployments for the device from the mender-server

@@ -542,26 +542,6 @@ mender_commit_artifact_data(void) {
     return MENDER_OK;
 }
 
-mender_err_t
-mender_client_ensure_authenticated(void) {
-    if (mender_api_is_authenticated()) {
-        return MENDER_DONE;
-    }
-
-    if (MENDER_FAIL == mender_client_ensure_connected()) {
-        return MENDER_FAIL;
-    }
-
-    /* Perform authentication with the mender server */
-    if (MENDER_OK != mender_api_perform_authentication()) {
-        mender_log_error("Authentication failed");
-        return MENDER_FAIL;
-    }
-
-    mender_log_debug("Authenticated successfully");
-    return MENDER_OK;
-}
-
 static mender_err_t
 deployment_destroy(mender_api_deployment_data_t *deployment) {
     if (NULL != deployment) {
@@ -792,8 +772,8 @@ static mender_err_t
 mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
     assert(NULL != deployment_data);
 
-    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
-        /* authentication errors logged already */
+    if (MENDER_FAIL == mender_client_ensure_connected()) {
+        /* network errors logged already */
         mender_log_error("Cannot check for new deployment");
         return MENDER_FAIL;
     }
@@ -1141,8 +1121,8 @@ END:
 
 static mender_err_t
 mender_client_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
-    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
-        /* authentication errors logged already */
+    if (MENDER_FAIL == mender_client_ensure_connected()) {
+        /* connection errors logged already */
         mender_log_error("Cannot publish deployment status");
         return MENDER_FAIL;
     }

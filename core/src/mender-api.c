@@ -87,9 +87,20 @@ mender_api_init(mender_api_config_t *config) {
     return ret;
 }
 
-bool
-mender_api_is_authenticated(void) {
-    return NULL != api_jwt;
+mender_err_t
+mender_api_ensure_authenticated(void) {
+    if (NULL != api_jwt) {
+        return MENDER_DONE;
+    }
+
+    /* Perform authentication with the mender server */
+    if (MENDER_OK != mender_api_perform_authentication()) {
+        mender_log_error("Authentication failed");
+        return MENDER_FAIL;
+    }
+
+    mender_log_debug("Authenticated successfully");
+    return MENDER_OK;
 }
 
 mender_err_t
@@ -436,8 +447,8 @@ END:
 
 mender_err_t
 mender_api_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
-
     assert(NULL != id);
+
     mender_err_t ret;
     char        *value        = NULL;
     cJSON       *json_payload = NULL;
@@ -445,6 +456,11 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     char        *path         = NULL;
     char        *response     = NULL;
     int          status       = 0;
+
+    if (MENDER_OK != (ret = mender_api_ensure_authenticated())) {
+        /* Authentication errors already logged. */
+        return ret;
+    }
 
     /* Deployment status to string */
     if (NULL == (value = mender_utils_deployment_status_to_string(deployment_status))) {
@@ -511,6 +527,11 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
     char        *response      = NULL;
     int          status        = 0;
     const char  *artifact_name = NULL;
+
+    if (MENDER_OK != (ret == mender_api_ensure_authenticated())) {
+        /* Authentication errors already logged. */
+        return ret;
+    }
 
     if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
         mender_log_error("Unable to get artifact name");

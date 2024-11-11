@@ -115,14 +115,6 @@ mender_err_t mender_client_execute(void);
 mender_err_t mender_client_ensure_connected(void);
 
 /**
- * @brief  Ensures the client is authenticated to a Mender server API
- * @return MENDER_DONE if already authenticated,
- *         MENDER_OK if successfully authenticated,
- *         MENDER_FAIL otherwise
- */
-mender_err_t mender_client_ensure_authenticated(void);
-
-/**
  * @brief Release mender client
  * @return MENDER_OK if the function succeeds, error code otherwise
  */

@@ -43,7 +43,7 @@
 /**
  * @brief Mender API configuration
  */
-static mender_api_config_t mender_api_config;
+static mender_api_config_t api_config;
 
 /**
  * @brief Authentication token
@@ -62,17 +62,18 @@ static mender_err_t mender_api_http_text_callback(mender_http_client_event_t eve
 
 mender_err_t
 mender_api_init(mender_api_config_t *config) {
-
     assert(NULL != config);
     assert(NULL != config->device_type);
     assert(NULL != config->host);
+    assert(NULL != config->identity_cb);
+
     mender_err_t ret;
 
     /* Save configuration */
-    memcpy(&mender_api_config, config, sizeof(mender_api_config_t));
+    memcpy(&api_config, config, sizeof(mender_api_config_t));
 
     /* Initializations */
-    mender_http_config_t mender_http_config = { .host = mender_api_config.host };
+    mender_http_config_t mender_http_config = { .host = api_config.host };
     if (MENDER_OK != (ret = mender_http_init(&mender_http_config))) {
         mender_log_error("Unable to initialize HTTP");
         return ret;
@@ -87,9 +88,7 @@ mender_api_is_authenticated(void) {
 }
 
 mender_err_t
-mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t **identity)) {
-
-    assert(NULL != get_identity);
+mender_api_perform_authentication(void) {
     mender_err_t       ret;
     char              *public_key_pem       = NULL;
     cJSON             *json_identity        = NULL;
@@ -109,7 +108,7 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
     }
 
     /* Get identity */
-    if (MENDER_OK != (ret = get_identity(&identity))) {
+    if (MENDER_OK != (ret = api_config.identity_cb(&identity))) {
         mender_log_error("Unable to get identity");
         goto END;
     }
@@ -133,8 +132,8 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
     }
     cJSON_AddStringToObject(json_payload, "id_data", unformatted_identity);
     cJSON_AddStringToObject(json_payload, "pubkey", public_key_pem);
-    if (NULL != mender_api_config.tenant_token) {
-        cJSON_AddStringToObject(json_payload, "tenant_token", mender_api_config.tenant_token);
+    if (NULL != api_config.tenant_token) {
+        cJSON_AddStringToObject(json_payload, "tenant_token", api_config.tenant_token);
     }
     if (NULL == (payload = cJSON_PrintUnformatted(json_payload))) {
         mender_log_error("Unable to allocate memory");
@@ -225,7 +224,7 @@ api_check_for_deployment_v2(int *status, void *response) {
         goto END;
     }
 
-    if (NULL == cJSON_AddStringToObject(json_provides, "device_type", mender_api_config.device_type)) {
+    if (NULL == cJSON_AddStringToObject(json_provides, "device_type", api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -305,7 +304,7 @@ api_check_for_deployment_v1(int *status, void *response) {
     }
 
     /* Compute path */
-    if (-1 == asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, mender_api_config.device_type)) {
+    if (-1 == asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -541,7 +540,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
         goto END;
     }
     cJSON_AddStringToObject(item, "name", "device_type");
-    cJSON_AddStringToObject(item, "value", mender_api_config.device_type);
+    cJSON_AddStringToObject(item, "value", api_config.device_type);
     cJSON_AddItemToArray(object, item);
     if (NULL != inventory) {
         size_t index = 0;

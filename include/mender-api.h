@@ -33,9 +33,10 @@ extern "C" {
  * @brief Mender API configuration
  */
 typedef struct {
-    char *device_type;  /**< Device type */
-    char *host;         /**< URL of the mender server */
-    char *tenant_token; /**< Tenant token used to authenticate on the mender server (optional) */
+    char *device_type;                                         /**< Device type */
+    char *host;                                                /**< URL of the mender server */
+    char *tenant_token;                                        /**< Tenant token used to authenticate on the mender server (optional) */
+    mender_err_t (*identity_cb)(mender_identity_t **identity); /**< Invoked to retrieve identity */
 } mender_api_config_t;
 
 /**
@@ -65,7 +66,7 @@ bool mender_api_is_authenticated(void);
  * @brief Perform authentication of the device, retrieve token from mender-server used for the next requests
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t **identity));
+mender_err_t mender_api_perform_authentication(void);
 
 /**
  * @brief Check for deployments for the device from the mender-server

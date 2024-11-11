@@ -291,6 +291,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         .device_type  = mender_client_config.device_type,
         .host         = mender_client_config.host,
         .tenant_token = mender_client_config.tenant_token,
+        .identity_cb  = callbacks->get_identity,
     };
     if (MENDER_OK != (ret = mender_api_init(&mender_api_config))) {
         mender_log_error("Unable to initialize API");
@@ -552,7 +553,7 @@ mender_client_ensure_authenticated(void) {
     }
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != mender_api_perform_authentication(mender_client_callbacks.get_identity)) {
+    if (MENDER_OK != mender_api_perform_authentication()) {
         mender_log_error("Authentication failed");
         return MENDER_FAIL;
     }

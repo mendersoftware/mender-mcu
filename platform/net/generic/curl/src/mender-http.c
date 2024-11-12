@@ -309,6 +309,12 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
         goto END;
     }
 
+    /* Artifact download failed*/
+    if (MENDER_OK != dl_data->ret) {
+        ret = MENDER_FAIL;
+        goto END;
+    }
+
     /* Read HTTP status code */
     long response_code;
     if (CURLE_OK != (err = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code))) {

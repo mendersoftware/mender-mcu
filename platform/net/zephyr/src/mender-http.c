@@ -304,6 +304,11 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
         goto END;
     }
 
+    /* Artifact download failed*/
+    if (MENDER_OK != dl_data->ret) {
+        goto END;
+    }
+
     /* Check if an error occured during the treatment of data */
     if (MENDER_OK != (ret = request_ret)) {
         goto END;

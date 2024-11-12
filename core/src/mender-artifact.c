@@ -329,6 +329,7 @@ mender_artifact_get_ctx(mender_artifact_ctx_t **ctx) {
 static bool
 is_compressed(const char *filename) {
 
+    /* Mender artifact supports `.gz`, `.xz`, and `.zst` */
     static const char *compression_suffixes[] = { ".gz", ".xz", ".zst", NULL };
 
     for (size_t i = 0; NULL != compression_suffixes[i]; i++) {
@@ -385,12 +386,6 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
 
     /* Parse data */
     do {
-
-        /* We do not support compressed artifacts */
-        if (is_compressed(ctx->file.name)) {
-            mender_log_error("Artifact compression is not supported");
-            return MENDER_FAIL;
-        }
 
         /* Treatment depending of the stream state */
         if (MENDER_ARTIFACT_STREAM_STATE_PARSING_HEADER == ctx->stream_state) {
@@ -744,6 +739,12 @@ artifact_read_manifest(mender_artifact_ctx_t *ctx) {
 
         const char *checksum_str = line;
         const char *filename     = separator + 2;
+
+        /* We do not support compressed artifacts */
+        if (mender_utils_strbeginswith(filename, "header.tar") && is_compressed(filename)) {
+            mender_log_error("Artifact compression is not supported");
+            return MENDER_FAIL;
+        }
 
         /* Useful when debugging artifact integrity check failures */
         mender_log_debug("%s  %s", checksum_str, filename);
@@ -1150,6 +1151,22 @@ artifact_read_data_prepare(mender_artifact_ctx_t *ctx, mender_artifact_download_
     if (!mender_utils_strbeginswith(ctx->file.name, prefix)) {
         mender_log_error("Invalid artifact format");
         return MENDER_FAIL;
+    }
+
+    size_t file_name_length = strlen(ctx->file.name);
+    /* We check the length to make sure we only check for compression on the
+     * payload itself - not the files inside the payload */
+    if ((strlen("data/xxxx.tar.xx") == file_name_length) || (strlen("data/xxxx.tar.xxx") == file_name_length)) {
+        /*
+        * We allow compressed files _inside_ a payload:
+        *   'data/0000.tar/compressed.tar.gz'
+        * But not a compressed payload:
+        *   'data/0000.tar[.gz|.xz|.zst]'
+        **/
+        if (is_compressed(ctx->file.name)) {
+            mender_log_error("Artifact compression is not supported");
+            return MENDER_FAIL;
+        }
     }
 
     assert(sizeof(size_t) >= sizeof(unsigned long));

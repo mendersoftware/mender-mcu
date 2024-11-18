@@ -214,6 +214,38 @@ END:
     return ret;
 }
 
+/**
+ * @see mender_http_perform()
+ */
+static mender_err_t
+authenticated_http_perform(char                *path,
+                           mender_http_method_t method,
+                           char                *payload,
+                           char                *signature,
+                           mender_err_t (*callback)(mender_http_client_event_t, void *, size_t, void *),
+                           void *params,
+                           int  *status) {
+    mender_err_t ret;
+
+    if (MENDER_FAIL == (ret = mender_api_ensure_authenticated())) {
+        /* Authentication errors already logged. */
+        return ret;
+    }
+    assert(NULL != api_jwt);
+
+    if (MENDER_OK != (ret = mender_http_perform(api_jwt, path, method, payload, signature, callback, params, status))) {
+        /* HTTP errors already logged. */
+        return ret;
+    }
+
+    if (401 == *status) {
+        /* Unauthorized => make sure we try to re-authenticate first next time */
+        FREE_AND_NULL(api_jwt);
+    }
+
+    return ret;
+}
+
 static mender_err_t
 api_check_for_deployment_v2(int *status, void *response) {
     assert(NULL != status);
@@ -280,8 +312,8 @@ api_check_for_deployment_v2(int *status, void *response) {
 
     /* Perform HTTP request */
     if (MENDER_OK
-        != (ret = mender_http_perform(
-                api_jwt, MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2, MENDER_HTTP_POST, payload, NULL, &mender_api_http_text_callback, (void *)response, status))) {
+        != (ret = authenticated_http_perform(
+                MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2, MENDER_HTTP_POST, payload, NULL, &mender_api_http_text_callback, (void *)response, status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -322,7 +354,7 @@ api_check_for_deployment_v1(int *status, void *response) {
     }
 
     /* Perform HTTP request */
-    if (MENDER_OK != (ret = mender_http_perform(api_jwt, path, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_text_callback, (void *)response, status))) {
+    if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_text_callback, (void *)response, status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -457,11 +489,6 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     char        *response     = NULL;
     int          status       = 0;
 
-    if (MENDER_OK != (ret = mender_api_ensure_authenticated())) {
-        /* Authentication errors already logged. */
-        return ret;
-    }
-
     /* Deployment status to string */
     if (NULL == (value = mender_utils_deployment_status_to_string(deployment_status))) {
         mender_log_error("Invalid status");
@@ -492,7 +519,7 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     snprintf(path, str_length, MENDER_API_PATH_PUT_DEPLOYMENT_STATUS, id);
 
     /* Perform HTTP request */
-    if (MENDER_OK != (ret = mender_http_perform(api_jwt, path, MENDER_HTTP_PUT, payload, NULL, &mender_api_http_text_callback, (void *)&response, &status))) {
+    if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_PUT, payload, NULL, &mender_api_http_text_callback, (void *)&response, &status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -527,11 +554,6 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
     char        *response      = NULL;
     int          status        = 0;
     const char  *artifact_name = NULL;
-
-    if (MENDER_OK != (ret == mender_api_ensure_authenticated())) {
-        /* Authentication errors already logged. */
-        return ret;
-    }
 
     if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
         mender_log_error("Unable to get artifact name");
@@ -585,8 +607,8 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
 
     /* Perform HTTP request */
     if (MENDER_OK
-        != (ret = mender_http_perform(
-                api_jwt, MENDER_API_PATH_PUT_DEVICE_ATTRIBUTES, MENDER_HTTP_PUT, payload, NULL, &mender_api_http_text_callback, (void *)&response, &status))) {
+        != (ret = authenticated_http_perform(
+                MENDER_API_PATH_PUT_DEVICE_ATTRIBUTES, MENDER_HTTP_PUT, payload, NULL, &mender_api_http_text_callback, (void *)&response, &status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }

@@ -185,6 +185,8 @@ mender_api_perform_authentication(void) {
         ret = MENDER_OK;
     } else {
         mender_api_print_response_error(response, status);
+        /* Maybe the identity is wrong? Let's make sure we get fresh data for the next attempt. */
+        FREE_AND_NULL(identity_info);
         ret = MENDER_FAIL;
     }
 

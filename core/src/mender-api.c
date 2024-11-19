@@ -23,6 +23,7 @@
 
 #include "mender-api.h"
 #include "mender-artifact.h"
+#include "mender-scheduler.h"
 #include "mender-storage.h"
 #include "mender-http.h"
 #include "mender-log.h"
@@ -51,6 +52,11 @@ static mender_api_config_t api_config;
 static char *api_jwt = NULL;
 
 /**
+ * @brief A mutex ensuring there are no concurrent operations using or updating the authentication token
+ */
+static void *auth_lock = NULL;
+
+/**
  * @brief Identity of this device
  */
 static char *identity_info = NULL;
@@ -71,6 +77,12 @@ static mender_err_t mender_api_http_text_callback(mender_http_client_event_t eve
  */
 static mender_err_t perform_authentication(void);
 
+/**
+ * @brief Ensure authenticated and holding the #auth_lock
+ * @return MENDER_OK if success, MENDER_LOCK_FAILED in case of lock failure, other errors otherwise
+ */
+static mender_err_t ensure_authenticated_and_locked(void);
+
 mender_err_t
 mender_api_init(mender_api_config_t *config) {
     assert(NULL != config);
@@ -90,23 +102,51 @@ mender_api_init(mender_api_config_t *config) {
         return ret;
     }
 
+    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&auth_lock))) {
+        mender_log_error("Unable to initialize authentication lock");
+        return ret;
+    }
+
     return ret;
 }
 
 mender_err_t
 mender_api_ensure_authenticated(void) {
+    mender_err_t ret = ensure_authenticated_and_locked();
+    if (MENDER_LOCK_FAILED == ret) {
+        /* Error already logged. */
+        return MENDER_FAIL;
+    }
+
+    if (MENDER_OK != (ret = mender_scheduler_mutex_give(auth_lock))) {
+        mender_log_error("Unable to release the authentication lock");
+    }
+
+    return ret;
+}
+
+static mender_err_t
+ensure_authenticated_and_locked(void) {
+    mender_err_t ret;
+
+    if (MENDER_OK != (ret = mender_scheduler_mutex_take(auth_lock, -1))) {
+        mender_log_error("Unable to obtain the authentication lock");
+        return MENDER_LOCK_FAILED;
+    }
+
     if (NULL != api_jwt) {
         return MENDER_DONE;
     }
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != perform_authentication()) {
+    if (MENDER_OK != (ret = perform_authentication())) {
         mender_log_error("Authentication failed");
         return MENDER_FAIL;
+    } else {
+        mender_log_debug("Authenticated successfully");
     }
 
-    mender_log_debug("Authenticated successfully");
-    return MENDER_OK;
+    return ret;
 }
 
 static mender_err_t
@@ -227,13 +267,24 @@ static mender_err_t
 authenticated_http_perform(char *path, mender_http_method_t method, char *payload, char *signature, char **response, int *status) {
     mender_err_t ret;
 
-    if (MENDER_FAIL == (ret = mender_api_ensure_authenticated())) {
-        /* Authentication errors already logged. */
+    ret = ensure_authenticated_and_locked();
+    if ((MENDER_OK != ret) && (MENDER_DONE != ret)) {
+        /* Errors already logged. */
+        if (MENDER_LOCK_FAILED != ret) {
+            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+                mender_log_error("Unable to release the authentication lock");
+                return MENDER_FAIL;
+            }
+        }
         return ret;
     }
-    assert(NULL != api_jwt);
 
-    if (MENDER_OK != (ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status))) {
+    ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
+    if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+        mender_log_error("Unable to release the authentication lock");
+        return MENDER_FAIL;
+    }
+    if (MENDER_OK != ret) {
         /* HTTP errors already logged. */
         return ret;
     }
@@ -242,9 +293,19 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
         /* Unauthorized => try to re-authenticate and perform the request again */
         mender_log_info("Trying to re-authenticate");
         FREE_AND_NULL(api_jwt);
-        if (MENDER_FAIL != (ret = mender_api_ensure_authenticated())) {
+        ret = ensure_authenticated_and_locked();
+        if ((MENDER_OK == ret) || (MENDER_DONE == ret)) {
             free(*response);
             ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
+            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+                mender_log_error("Unable to release the authentication lock");
+                return MENDER_FAIL;
+            }
+        } else if (MENDER_LOCK_FAILED != ret) {
+            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+                mender_log_error("Unable to release the authentication lock");
+                return MENDER_FAIL;
+            }
         }
     }
 
@@ -640,6 +701,9 @@ mender_api_exit(void) {
 
     /* Release all modules */
     mender_http_exit();
+
+    /* Destroy the authentication lock */
+    mender_scheduler_mutex_delete(auth_lock);
 
     /* Release memory */
     FREE_AND_NULL(api_jwt);

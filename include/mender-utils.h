@@ -92,6 +92,7 @@ typedef enum {
     MENDER_NOT_FOUND       = -2, /**< Not found */
     MENDER_NOT_IMPLEMENTED = -3, /**< Not implemented */
     MENDER_LOOP_DETECTED   = -4, /**< Loop detected */
+    MENDER_LOCK_FAILED     = -5, /**< Locking failed */
 } mender_err_t;
 
 /**

@@ -65,6 +65,12 @@ static char *identity_info = NULL;
  */
 static mender_err_t mender_api_http_text_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
 
+/**
+ * @brief Perform authentication of the device, retrieve token from mender-server used for the next requests
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t perform_authentication(void);
+
 mender_err_t
 mender_api_init(mender_api_config_t *config) {
     assert(NULL != config);
@@ -94,7 +100,7 @@ mender_api_ensure_authenticated(void) {
     }
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != mender_api_perform_authentication()) {
+    if (MENDER_OK != perform_authentication()) {
         mender_log_error("Authentication failed");
         return MENDER_FAIL;
     }
@@ -103,8 +109,8 @@ mender_api_ensure_authenticated(void) {
     return MENDER_OK;
 }
 
-mender_err_t
-mender_api_perform_authentication(void) {
+static mender_err_t
+perform_authentication(void) {
     mender_err_t             ret;
     char                    *public_key_pem   = NULL;
     const mender_identity_t *identity         = NULL;

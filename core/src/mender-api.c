@@ -105,16 +105,16 @@ mender_api_ensure_authenticated(void) {
 
 mender_err_t
 mender_api_perform_authentication(void) {
-    mender_err_t       ret;
-    char              *public_key_pem   = NULL;
-    mender_identity_t *identity         = NULL;
-    cJSON             *json_identity    = NULL;
-    cJSON             *json_payload     = NULL;
-    char              *payload          = NULL;
-    char              *response         = NULL;
-    char              *signature        = NULL;
-    size_t             signature_length = 0;
-    int                status           = 0;
+    mender_err_t             ret;
+    char                    *public_key_pem   = NULL;
+    const mender_identity_t *identity         = NULL;
+    cJSON                   *json_identity    = NULL;
+    cJSON                   *json_payload     = NULL;
+    char                    *payload          = NULL;
+    char                    *response         = NULL;
+    char                    *signature        = NULL;
+    size_t                   signature_length = 0;
+    int                      status           = 0;
 
     /* Get public key in PEM format */
     if (MENDER_OK != (ret = mender_tls_get_public_key_pem(&public_key_pem))) {

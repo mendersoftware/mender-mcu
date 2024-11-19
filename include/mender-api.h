@@ -33,10 +33,10 @@ extern "C" {
  * @brief Mender API configuration
  */
 typedef struct {
-    char *device_type;                                         /**< Device type */
-    char *host;                                                /**< URL of the mender server */
-    char *tenant_token;                                        /**< Tenant token used to authenticate on the mender server (optional) */
-    mender_err_t (*identity_cb)(mender_identity_t **identity); /**< Invoked to retrieve identity */
+    char *device_type;                                               /**< Device type */
+    char *host;                                                      /**< URL of the mender server */
+    char *tenant_token;                                              /**< Tenant token used to authenticate on the mender server (optional) */
+    mender_err_t (*identity_cb)(const mender_identity_t **identity); /**< Invoked to retrieve identity */
 } mender_api_config_t;
 
 /**

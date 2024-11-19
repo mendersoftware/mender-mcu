@@ -217,7 +217,7 @@ mender_err_t mender_utils_keystore_to_json(mender_keystore_t *keystore, cJSON **
  * @param object JSON object
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object);
+mender_err_t mender_utils_identity_to_json(const mender_identity_t *identity, cJSON **object);
 
 /**
  * @brief Function used to set key-store item name and value

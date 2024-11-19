@@ -369,7 +369,7 @@ mender_utils_keystore_delete(mender_keystore_t *keystore) {
 }
 
 mender_err_t
-mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object) {
+mender_utils_identity_to_json(const mender_identity_t *identity, cJSON **object) {
 
     assert(NULL != object);
 

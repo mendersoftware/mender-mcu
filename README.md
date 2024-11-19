@@ -114,7 +114,7 @@ update module function in [`mender-client.h`](include/mender-client.h).
 
 Example for Ubuntu/Debian:
 ```
-apt install cmake libcurl4-openssl-dev libcjson-dev
+sudo apt install cmake libcurl4-openssl-dev libcjson-dev pkg-config
 ```
 ### Building the Client
 

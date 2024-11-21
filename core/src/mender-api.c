@@ -267,8 +267,7 @@ static mender_err_t
 authenticated_http_perform(char *path, mender_http_method_t method, char *payload, char *signature, char **response, int *status) {
     mender_err_t ret;
 
-    ret = ensure_authenticated_and_locked();
-    if ((MENDER_OK != ret) && (MENDER_DONE != ret)) {
+    if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
         /* Errors already logged. */
         if (MENDER_LOCK_FAILED != ret) {
             if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
@@ -293,8 +292,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
         /* Unauthorized => try to re-authenticate and perform the request again */
         mender_log_info("Trying to re-authenticate");
         FREE_AND_NULL(api_jwt);
-        ret = ensure_authenticated_and_locked();
-        if ((MENDER_OK == ret) || (MENDER_DONE == ret)) {
+        if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
             free(*response);
             ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
             if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {

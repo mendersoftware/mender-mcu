@@ -95,6 +95,8 @@ typedef enum {
     MENDER_LOCK_FAILED     = -5, /**< Locking failed */
 } mender_err_t;
 
+#define MENDER_IS_ERROR(err_t_ret) ((err_t_ret) < 0)
+
 /**
  * @brief Deployment status
  */

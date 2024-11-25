@@ -660,8 +660,7 @@ mender_api_http_text_callback(mender_http_client_event_t event, void *data, size
 
 void
 mender_api_print_response_error(char *response, int status) {
-
-    char *desc;
+    const char *desc;
 
     /* Treatment depending of the status */
     if (NULL != (desc = mender_utils_http_status_to_string(status))) {

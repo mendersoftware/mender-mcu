@@ -25,13 +25,13 @@
 /* ASCII record separator */
 #define MENDER_KEY_VALUE_SEPARATOR "\x1E"
 
-char *
+const char *
 mender_utils_http_status_to_string(int status) {
 
     /* Definition of status strings */
-    const struct {
-        uint16_t status;
-        char    *str;
+    static const struct {
+        uint16_t    status;
+        const char *str;
     } desc[] = { { 100, "Continue" },
                  { 101, "Switching Protocols" },
                  { 103, "Early Hints" },

@@ -439,7 +439,7 @@ mender_client_work_function(void) {
         case MENDER_CLIENT_STATE_PENDING_REBOOT:
             mender_log_info("Waiting for a reboot");
             /* nothing to do */
-            return MENDER_OK;
+            return MENDER_DONE;
         case MENDER_CLIENT_STATE_INITIALIZATION:
             /* Perform initialization of the client */
             if (MENDER_DONE != mender_client_initialization_work_function()) {

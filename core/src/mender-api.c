@@ -57,11 +57,6 @@ static char *api_jwt = NULL;
 static void *auth_lock = NULL;
 
 /**
- * @brief Identity of this device
- */
-static char *identity_info = NULL;
-
-/**
  * @brief HTTP callback used to handle text content
  * @param event HTTP client event
  * @param data Data received
@@ -155,6 +150,7 @@ perform_authentication(void) {
     char                    *public_key_pem   = NULL;
     const mender_identity_t *identity         = NULL;
     cJSON                   *json_identity    = NULL;
+    char                    *identity_info    = NULL;
     cJSON                   *json_payload     = NULL;
     char                    *payload          = NULL;
     char                    *response         = NULL;
@@ -168,23 +164,21 @@ perform_authentication(void) {
         goto END;
     }
 
-    if (NULL == identity_info) {
-        /* Get identity (we don't own the returned data) */
-        if (MENDER_OK != (ret = api_config.identity_cb(&identity))) {
-            mender_log_error("Unable to get identity");
-            goto END;
-        }
+    /* Get identity (we don't own the returned data) */
+    if (MENDER_OK != (ret = api_config.identity_cb(&identity))) {
+        mender_log_error("Unable to get identity");
+        goto END;
+    }
 
-        /* Format identity */
-        if (MENDER_OK != (ret = mender_utils_identity_to_json(identity, &json_identity))) {
-            mender_log_error("Unable to format identity");
-            goto END;
-        }
-        if (NULL == (identity_info = cJSON_PrintUnformatted(json_identity))) {
-            mender_log_error("Unable to allocate memory");
-            ret = MENDER_FAIL;
-            goto END;
-        }
+    /* Format identity */
+    if (MENDER_OK != (ret = mender_utils_identity_to_json(identity, &json_identity))) {
+        mender_log_error("Unable to format identity");
+        goto END;
+    }
+    if (NULL == (identity_info = cJSON_PrintUnformatted(json_identity))) {
+        mender_log_error("Unable to allocate memory");
+        ret = MENDER_FAIL;
+        goto END;
     }
 
     /* Format payload */
@@ -255,6 +249,7 @@ END:
     free(payload);
     cJSON_Delete(json_payload);
     cJSON_Delete(json_identity);
+    free(identity_info);
     free(public_key_pem);
 
     return ret;
@@ -705,7 +700,6 @@ mender_api_exit(void) {
 
     /* Release memory */
     FREE_AND_NULL(api_jwt);
-    FREE_AND_NULL(identity_info);
 
     return MENDER_OK;
 }

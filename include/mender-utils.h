@@ -137,7 +137,7 @@ typedef struct mender_key_value_list_t {
  * @param status HTTP status code
  * @return HTTP status as string, NULL if it is not found
  */
-char *mender_utils_http_status_to_string(int status);
+const char *mender_utils_http_status_to_string(int status);
 
 /**
  * @brief Function used to print deployment status as string

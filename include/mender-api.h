@@ -66,6 +66,12 @@ mender_err_t mender_api_init(mender_api_config_t *config);
 mender_err_t mender_api_ensure_authenticated(void);
 
 /**
+ * @brief Drops authentication data so the next request will have to re-authenticate
+ * @return MENDER_OK in case of success, error otherwise
+ */
+mender_err_t mender_api_drop_authentication_data(void);
+
+/**
  * @brief Check for deployments for the device from the mender-server
  * @param deployment Deployment structure to be filled with the deployment information, if one is pending
  * @return MENDER_OK if the function succeeds, error code otherwise

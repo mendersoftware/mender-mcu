@@ -106,6 +106,21 @@ mender_api_init(mender_api_config_t *config) {
 }
 
 mender_err_t
+mender_api_drop_authentication_data(void) {
+    mender_err_t ret;
+    if (MENDER_OK != (ret = mender_scheduler_mutex_take(auth_lock, -1))) {
+        mender_log_error("Unable to obtain the authentication lock");
+        return MENDER_LOCK_FAILED;
+    }
+    FREE_AND_NULL(api_jwt);
+    if (MENDER_OK != (ret = mender_scheduler_mutex_give(auth_lock))) {
+        mender_log_error("Unable to release the authentication lock");
+    }
+
+    return ret;
+}
+
+mender_err_t
 mender_api_ensure_authenticated(void) {
     mender_err_t ret = ensure_authenticated_and_locked();
     if (MENDER_LOCK_FAILED == ret) {

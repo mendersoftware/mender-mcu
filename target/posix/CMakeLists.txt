@@ -74,6 +74,9 @@ endif()
 if (CONFIG_MENDER_COMMIT_REQUIRE_AUTH)
     target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_COMMIT_REQUIRE_AUTH)
 endif()
+if (CONFIG_MENDER_ERRORS_THRESHOLD_NET)
+    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_ERRORS_THRESHOLD_NET=${CONFIG_MENDER_ERRORS_THRESHOLD_NET})
+endif()
 
 find_package(PkgConfig REQUIRED)
 

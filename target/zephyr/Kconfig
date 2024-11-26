@@ -336,6 +336,24 @@ if MENDER_MCU_CLIENT
                 Whether a successful authentication to the Mender server is a requirement for an update to be considered OK.
                 WARNING: Disabling this can leave devices disconnected from the Mender forever! A similar check must be performed in the update module being used!
 
+        menu "Error detection and recovery"
+
+            config MENDER_DETECT_NETWORK_ERRORS
+                bool "Try to detect network errors and reset network to fix them"
+                default y
+                help
+                    Whether Mender should try to detect network errors and attempt to fix them when there are too many.
+
+            config MENDER_ERRORS_THRESHOLD_NET
+                int "Network errors threshold"
+                range 1 255
+                default 10
+                depends on MENDER_DETECT_NETWORK_ERRORS
+                help
+                    The number of errors triggering network reset.
+
+        endmenu
+
     endmenu
 
 endif

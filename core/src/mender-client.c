@@ -29,6 +29,7 @@
 #include "mender-update-module.h"
 #include "mender-utils.h"
 #include "mender-deployment-data.h"
+#include "mender-error-counters.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #include "mender-inventory.h"
@@ -433,6 +434,7 @@ mender_client_exit(void) {
 
 static mender_err_t
 mender_client_work_function(void) {
+    mender_err_t ret;
     mender_log_debug("Inside work function [state: %d]", mender_client_state);
 
     switch (mender_client_state) {
@@ -448,7 +450,16 @@ mender_client_work_function(void) {
             mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
             /* fallthrough */
         case MENDER_CLIENT_STATE_OPERATIONAL:
-            return mender_client_update_work_function();
+            if (MENDER_FAIL == (ret = mender_client_update_work_function())) {
+                if (MENDER_FAIL == mender_err_count_net_check()) {
+                    /* Try to release network so that it gets set up again next
+                       time. */
+                    mender_client_network_release();
+                }
+            } else if (!MENDER_IS_ERROR(ret)) {
+                mender_err_count_net_reset();
+            }
+            return ret;
     }
 
     /* This should never be reached, all the cases should be covered in the

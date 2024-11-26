@@ -22,6 +22,7 @@
 #include "mender-artifact.h"
 #include "mender-artifact-download.h"
 #include "mender-artifact-download-data.h"
+#include "mender-error-counters.h"
 #include "mender-http.h"
 #include "mender-log.h"
 
@@ -48,6 +49,7 @@ mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_d
     /* Perform HTTP request */
     if (MENDER_OK != (ret = mender_http_artifact_download(uri, &dl_data, &status))) {
         mender_log_error("Unable to perform HTTP request");
+        mender_err_count_net_inc();
         return ret;
     }
 

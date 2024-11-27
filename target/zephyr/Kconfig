@@ -98,6 +98,7 @@ if MENDER_MCU_CLIENT
             select IMG_ENABLE_IMAGE_CHECK
             select IMG_ERASE_PROGRESSIVELY
             select IMG_MANAGER
+            select MENDER_COMMIT_REQUIRE_AUTH
             help
                 The default zephyr-image update module handles full Zephyr images on MCUboot-based devices.
 

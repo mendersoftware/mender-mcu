@@ -24,6 +24,10 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#ifdef __ZEPHYR__
+#include <zephyr/logging/log.h>
+#endif /* __ZEPHYR */
+
 #include "mender-utils.h"
 
 /**
@@ -47,6 +51,63 @@ extern "C" {
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_log_init(void);
+
+/**
+ * @brief Release mender log
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_log_exit(void);
+
+#ifdef __ZEPHYR__
+
+LOG_MODULE_DECLARE(mender, CONFIG_MENDER_LOG_LEVEL);
+
+/**
+ * @brief Print error log
+ * @param ... Arguments
+ * @return Error code
+ */
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_ERR
+#define mender_log_error LOG_ERR
+#else
+#define mender_log_error(...)
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_ERR */
+
+/**
+ * @brief Print warning log
+ * @param ... Arguments
+ * @return Error code
+ */
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_WRN
+#define mender_log_warning LOG_WRN
+#else
+#define mender_log_warning(...)
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_WRN */
+
+/**
+ * @brief Print info log
+ * @param ... Arguments
+ * @return Error code
+ */
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
+#define mender_log_info LOG_INF
+#else
+#define mender_log_info(...)
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF */
+
+/**
+ * @brief Print debug log
+ * @param error_code Error code
+ * @param ... Arguments
+ * @return Error code
+ */
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
+#define mender_log_debug LOG_DBG
+#else
+#define mender_log_debug(...)
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG */
+
+#else /* __ZEPHYR__ */
 
 /**
  * @brief Print log
@@ -105,11 +166,7 @@ mender_err_t mender_log_print(uint8_t level, const char *filename, const char *f
 #define mender_log_debug(...)
 #endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG */
 
-/**
- * @brief Release mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_exit(void);
+#endif /* __ZEPHYR__ */
 
 #ifdef __cplusplus
 }

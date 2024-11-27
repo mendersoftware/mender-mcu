@@ -92,7 +92,10 @@ typedef enum {
     MENDER_NOT_FOUND       = -2, /**< Not found */
     MENDER_NOT_IMPLEMENTED = -3, /**< Not implemented */
     MENDER_LOOP_DETECTED   = -4, /**< Loop detected */
+    MENDER_LOCK_FAILED     = -5, /**< Locking failed */
 } mender_err_t;
+
+#define MENDER_IS_ERROR(err_t_ret) ((err_t_ret) < 0)
 
 /**
  * @brief Deployment status
@@ -217,7 +220,7 @@ mender_err_t mender_utils_keystore_to_json(mender_keystore_t *keystore, cJSON **
  * @param object JSON object
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_utils_identity_to_json(mender_identity_t *identity, cJSON **object);
+mender_err_t mender_utils_identity_to_json(const mender_identity_t *identity, cJSON **object);
 
 /**
  * @brief Function used to set key-store item name and value

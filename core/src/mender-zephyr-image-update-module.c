@@ -182,7 +182,7 @@ mender_zephyr_image_verify_reboot_callback(MENDER_NDEBUG_UNUSED mender_update_st
         return MENDER_FAIL;
     }
 
-    return (MENDER_FAIL == mender_client_ensure_authenticated()) ? MENDER_FAIL : MENDER_OK;
+    return MENDER_OK;
 }
 
 static mender_err_t

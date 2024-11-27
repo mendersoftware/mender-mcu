@@ -291,6 +291,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         .device_type  = mender_client_config.device_type,
         .host         = mender_client_config.host,
         .tenant_token = mender_client_config.tenant_token,
+        .identity_cb  = callbacks->get_identity,
     };
     if (MENDER_OK != (ret = mender_api_init(&mender_api_config))) {
         mender_log_error("Unable to initialize API");
@@ -541,26 +542,6 @@ mender_commit_artifact_data(void) {
     return MENDER_OK;
 }
 
-mender_err_t
-mender_client_ensure_authenticated(void) {
-    if (mender_api_is_authenticated()) {
-        return MENDER_DONE;
-    }
-
-    if (MENDER_FAIL == mender_client_ensure_connected()) {
-        return MENDER_FAIL;
-    }
-
-    /* Perform authentication with the mender server */
-    if (MENDER_OK != mender_api_perform_authentication(mender_client_callbacks.get_identity)) {
-        mender_log_error("Authentication failed");
-        return MENDER_FAIL;
-    }
-
-    mender_log_debug("Authenticated successfully");
-    return MENDER_OK;
-}
-
 static mender_err_t
 deployment_destroy(mender_api_deployment_data_t *deployment) {
     if (NULL != deployment) {
@@ -791,8 +772,8 @@ static mender_err_t
 mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
     assert(NULL != deployment_data);
 
-    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
-        /* authentication errors logged already */
+    if (MENDER_FAIL == mender_client_ensure_connected()) {
+        /* network errors logged already */
         mender_log_error("Cannot check for new deployment");
         return MENDER_FAIL;
     }
@@ -1044,14 +1025,23 @@ mender_client_update_work_function(void) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
                     goto END;
                 }
-                if (MENDER_OK != mender_commit_artifact_data()) {
-                    mender_log_error("Unable to commit artifact data");
-                    ret = MENDER_FAIL;
+#ifdef CONFIG_MENDER_COMMIT_REQUIRE_AUTH
+                if (MENDER_OK != mender_api_drop_authentication_data()) {
+                    mender_log_error("Failed to drop authentication data before artifact commit");
+                    /* Unlikely (practically impossible?) to happen and if it does, we don't have
+                       much to about it. */
                 }
-                if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
+                if (MENDER_IS_ERROR(ret = mender_api_ensure_authenticated())) {
+                    mender_log_error("Failed to authenticate before commit, rejecting the update");
+                }
+#endif /* CONFIG_MENDER_COMMIT_REQUIRE_AUTH */
+                if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
+                    mender_log_error("Unable to commit artifact data");
+                }
+                if (!MENDER_IS_ERROR(ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
-                if (MENDER_OK == ret) {
+                if (!MENDER_IS_ERROR(ret)) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
                 }
                 NEXT_STATE;
@@ -1140,8 +1130,8 @@ END:
 
 static mender_err_t
 mender_client_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
-    if (MENDER_FAIL == mender_client_ensure_authenticated()) {
-        /* authentication errors logged already */
+    if (MENDER_FAIL == mender_client_ensure_connected()) {
+        /* connection errors logged already */
         mender_log_error("Cannot publish deployment status");
         return MENDER_FAIL;
     }

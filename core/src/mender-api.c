@@ -23,6 +23,7 @@
 
 #include "mender-api.h"
 #include "mender-artifact.h"
+#include "mender-scheduler.h"
 #include "mender-storage.h"
 #include "mender-http.h"
 #include "mender-log.h"
@@ -43,12 +44,17 @@
 /**
  * @brief Mender API configuration
  */
-static mender_api_config_t mender_api_config;
+static mender_api_config_t api_config;
 
 /**
  * @brief Authentication token
  */
-static char *mender_api_jwt = NULL;
+static char *api_jwt = NULL;
+
+/**
+ * @brief A mutex ensuring there are no concurrent operations using or updating the authentication token
+ */
+static void *auth_lock = NULL;
 
 /**
  * @brief HTTP callback used to handle text content
@@ -60,47 +66,112 @@ static char *mender_api_jwt = NULL;
  */
 static mender_err_t mender_api_http_text_callback(mender_http_client_event_t event, void *data, size_t data_length, void *params);
 
+/**
+ * @brief Perform authentication of the device, retrieve token from mender-server used for the next requests
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+static mender_err_t perform_authentication(void);
+
+/**
+ * @brief Ensure authenticated and holding the #auth_lock
+ * @return MENDER_OK if success, MENDER_LOCK_FAILED in case of lock failure, other errors otherwise
+ */
+static mender_err_t ensure_authenticated_and_locked(void);
+
 mender_err_t
 mender_api_init(mender_api_config_t *config) {
-
     assert(NULL != config);
     assert(NULL != config->device_type);
     assert(NULL != config->host);
+    assert(NULL != config->identity_cb);
+
     mender_err_t ret;
 
     /* Save configuration */
-    memcpy(&mender_api_config, config, sizeof(mender_api_config_t));
+    memcpy(&api_config, config, sizeof(mender_api_config_t));
 
     /* Initializations */
-    mender_http_config_t mender_http_config = { .host = mender_api_config.host };
+    mender_http_config_t mender_http_config = { .host = api_config.host };
     if (MENDER_OK != (ret = mender_http_init(&mender_http_config))) {
         mender_log_error("Unable to initialize HTTP");
+        return ret;
+    }
+
+    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&auth_lock))) {
+        mender_log_error("Unable to initialize authentication lock");
         return ret;
     }
 
     return ret;
 }
 
-bool
-mender_api_is_authenticated(void) {
-    return NULL != mender_api_jwt;
+mender_err_t
+mender_api_drop_authentication_data(void) {
+    mender_err_t ret;
+    if (MENDER_OK != (ret = mender_scheduler_mutex_take(auth_lock, -1))) {
+        mender_log_error("Unable to obtain the authentication lock");
+        return MENDER_LOCK_FAILED;
+    }
+    FREE_AND_NULL(api_jwt);
+    if (MENDER_OK != (ret = mender_scheduler_mutex_give(auth_lock))) {
+        mender_log_error("Unable to release the authentication lock");
+    }
+
+    return ret;
 }
 
 mender_err_t
-mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t **identity)) {
+mender_api_ensure_authenticated(void) {
+    mender_err_t ret = ensure_authenticated_and_locked();
+    if (MENDER_LOCK_FAILED == ret) {
+        /* Error already logged. */
+        return MENDER_FAIL;
+    }
 
-    assert(NULL != get_identity);
-    mender_err_t       ret;
-    char              *public_key_pem       = NULL;
-    cJSON             *json_identity        = NULL;
-    mender_identity_t *identity             = NULL;
-    char              *unformatted_identity = NULL;
-    cJSON             *json_payload         = NULL;
-    char              *payload              = NULL;
-    char              *response             = NULL;
-    char              *signature            = NULL;
-    size_t             signature_length     = 0;
-    int                status               = 0;
+    if (MENDER_OK != (ret = mender_scheduler_mutex_give(auth_lock))) {
+        mender_log_error("Unable to release the authentication lock");
+    }
+
+    return ret;
+}
+
+static mender_err_t
+ensure_authenticated_and_locked(void) {
+    mender_err_t ret;
+
+    if (MENDER_OK != (ret = mender_scheduler_mutex_take(auth_lock, -1))) {
+        mender_log_error("Unable to obtain the authentication lock");
+        return MENDER_LOCK_FAILED;
+    }
+
+    if (NULL != api_jwt) {
+        return MENDER_DONE;
+    }
+
+    /* Perform authentication with the mender server */
+    if (MENDER_OK != (ret = perform_authentication())) {
+        mender_log_error("Authentication failed");
+        return MENDER_FAIL;
+    } else {
+        mender_log_debug("Authenticated successfully");
+    }
+
+    return ret;
+}
+
+static mender_err_t
+perform_authentication(void) {
+    mender_err_t             ret;
+    char                    *public_key_pem   = NULL;
+    const mender_identity_t *identity         = NULL;
+    cJSON                   *json_identity    = NULL;
+    char                    *identity_info    = NULL;
+    cJSON                   *json_payload     = NULL;
+    char                    *payload          = NULL;
+    char                    *response         = NULL;
+    char                    *signature        = NULL;
+    size_t                   signature_length = 0;
+    int                      status           = 0;
 
     /* Get public key in PEM format */
     if (MENDER_OK != (ret = mender_tls_get_public_key_pem(&public_key_pem))) {
@@ -108,8 +179,8 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
         goto END;
     }
 
-    /* Get identity */
-    if (MENDER_OK != (ret = get_identity(&identity))) {
+    /* Get identity (we don't own the returned data) */
+    if (MENDER_OK != (ret = api_config.identity_cb(&identity))) {
         mender_log_error("Unable to get identity");
         goto END;
     }
@@ -119,7 +190,7 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
         mender_log_error("Unable to format identity");
         goto END;
     }
-    if (NULL == (unformatted_identity = cJSON_PrintUnformatted(json_identity))) {
+    if (NULL == (identity_info = cJSON_PrintUnformatted(json_identity))) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto END;
@@ -131,10 +202,10 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
         ret = MENDER_FAIL;
         goto END;
     }
-    cJSON_AddStringToObject(json_payload, "id_data", unformatted_identity);
+    cJSON_AddStringToObject(json_payload, "id_data", identity_info);
     cJSON_AddStringToObject(json_payload, "pubkey", public_key_pem);
-    if (NULL != mender_api_config.tenant_token) {
-        cJSON_AddStringToObject(json_payload, "tenant_token", mender_api_config.tenant_token);
+    if (NULL != api_config.tenant_token) {
+        cJSON_AddStringToObject(json_payload, "tenant_token", api_config.tenant_token);
     }
     if (NULL == (payload = cJSON_PrintUnformatted(json_payload))) {
         mender_log_error("Unable to allocate memory");
@@ -169,10 +240,10 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
             ret = MENDER_FAIL;
             goto END;
         }
-        if (NULL != mender_api_jwt) {
-            free(mender_api_jwt);
+        if (NULL != api_jwt) {
+            free(api_jwt);
         }
-        if (NULL == (mender_api_jwt = strdup(response))) {
+        if (NULL == (api_jwt = strdup(response))) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
@@ -180,25 +251,77 @@ mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t
         ret = MENDER_OK;
     } else {
         mender_api_print_response_error(response, status);
+        /* Maybe the identity is wrong? Let's make sure we get fresh data for the next attempt. */
+        FREE_AND_NULL(identity_info);
         ret = MENDER_FAIL;
     }
 
 END:
 
     /* Release memory */
-    free(unformatted_identity);
     free(response);
     free(signature);
     free(payload);
     cJSON_Delete(json_payload);
     cJSON_Delete(json_identity);
+    free(identity_info);
     free(public_key_pem);
 
     return ret;
 }
 
+/**
+ * @see mender_http_perform()
+ */
 static mender_err_t
-api_check_for_deployment_v2(int *status, void *response) {
+authenticated_http_perform(char *path, mender_http_method_t method, char *payload, char *signature, char **response, int *status) {
+    mender_err_t ret;
+
+    if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
+        /* Errors already logged. */
+        if (MENDER_LOCK_FAILED != ret) {
+            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+                mender_log_error("Unable to release the authentication lock");
+                return MENDER_FAIL;
+            }
+        }
+        return ret;
+    }
+
+    ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
+    if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+        mender_log_error("Unable to release the authentication lock");
+        return MENDER_FAIL;
+    }
+    if (MENDER_OK != ret) {
+        /* HTTP errors already logged. */
+        return ret;
+    }
+
+    if (401 == *status) {
+        /* Unauthorized => try to re-authenticate and perform the request again */
+        mender_log_info("Trying to re-authenticate");
+        FREE_AND_NULL(api_jwt);
+        if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
+            free(*response);
+            ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
+            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+                mender_log_error("Unable to release the authentication lock");
+                return MENDER_FAIL;
+            }
+        } else if (MENDER_LOCK_FAILED != ret) {
+            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+                mender_log_error("Unable to release the authentication lock");
+                return MENDER_FAIL;
+            }
+        }
+    }
+
+    return ret;
+}
+
+static mender_err_t
+api_check_for_deployment_v2(int *status, char **response) {
     assert(NULL != status);
     assert(NULL != response);
 
@@ -225,7 +348,7 @@ api_check_for_deployment_v2(int *status, void *response) {
         goto END;
     }
 
-    if (NULL == cJSON_AddStringToObject(json_provides, "device_type", mender_api_config.device_type)) {
+    if (NULL == cJSON_AddStringToObject(json_provides, "device_type", api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -262,15 +385,7 @@ api_check_for_deployment_v2(int *status, void *response) {
     }
 
     /* Perform HTTP request */
-    if (MENDER_OK
-        != (ret = mender_http_perform(mender_api_jwt,
-                                      MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2,
-                                      MENDER_HTTP_POST,
-                                      payload,
-                                      NULL,
-                                      &mender_api_http_text_callback,
-                                      (void *)response,
-                                      status))) {
+    if (MENDER_OK != (ret = authenticated_http_perform(MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2, MENDER_HTTP_POST, payload, NULL, response, status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -290,7 +405,7 @@ END:
 }
 
 static mender_err_t
-api_check_for_deployment_v1(int *status, void *response) {
+api_check_for_deployment_v1(int *status, char **response) {
 
     assert(NULL != status);
     assert(NULL != response);
@@ -305,13 +420,13 @@ api_check_for_deployment_v1(int *status, void *response) {
     }
 
     /* Compute path */
-    if (-1 == asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, mender_api_config.device_type)) {
+    if (-1 == asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
 
     /* Perform HTTP request */
-    if (MENDER_OK != (ret = mender_http_perform(mender_api_jwt, path, MENDER_HTTP_GET, NULL, NULL, &mender_api_http_text_callback, (void *)response, status))) {
+    if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_GET, NULL, NULL, response, status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -334,7 +449,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
     char        *response = NULL;
     int          status   = 0;
 
-    if (MENDER_FAIL == (ret = api_check_for_deployment_v2(&status, (void *)&response))) {
+    if (MENDER_FAIL == (ret = api_check_for_deployment_v2(&status, &response))) {
         goto END;
     }
 
@@ -342,7 +457,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
     if (404 == status) {
         mender_log_debug("POST request to v2 version of the deployments API failed, falling back to v1 version and GET");
         FREE_AND_NULL(response);
-        if (MENDER_FAIL == (ret = api_check_for_deployment_v1(&status, (void *)&response))) {
+        if (MENDER_FAIL == (ret = api_check_for_deployment_v1(&status, &response))) {
             goto END;
         }
     }
@@ -436,8 +551,8 @@ END:
 
 mender_err_t
 mender_api_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
-
     assert(NULL != id);
+
     mender_err_t ret;
     char        *value        = NULL;
     cJSON       *json_payload = NULL;
@@ -476,8 +591,7 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     snprintf(path, str_length, MENDER_API_PATH_PUT_DEPLOYMENT_STATUS, id);
 
     /* Perform HTTP request */
-    if (MENDER_OK
-        != (ret = mender_http_perform(mender_api_jwt, path, MENDER_HTTP_PUT, payload, NULL, &mender_api_http_text_callback, (void *)&response, &status))) {
+    if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_PUT, payload, NULL, &response, &status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -541,7 +655,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
         goto END;
     }
     cJSON_AddStringToObject(item, "name", "device_type");
-    cJSON_AddStringToObject(item, "value", mender_api_config.device_type);
+    cJSON_AddStringToObject(item, "value", api_config.device_type);
     cJSON_AddItemToArray(object, item);
     if (NULL != inventory) {
         size_t index = 0;
@@ -564,15 +678,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
     }
 
     /* Perform HTTP request */
-    if (MENDER_OK
-        != (ret = mender_http_perform(mender_api_jwt,
-                                      MENDER_API_PATH_PUT_DEVICE_ATTRIBUTES,
-                                      MENDER_HTTP_PUT,
-                                      payload,
-                                      NULL,
-                                      &mender_api_http_text_callback,
-                                      (void *)&response,
-                                      &status))) {
+    if (MENDER_OK != (ret = authenticated_http_perform(MENDER_API_PATH_PUT_DEVICE_ATTRIBUTES, MENDER_HTTP_PUT, payload, NULL, &response, &status))) {
         mender_log_error("Unable to perform HTTP request");
         goto END;
     }
@@ -604,8 +710,11 @@ mender_api_exit(void) {
     /* Release all modules */
     mender_http_exit();
 
+    /* Destroy the authentication lock */
+    mender_scheduler_mutex_delete(auth_lock);
+
     /* Release memory */
-    FREE_AND_NULL(mender_api_jwt);
+    FREE_AND_NULL(api_jwt);
 
     return MENDER_OK;
 }

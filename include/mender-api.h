@@ -33,9 +33,10 @@ extern "C" {
  * @brief Mender API configuration
  */
 typedef struct {
-    char *device_type;  /**< Device type */
-    char *host;         /**< URL of the mender server */
-    char *tenant_token; /**< Tenant token used to authenticate on the mender server (optional) */
+    char *device_type;                                               /**< Device type */
+    char *host;                                                      /**< URL of the mender server */
+    char *tenant_token;                                              /**< Tenant token used to authenticate on the mender server (optional) */
+    mender_err_t (*identity_cb)(const mender_identity_t **identity); /**< Invoked to retrieve identity */
 } mender_api_config_t;
 
 /**
@@ -57,15 +58,18 @@ typedef struct {
 mender_err_t mender_api_init(mender_api_config_t *config);
 
 /**
- * @brief Whether a successful authentication to a Mender server has been performed or not
+ * @brief  Ensures being authenticated to a Mender server API
+ * @return MENDER_DONE if already authenticated,
+ *         MENDER_OK if successfully authenticated,
+ *         MENDER_FAIL otherwise
  */
-bool mender_api_is_authenticated(void);
+mender_err_t mender_api_ensure_authenticated(void);
 
 /**
- * @brief Perform authentication of the device, retrieve token from mender-server used for the next requests
- * @return MENDER_OK if the function succeeds, error code otherwise
+ * @brief Drops authentication data so the next request will have to re-authenticate
+ * @return MENDER_OK in case of success, error otherwise
  */
-mender_err_t mender_api_perform_authentication(mender_err_t (*get_identity)(mender_identity_t **identity));
+mender_err_t mender_api_drop_authentication_data(void);
 
 /**
  * @brief Check for deployments for the device from the mender-server

@@ -71,6 +71,9 @@ endif()
 if (CONFIG_MENDER_PROVIDES_DEPENDS)
     target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_PROVIDES_DEPENDS)
 endif()
+if (CONFIG_MENDER_COMMIT_REQUIRE_AUTH)
+    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_COMMIT_REQUIRE_AUTH)
+endif()
 
 find_package(PkgConfig REQUIRED)
 

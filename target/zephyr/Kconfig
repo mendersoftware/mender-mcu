@@ -328,6 +328,13 @@ if MENDER_MCU_CLIENT
                 Opt-out to remove compatibility with v2 deployments/next API call and related functionality
             select MENDER_FULL_PARSE_ARTIFACT
 
+        config MENDER_COMMIT_REQUIRE_AUTH
+            bool "Authentication required for update commit"
+            default y
+            help
+                Whether a successful authentication to the Mender server is a requirement for an update to be considered OK.
+                WARNING: Disabling this can leave devices disconnected from the Mender forever! A similar check must be performed in the update module being used!
+
     endmenu
 
 endif

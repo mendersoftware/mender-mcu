@@ -1025,14 +1025,23 @@ mender_client_update_work_function(void) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
                     goto END;
                 }
-                if (MENDER_OK != mender_commit_artifact_data()) {
-                    mender_log_error("Unable to commit artifact data");
-                    ret = MENDER_FAIL;
+#ifdef CONFIG_MENDER_COMMIT_REQUIRE_AUTH
+                if (MENDER_OK != mender_api_drop_authentication_data()) {
+                    mender_log_error("Failed to drop authentication data before artifact commit");
+                    /* Unlikely (practically impossible?) to happen and if it does, we don't have
+                       much to about it. */
                 }
-                if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
+                if (MENDER_IS_ERROR(ret = mender_api_ensure_authenticated())) {
+                    mender_log_error("Failed to authenticate before commit, rejecting the update");
+                }
+#endif /* CONFIG_MENDER_COMMIT_REQUIRE_AUTH */
+                if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
+                    mender_log_error("Unable to commit artifact data");
+                }
+                if (!MENDER_IS_ERROR(ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
-                if (MENDER_OK == ret) {
+                if (!MENDER_IS_ERROR(ret)) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
                 }
                 NEXT_STATE;

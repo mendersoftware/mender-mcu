@@ -213,6 +213,13 @@ static mender_err_t mender_client_update_work_function(void);
  */
 static mender_err_t mender_client_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status);
 
+/**
+ * @brief Set state in deployment data and store it in permanent storage
+ * @param state State to set and store
+ * @return MENDER_OK in case of success, error code otherwise
+ */
+static mender_err_t set_and_store_state(const mender_update_state_t state);
+
 char *
 mender_client_version(void) {
 

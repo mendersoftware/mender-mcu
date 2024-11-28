@@ -352,6 +352,21 @@ if MENDER_MCU_CLIENT
                 help
                     The number of errors triggering network reset.
 
+            config MENDER_DETECT_REBOOT_ERRORS
+                bool "Try to detect reboot errors and revert to normal operations instead of waiting for reboot forever"
+                default y
+                help
+                    Whether Mender should try to detect it is waiting for too long after requesting a reboot.
+                    Then it can mark the deployment (update) as failed and revert to normal operation, waiting for the next one.
+
+            config MENDER_ERRORS_THRESHOLD_REBOOT
+                int "Reboot waiting iterations threshold"
+                range 1 255
+                default 5
+                depends on MENDER_DETECT_REBOOT_ERRORS
+                help
+                    The number of iterations to wait for a reboot.
+
         endmenu
 
     endmenu

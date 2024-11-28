@@ -77,6 +77,9 @@ endif()
 if (CONFIG_MENDER_ERRORS_THRESHOLD_NET)
     target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_ERRORS_THRESHOLD_NET=${CONFIG_MENDER_ERRORS_THRESHOLD_NET})
 endif()
+if (CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT)
+    target_compile_definitions(mender-mcu-client PUBLIC CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT=${CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT})
+endif()
 
 find_package(PkgConfig REQUIRED)
 

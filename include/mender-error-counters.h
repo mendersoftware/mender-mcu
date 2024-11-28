@@ -68,6 +68,38 @@ mender_err_count_net_reset(void) {
 
 #endif /* CONFIG_MENDER_ERRORS_THRESHOLD_NET > 0 */
 
+#ifndef CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT
+#define CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT 0
+#endif
+
+#if CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT > 0
+
+/**
+ * @brief Increment the pending reboot counter
+ * @return MENDER_OK if not too many errors, MENDER_FAIL if too many errors
+ */
+mender_err_t mender_err_count_reboot_inc(void);
+
+/**
+ * @brief Reset the pending reboot counter
+ * @return MENDER_OK if successful, error otherwise
+ */
+mender_err_t mender_err_count_reboot_reset(void);
+
+#else
+
+/* Define the functions as inline noops so that the compiler can simply rule them out. */
+inline mender_err_t
+mender_err_count_reboot_inc(void) {
+    return MENDER_OK;
+}
+inline mender_err_t
+mender_err_count_reboot_reset(void) {
+    return MENDER_OK;
+}
+
+#endif /* CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT > 0 */
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

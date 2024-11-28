@@ -57,3 +57,28 @@ mender_err_count_net_reset(void) {
     return MENDER_OK;
 }
 #endif /* CONFIG_MENDER_ERRORS_THRESHOLD_NET > 0 */
+
+#if CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT > 0
+
+static uint8_t reboot_errors = 0;
+#if CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT > UINT8_MAX
+#error "CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT must be <= UINT8_MAX"
+#endif
+
+mender_err_t
+mender_err_count_reboot_inc(void) {
+    if (reboot_errors < UINT8_MAX) {
+        reboot_errors++;
+    }
+    if (reboot_errors > CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT) {
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_err_count_reboot_reset(void) {
+    reboot_errors = 0;
+    return MENDER_OK;
+}
+#endif /* CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT > 0 */

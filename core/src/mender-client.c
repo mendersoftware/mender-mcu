@@ -924,12 +924,13 @@ mender_client_update_work_function(void) {
                     mender_log_info("Downloading artifact with id '%s', name '%s', uri '%s'", deployment->id, deployment->artifact_name, deployment->uri);
                 }
 #endif
-                mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
-
                 /* Set deployment_id */
                 deployment_id = deployment->id;
 
-                if (MENDER_OK == (ret = mender_download_artifact(deployment->uri, mender_client_deployment_data, &mender_update_module))) {
+                /* Check ret to see if the deployment is aborted */
+                ret = mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
+                if ((MENDER_ABORTED != ret)
+                    && (MENDER_OK == (ret = mender_download_artifact(deployment->uri, mender_client_deployment_data, &mender_update_module)))) {
                     assert(NULL != mender_update_module);
 
                     /* Get artifact context if artifact download succeeded */
@@ -971,8 +972,9 @@ mender_client_update_work_function(void) {
 
             case MENDER_UPDATE_STATE_INSTALL:
                 mender_log_info("Download done, installing artifact");
-                mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_INSTALLING);
-                if (NULL != mender_update_module->callbacks[update_state]) {
+                /* Check ret to see if the deployment is aborted */
+                ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_INSTALLING);
+                if ((MENDER_ABORTED != ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
                 if ((MENDER_OK == ret) && !mender_update_module->requires_reboot) {
@@ -988,8 +990,9 @@ mender_client_update_work_function(void) {
             case MENDER_UPDATE_STATE_REBOOT:
                 assert(mender_update_module->requires_reboot);
                 mender_log_info("Artifact installation done, rebooting");
-                mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
-                if ((MENDER_OK == ret) && (NULL != mender_update_module->callbacks[update_state])) {
+                /* Check ret to see if the deployment is aborted */
+                ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_REBOOTING);
+                if ((MENDER_ABORTED != ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     /* Save the next state before running the reboot callback --
                      * if there is an interrupt (power, crash,...) right after,
                      * it will reboot anyway so after the new boot, reboot

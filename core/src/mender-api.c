@@ -600,6 +600,10 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     if (204 == status) {
         /* No response expected */
         ret = MENDER_OK;
+    } else if (409 == status) {
+        /* Deployment aborted */
+        mender_api_print_response_error(response, status);
+        ret = MENDER_ABORTED;
     } else {
         mender_api_print_response_error(response, status);
         ret = MENDER_FAIL;

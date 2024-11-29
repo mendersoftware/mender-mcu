@@ -57,14 +57,14 @@ mender_err_t mender_flash_close(void *handle);
  * @param handle Handle from mender_flash_open
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_flash_set_pending_image(void *handle);
+mender_err_t mender_flash_set_pending_image(void **handle);
 
 /**
  * @brief Abort current deployment
  * @param handle Handle from mender_flash_open
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_flash_abort_deployment(void *handle);
+mender_err_t mender_flash_abort_deployment(void **handle);
 
 /**
  * @brief Mark image valid and cancel rollback if this is still pending

@@ -90,12 +90,12 @@ mender_flash_close(void *handle) {
 }
 
 mender_err_t
-mender_flash_set_pending_image(void *handle) {
+mender_flash_set_pending_image(void **handle) {
 
     int result;
 
     /* Check flash handle */
-    if (NULL != handle) {
+    if (NULL != *handle) {
 
         /* Set new boot partition */
         if (0 != (result = boot_request_upgrade(BOOT_UPGRADE_TEST))) {
@@ -104,7 +104,7 @@ mender_flash_set_pending_image(void *handle) {
         }
 
         /* Release memory */
-        free(handle);
+        FREE_AND_NULL(*handle);
     } else {
 
         /* This should not happen! */
@@ -116,10 +116,10 @@ mender_flash_set_pending_image(void *handle) {
 }
 
 mender_err_t
-mender_flash_abort_deployment(void *handle) {
+mender_flash_abort_deployment(void **handle) {
 
     /* Release memory */
-    free(handle);
+    FREE_AND_NULL(*handle);
 
     return MENDER_OK;
 }

@@ -93,6 +93,7 @@ typedef enum {
     MENDER_NOT_IMPLEMENTED = -3, /**< Not implemented */
     MENDER_LOOP_DETECTED   = -4, /**< Loop detected */
     MENDER_LOCK_FAILED     = -5, /**< Locking failed */
+    MENDER_ABORTED         = -6, /**< Aborted */
 } mender_err_t;
 
 #define MENDER_IS_ERROR(err_t_ret) ((err_t_ret) < 0)

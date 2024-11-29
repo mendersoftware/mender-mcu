@@ -101,13 +101,13 @@ mender_flash_close(void *handle) {
 }
 
 mender_err_t
-mender_flash_set_pending_image(void *handle) {
+mender_flash_set_pending_image(void **handle) {
 
     FILE        *file;
     mender_err_t ret = MENDER_OK;
 
     /* Check flash handle */
-    if (NULL != handle) {
+    if (NULL != *handle) {
 
         /* Write request update file */
         if (NULL == (file = fopen(MENDER_FLASH_REQUEST_UPGRADE, "wb"))) {
@@ -122,13 +122,13 @@ mender_flash_set_pending_image(void *handle) {
 }
 
 mender_err_t
-mender_flash_abort_deployment(void *handle) {
+mender_flash_abort_deployment(void **handle) {
 
     /* Check flash handle */
-    if (NULL != handle) {
+    if (NULL != *handle) {
 
         /* Release memory */
-        fclose(handle);
+        fclose(*handle);
     }
 
     return MENDER_OK;

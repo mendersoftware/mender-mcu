@@ -141,7 +141,7 @@ mender_zephyr_image_set_pending_image(MENDER_NDEBUG_UNUSED mender_update_state_t
         return MENDER_FAIL;
     }
 
-    if (MENDER_OK != (ret = mender_flash_set_pending_image(mcu_boot_flash_handle))) {
+    if (MENDER_OK != (ret = mender_flash_set_pending_image(&mcu_boot_flash_handle))) {
         mender_log_error("Unable to set boot partition");
         return ret;
     }
@@ -153,7 +153,7 @@ mender_zephyr_image_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t 
     assert(MENDER_UPDATE_STATE_FAILURE == state);
     mender_err_t ret;
 
-    if (MENDER_OK != (ret = mender_flash_abort_deployment(mcu_boot_flash_handle))) {
+    if (MENDER_OK != (ret = mender_flash_abort_deployment(&mcu_boot_flash_handle))) {
         mender_log_error("Unable to abort deployment");
         return ret;
     }

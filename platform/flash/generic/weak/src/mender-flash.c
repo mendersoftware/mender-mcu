@@ -53,7 +53,7 @@ mender_flash_close(void *handle) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_flash_set_pending_image(void *handle) {
+mender_flash_set_pending_image(void **handle) {
 
     (void)handle;
 
@@ -62,7 +62,7 @@ mender_flash_set_pending_image(void *handle) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_flash_abort_deployment(void *handle) {
+mender_flash_abort_deployment(void **handle) {
 
     (void)handle;
 

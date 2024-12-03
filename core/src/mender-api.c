@@ -23,6 +23,7 @@
 
 #include "mender-api.h"
 #include "mender-artifact.h"
+#include "mender-error-counters.h"
 #include "mender-scheduler.h"
 #include "mender-storage.h"
 #include "mender-http.h"
@@ -230,6 +231,7 @@ perform_authentication(void) {
                                       (void *)&response,
                                       &status))) {
         mender_log_error("Unable to perform HTTP request");
+        mender_err_count_net_inc();
         goto END;
     }
 
@@ -295,6 +297,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
     }
     if (MENDER_OK != ret) {
         /* HTTP errors already logged. */
+        mender_err_count_net_inc();
         return ret;
     }
 
@@ -308,6 +311,10 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
             if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
                 mender_log_error("Unable to release the authentication lock");
                 return MENDER_FAIL;
+            }
+            if (MENDER_OK != ret) {
+                /* HTTP errors already logged. */
+                mender_err_count_net_inc();
             }
         } else if (MENDER_LOCK_FAILED != ret) {
             if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {

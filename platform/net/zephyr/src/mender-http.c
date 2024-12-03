@@ -110,7 +110,7 @@ mender_http_perform(char                *jwt,
     assert(NULL != status);
     mender_err_t                ret                = MENDER_FAIL;
     struct http_request         request            = { 0 };
-    mender_http_request_context request_context    = { callback = callback, params = params, ret = MENDER_OK };
+    mender_http_request_context request_context    = { .callback = callback, .params = params, .ret = MENDER_OK };
     const char                 *header_fields[6]   = { NULL }; /* The list is NULL terminated; make sure the size reflects it */
     size_t                      header_fields_size = sizeof(header_fields) / sizeof(header_fields[0]);
     char                       *host               = NULL;

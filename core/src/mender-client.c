@@ -29,6 +29,7 @@
 #include "mender-update-module.h"
 #include "mender-utils.h"
 #include "mender-deployment-data.h"
+#include "mender-error-counters.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #include "mender-inventory.h"
@@ -211,6 +212,13 @@ static mender_err_t mender_client_update_work_function(void);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 static mender_err_t mender_client_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status);
+
+/**
+ * @brief Set state in deployment data and store it in permanent storage
+ * @param state State to set and store
+ * @return MENDER_OK in case of success, error code otherwise
+ */
+static mender_err_t set_and_store_state(const mender_update_state_t state);
 
 char *
 mender_client_version(void) {
@@ -433,22 +441,69 @@ mender_client_exit(void) {
 
 static mender_err_t
 mender_client_work_function(void) {
+    mender_err_t ret;
     mender_log_debug("Inside work function [state: %d]", mender_client_state);
 
     switch (mender_client_state) {
         case MENDER_CLIENT_STATE_PENDING_REBOOT:
             mender_log_info("Waiting for a reboot");
-            /* nothing to do */
+            if (MENDER_OK != mender_err_count_reboot_inc()) {
+                /* It appears we are stuck in this state. The only thing we can do is to mark the
+                   deployment as failed and revert to normal operation. */
+                mender_log_error("Waiting for reboot for too long, giving up");
+
+                if (NULL == mender_client_deployment_data) {
+                    mender_log_error("No deployment data to use for deployment abortion");
+                } else {
+                    mender_update_state_t update_state;
+                    if (MENDER_OK != mender_deployment_data_get_state(mender_client_deployment_data, &update_state)) {
+                        mender_log_error("Failed to get current update state, going to ROLLBACK state");
+                        update_state = MENDER_UPDATE_STATE_ROLLBACK;
+                    } else {
+                        update_state = update_state_transitions[update_state].failure;
+                    }
+                    if (MENDER_OK != set_and_store_state(update_state)) {
+                        mender_log_error("Failed to save new state");
+                    }
+                }
+
+                mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
+            }
+            /* else:
+               Nothing to do, but let's make sure we have a chance to detect we are stuck in this
+               state (i.e. MENDER_OK, not MENDER_DONE which would tell the scheduler we are
+               done and don't need to run again). */
             return MENDER_OK;
         case MENDER_CLIENT_STATE_INITIALIZATION:
             /* Perform initialization of the client */
+            mender_err_count_reboot_reset();
             if (MENDER_DONE != mender_client_initialization_work_function()) {
                 return MENDER_FAIL;
             }
             mender_client_state = MENDER_CLIENT_STATE_OPERATIONAL;
             /* fallthrough */
         case MENDER_CLIENT_STATE_OPERATIONAL:
-            return mender_client_update_work_function();
+            mender_err_count_reboot_reset();
+            ret = mender_client_update_work_function();
+            if (MENDER_FAIL == ret) {
+                if (MENDER_FAIL == mender_err_count_net_check()) {
+                    /* Try to release network so that it gets set up again next
+                       time. */
+                    mender_client_network_release();
+                }
+            } else if (!MENDER_IS_ERROR(ret)) {
+                mender_err_count_net_reset();
+            }
+            if (MENDER_DONE == ret) {
+                /* We should only be done when waiting for a reboot. */
+                assert(MENDER_CLIENT_STATE_PENDING_REBOOT == mender_client_state);
+
+                /* We don't want to tell the scheduler we are done because
+                   otherwise we won't have a chance to detect that we are
+                   waiting for a reboot forever. */
+                ret = MENDER_OK;
+            }
+            return ret;
     }
 
     /* This should never be reached, all the cases should be covered in the

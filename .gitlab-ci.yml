@@ -53,15 +53,24 @@ test:smoke-build:weak:
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help
 
+.test:mender-artifact:template:
+  variables:
+    DEBIAN_RELEASE: bookworm
+    MENDER_ARTIFACT_VERSION: 3.11.2
+
 test:unit:
+  extends: .test:mender-artifact:template
   stage: test
   image: debian:12-slim
   before_script:
     - apt update && apt install -yyq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
-      g++
-      lcov
+      g++ lcov wget
+    # Fetch and install mender-artifact
+    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${DEBIAN_RELEASE}_amd64.deb"
+      -O mender-artifact.deb &&
+      dpkg --install mender-artifact.deb
   script:
     - cmake -D COVERAGE=ON tests/unit/
     - make --jobs=$(nproc --all) --keep-going coverage
@@ -75,26 +84,18 @@ test:unit:
       - coverage.lcov
 
 .test:static:template:
+  extends: .test:mender-artifact:template
   stage: test
   image: ubuntu:24.04
   before_script:
     - apt update && apt install -yyq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
-      clang
-    # mender-artifact install
-    # Commented out for now, but likely needed when adding tests later on
-    # - apt-get install --assume-yes
-    #     apt-transport-https
-    #     ca-certificates
-    #     curl
-    #     gnupg-agent
-    #     software-properties-common
-    # - curl -fsSL https://downloads.mender.io/repos/debian/gpg >> /etc/apt/trusted.gpg.d/mender.asc
-    # - echo "deb [arch=$(dpkg --print-architecture)] https://downloads.mender.io/repos/debian ubuntu/jammy/experimental main"
-    #   > /etc/apt/sources.list.d/mender.list
-    # - apt-get update
-    # - apt install mender-artifact
+      clang wget
+    # Fetch and install mender-artifact
+    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${DEBIAN_RELEASE}_amd64.deb"
+      -O mender-artifact.deb &&
+      dpkg --install mender-artifact.deb
     - export CC=$(which clang)
     - export CXX=$(which clang++)
   script:

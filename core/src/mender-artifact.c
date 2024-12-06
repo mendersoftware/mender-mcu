@@ -1224,10 +1224,11 @@ artifact_read_data_prepare(mender_artifact_ctx_t *ctx, mender_artifact_download_
         mender_log_error("Unable to allocate memory");
         return MENDER_FAIL;
     }
-    for (char *ch = strstr(mdata_cache->checksum_fname, ".tar"); (NULL != ch) && (*ch != '\0'); ch++) {
+    bool done = false;
+    for (char *ch = strstr(mdata_cache->checksum_fname, ".tar"); (NULL != ch) && !done; ch++) {
         /* Don't worry! The call to strlen() on a static string should
          * be optimized out by the compiler */
-        *ch = ch[strlen(".tar")];
+        done = (*ch = ch[strlen(".tar")]) == '\0';
     }
 
     mdata_cache->valid = true;

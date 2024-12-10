@@ -504,10 +504,14 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         mender_utils_key_value_list_free(ctx->artifact_info.provides);
         mender_utils_key_value_list_free(ctx->artifact_info.depends);
-        for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+        mender_artifact_checksum_t *next;
+        for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = next) {
             free(checksum->filename);
             mender_sha256_finish(checksum->context, NULL);
+            next = checksum->next;
+            free(checksum);
         }
+        ctx->artifact_info.checksums = NULL;
 #endif
         free(ctx);
     }

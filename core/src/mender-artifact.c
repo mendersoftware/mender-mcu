@@ -172,9 +172,14 @@ static mender_err_t process_artifact_data_callback(const char                   
  */
 static mender_err_t artifact_drop_file(mender_artifact_ctx_t *ctx);
 
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-static mender_err_t artifact_read_header(mender_artifact_ctx_t *ctx);
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+/**
+ * @brief Shift data after parsing and update the respective checksum context
+ * @param checksum_key Key under which the checksum for the data is calculated/checked
+ * @param checksum_len Length of the data to include in the checksum update
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ * @see artifact_shift_data()
+ */
+static mender_err_t artifact_shift_and_checksum_data(mender_artifact_ctx_t *ctx, size_t length, const char *checksum_key, size_t checksum_len);
 
 /**
  * @brief Shift data after parsing
@@ -446,10 +451,6 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
 
                 /* Drop data, file is not relevant */
                 ret = artifact_drop_file(ctx);
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-            } else if (StringEqual(ctx->file.name, "header.tar")) {
-                ret = artifact_read_header(ctx);
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
             } else {
 
                 /* Nothing to do */
@@ -519,9 +520,10 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 
 static mender_err_t
 artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
-
     assert(NULL != ctx);
+
     char *tmp;
+    bool  in_header_tar;
 
     /* Check if enough data are received (at least one block) */
     if ((NULL == ctx->input.data) || (ctx->input.length < MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
@@ -538,6 +540,8 @@ artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
         if (ctx->input.length < 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE) {
             return MENDER_OK;
         }
+
+        in_header_tar = (NULL != ctx->file.name) && StringEqual(ctx->file.name, "header.tar");
 
         /* Remove the TAR file name */
         if (NULL != ctx->file.name) {
@@ -556,9 +560,19 @@ artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
         }
 
         /* Shift data in the buffer */
-        if (MENDER_OK != artifact_shift_data(ctx, 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
-            mender_log_error("Unable to shift input data");
-            return MENDER_FAIL;
+        /* header.tar has a checksum entry in the manifest as a whole so we need
+           to include its empty blocks into checksum calculation */
+        if (in_header_tar) {
+            if (MENDER_OK
+                != artifact_shift_and_checksum_data(ctx, 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE, "header.tar", 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+                mender_log_error("Unable to shift and checksum input data");
+                return MENDER_FAIL;
+            }
+        } else {
+            if (MENDER_OK != artifact_shift_data(ctx, 2 * MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+                mender_log_error("Unable to shift input data");
+                return MENDER_FAIL;
+            }
         }
 
         return MENDER_DONE;
@@ -603,9 +617,19 @@ artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
     ctx->file.index = 0;
 
     /* Shift data in the buffer */
-    if (MENDER_OK != artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
-        mender_log_error("Unable to shift input data");
-        return MENDER_FAIL;
+    /* header.tar has a checksum entry in the manifest as a whole so we need
+       to include its TAR header blocks into checksum calculation */
+    in_header_tar = mender_utils_strbeginswith(ctx->file.name, "header.tar/");
+    if (in_header_tar) {
+        if (MENDER_OK != artifact_shift_and_checksum_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE, "header.tar", MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+            mender_log_error("Unable to shift and checksum input data");
+            return MENDER_FAIL;
+        }
+    } else {
+        if (MENDER_OK != artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+            mender_log_error("Unable to shift input data");
+            return MENDER_FAIL;
+        }
     }
 
     /* Update the stream state machine */
@@ -625,21 +649,6 @@ artifact_read_version(mender_artifact_ctx_t *ctx) {
     if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
         return MENDER_OK;
     }
-
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-    /* Get checksum entry (create one if needed) */
-    mender_artifact_checksum_t *checksum;
-    if (NULL == (checksum = artifact_checksum_get_or_create(ctx, "version"))) {
-        /* Error already logged */
-        return MENDER_FAIL;
-    }
-
-    /* Update SHA-256 checksum */
-    if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, ctx->file.size)) {
-        mender_log_error("Failed to update update checksum");
-        return MENDER_FAIL;
-    }
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
     /* Check version file */
     if (NULL == (object = cJSON_ParseWithLength(ctx->input.data, ctx->file.size))) {
@@ -673,8 +682,8 @@ artifact_read_version(mender_artifact_ctx_t *ctx) {
     mender_log_debug("Artifact has valid version");
 
     /* Shift data in the buffer */
-    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
-        mender_log_error("Unable to shift input data");
+    if (MENDER_OK != artifact_shift_and_checksum_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE), "version", ctx->file.size)) {
+        mender_log_error("Unable to shift and checksum input data");
         ret = MENDER_FAIL;
         goto END;
     }
@@ -829,9 +838,10 @@ artifact_read_header_info(mender_artifact_ctx_t *ctx) {
     assert(NULL != ctx);
     cJSON       *object = NULL;
     mender_err_t ret    = MENDER_DONE;
+    size_t       rounded_file_size;
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < (rounded_file_size = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)))) {
         return MENDER_OK;
     }
 
@@ -899,8 +909,9 @@ artifact_read_header_info(mender_artifact_ctx_t *ctx) {
     }
 
     /* Shift data in the buffer */
-    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
-        mender_log_error("Unable to shift input data");
+    /* header.tar has a checksum entry in the manifest as a whole */
+    if (MENDER_OK != artifact_shift_and_checksum_data(ctx, rounded_file_size, "header.tar", rounded_file_size)) {
+        mender_log_error("Unable to shift and checksum input data");
         ret = MENDER_FAIL;
         goto END;
     }
@@ -915,42 +926,16 @@ END:
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 static mender_err_t
-artifact_read_header(mender_artifact_ctx_t *ctx) {
-    assert(NULL != ctx);
-
-    /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
-        return MENDER_OK;
-    }
-
-    /* Get checksum entry (create one if needed) */
-    mender_artifact_checksum_t *checksum;
-    if (NULL == (checksum = artifact_checksum_get_or_create(ctx, "header.tar"))) {
-        /* Error already logged */
-        return MENDER_FAIL;
-    }
-
-    /* Update SHA-256 checksum */
-    if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, ctx->file.size)) {
-        mender_log_error("Failed to update update checksum");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_DONE;
-}
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
-
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-static mender_err_t
 artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 
     assert(NULL != ctx);
     cJSON       *object = NULL;
     mender_err_t ret    = MENDER_DONE;
     size_t       index  = 0;
+    size_t       rounded_file_size;
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    if ((NULL == ctx->input.data) || (ctx->input.length < (rounded_file_size = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)))) {
         return MENDER_OK;
     }
 
@@ -1018,8 +1003,9 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 #endif
 
     /* Shift data in the buffer */
-    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
-        mender_log_error("Unable to shift input data");
+    /* header.tar has a checksum entry in the manifest as a whole */
+    if (MENDER_OK != artifact_shift_and_checksum_data(ctx, rounded_file_size, "header.tar", rounded_file_size)) {
+        mender_log_error("Unable to shift and checksum input data");
         ret = MENDER_FAIL;
         goto END;
     }
@@ -1035,8 +1021,8 @@ END:
 
 static mender_err_t
 artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
-
     assert(NULL != ctx);
+    size_t rounded_file_size;
 
     /* Retrieve payload index. We expect "header.tar/headers/%u/meta-data" where
      * %u is the index. Yes sscanf(3) would be nice, but we've experienced
@@ -1064,13 +1050,14 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
     assert(StringEqualN(end_ptr, "/meta-data", 10)); /* just one last sanity check */
 
     /* Check size of the meta-data */
-    if (0 == artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE)) {
+    if (0 == ctx->file.size) {
         /* Nothing to do */
         return MENDER_DONE;
     }
 
     /* Check if all data have been received */
-    if ((NULL == ctx->input.data) || (ctx->input.length < artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
+    rounded_file_size = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE);
+    if ((NULL == ctx->input.data) || (ctx->input.length < rounded_file_size)) {
         return MENDER_OK;
     }
 
@@ -1081,8 +1068,9 @@ artifact_read_meta_data(mender_artifact_ctx_t *ctx) {
     }
 
     /* Shift data in the buffer */
-    if (MENDER_OK != artifact_shift_data(ctx, artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
-        mender_log_error("Unable to shift input data");
+    /* header.tar has a checksum entry in the manifest as a whole */
+    if (MENDER_OK != artifact_shift_and_checksum_data(ctx, rounded_file_size, "header.tar", rounded_file_size)) {
+        mender_log_error("Unable to shift and checksum input data");
         return MENDER_FAIL;
     }
 
@@ -1263,21 +1251,6 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
         size_t length
             = ((ctx->file.size - ctx->file.index) > MENDER_ARTIFACT_STREAM_BLOCK_SIZE) ? MENDER_ARTIFACT_STREAM_BLOCK_SIZE : (ctx->file.size - ctx->file.index);
 
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-        mender_artifact_checksum_t *checksum;
-        /* Get checksum entry (create one if needed) */
-        if (NULL == (checksum = artifact_checksum_get_or_create(ctx, mdata_cache->checksum_fname))) {
-            /* Error already logged */
-            return MENDER_FAIL;
-        }
-
-        /* Update SHA-256 checksum */
-        if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, length)) {
-            mender_log_error("Failed to update update checksum");
-            return MENDER_FAIL;
-        }
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
-
         /* Invoke the download artifact callback */
         ret = process_artifact_data_callback(mdata_cache->deployment_id,
                                              mdata_cache->payload_type,
@@ -1298,8 +1271,8 @@ artifact_read_data(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *
         ctx->file.index += MENDER_ARTIFACT_STREAM_BLOCK_SIZE;
 
         /* Shift data in the buffer */
-        if (MENDER_OK != (ret = artifact_shift_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE))) {
-            mender_log_error("Unable to shift input data");
+        if (MENDER_OK != (ret = artifact_shift_and_checksum_data(ctx, MENDER_ARTIFACT_STREAM_BLOCK_SIZE, mdata_cache->checksum_fname, length))) {
+            mender_log_error("Unable to shift and checksum input data");
             return ret;
         }
 
@@ -1340,6 +1313,39 @@ artifact_drop_file(mender_artifact_ctx_t *ctx) {
     } while (ctx->file.index < ctx->file.size);
 
     return MENDER_DONE;
+}
+
+static mender_err_t
+artifact_shift_and_checksum_data(mender_artifact_ctx_t *ctx, size_t length, const char *checksum_key, size_t checksum_len) {
+    assert(NULL != ctx);
+    assert(ctx->input.length >= length);
+    assert(checksum_len <= length);
+
+    if (0 == length) {
+        return MENDER_OK;
+    }
+
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    if ((NULL != checksum_key) && (0 != checksum_len)) {
+        mender_artifact_checksum_t *checksum;
+        /* Get checksum entry (create one if needed) */
+        if (NULL == (checksum = artifact_checksum_get_or_create(ctx, checksum_key))) {
+            /* Error already logged */
+            return MENDER_FAIL;
+        }
+
+        if (MENDER_OK != mender_sha256_update(checksum->context, ctx->input.data, checksum_len)) {
+            mender_log_error("Failed to update update checksum");
+            return MENDER_FAIL;
+        }
+    }
+#else
+    /* Only to make the arguments "used" in this case. */
+    (void)checksum_key;
+    (void)checksum_len;
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+
+    return artifact_shift_data(ctx, length);
 }
 
 static mender_err_t

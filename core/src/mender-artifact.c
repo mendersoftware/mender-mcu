@@ -363,8 +363,11 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
             new_size = ctx->input.length + input_length;
             /* data/ files are processed per block for which the original size of the buffer should
                be enough, but metadata is processed as whole files so there we expect we will need
-               more. */
+               more, except for header.tar (and tarballs in general) which are processed
+               transparently. */
             if (mender_utils_strbeginswith(ctx->file.name, "data/")) {
+                expected_required = ctx->input.orig_size;
+            } else if (mender_utils_strendswith(ctx->file.name, ".tar")) {
                 expected_required = ctx->input.orig_size;
             } else {
                 expected_required = artifact_round_up(ctx->file.size, MENDER_ARTIFACT_STREAM_BLOCK_SIZE) + MENDER_ARTIFACT_STREAM_BLOCK_SIZE;

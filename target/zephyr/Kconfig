@@ -276,7 +276,7 @@ if MENDER_MCU_CLIENT
             config MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE
                 int "Mender Scheduler Work Queue Stack Size (kB)"
                 range 0 64
-                default 12
+                default 6
                 depends on MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
                 help
                     Mender scheduler work queue stack size, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.

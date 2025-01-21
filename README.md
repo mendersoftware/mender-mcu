@@ -38,8 +38,7 @@ The reference application is intended to be used as a reference and a demonstrat
 use `mender-mcu` as a Zephyr module. We therefore recommend that you start with this to
 familiarize yourself with the API and how we set it up.
 
-The policy is that the reference application's `main` branch will follow the latest stable branch of `mender-mcu`
-(this repository).
+`mender-mcu-integration` will follow the `mender-mcu` main branch.
 
 In the `mender-mcu-integration` repository you will find:
 * A reference `west` workspace for Zephyr OS builds, including `CMake` and `KConfig` configurations.
@@ -52,7 +51,7 @@ here for more in-depth information.
 ### Compatibility
 | Zephyr OS version |
 |-------------------|
-| v3.7.0            |
+| v4.0.0            |
 
 ### Boards
 The reference board for `mender-mcu` is the [ESP32-S3-DevKitC](https://docs.zephyrproject.org/latest/boards/espressif/esp32s3_devkitc/doc/index.html).

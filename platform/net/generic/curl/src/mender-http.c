@@ -17,8 +17,8 @@
  * limitations under the License.
  */
 
-#define _GNU_SOURCE // asprintf
 #include <curl/curl.h>
+#include "mender-alloc.h"
 #include "mender-http.h"
 #include "mender-log.h"
 #include "mender-utils.h"
@@ -120,7 +120,7 @@ mender_http_perform(char                *jwt,
 
     /* Compute URL if required */
     if (!mender_utils_strbeginswith(path, "http://") && !mender_utils_strbeginswith(path, "https://")) {
-        if (-1 == asprintf(&url, "%s%s", http_config.host, path)) {
+        if (-1 == mender_utils_asprintf(&url, "%s%s", http_config.host, path)) {
             mender_log_error("Unable to allocate memory for URL");
             ret = MENDER_FAIL;
             goto END;
@@ -173,7 +173,7 @@ mender_http_perform(char                *jwt,
     }
     if (NULL != jwt) {
         size_t str_length = strlen("Authorization: Bearer ") + strlen(jwt) + 1;
-        if (NULL == (bearer = (char *)malloc(str_length))) {
+        if (NULL == (bearer = (char *)mender_malloc(str_length))) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
@@ -183,7 +183,7 @@ mender_http_perform(char                *jwt,
     }
     if (NULL != signature) {
         size_t str_length = strlen("X-MEN-Signature: ") + strlen(signature) + 1;
-        if (NULL == (x_men_signature = (char *)malloc(str_length))) {
+        if (NULL == (x_men_signature = (char *)mender_malloc(str_length))) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
@@ -232,9 +232,9 @@ END:
     /* Release memory */
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
-    free(x_men_signature);
-    free(bearer);
-    free(url);
+    mender_free(x_men_signature);
+    mender_free(bearer);
+    mender_free(url);
 
     return ret;
 }
@@ -253,7 +253,7 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
 
     /* Compute URL if required */
     if (!mender_utils_strbeginswith(uri, "http://") && !mender_utils_strbeginswith(uri, "https://")) {
-        if (-1 == asprintf(&url, "%s%s", http_config.host, uri)) {
+        if (-1 == mender_utils_asprintf(&url, "%s%s", http_config.host, uri)) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
@@ -333,7 +333,7 @@ END:
     /* Release memory */
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
-    free(url);
+    mender_free(url);
 
     return ret;
 }

@@ -18,6 +18,7 @@
  */
 
 #include <unistd.h>
+#include "mender-alloc.h"
 #include "mender-log.h"
 #include "mender-storage.h"
 
@@ -84,7 +85,7 @@ mender_storage_read_file(const char *file_path, void **data, size_t *data_length
     }
     *data_length = (size_t)length;
     fseek(f, 0, SEEK_SET);
-    *data = malloc(*data_length + 1);
+    *data = mender_malloc(*data_length + 1);
     if (NULL == *data) {
         mender_log_error("Unable to allocate memory");
         fclose(f);
@@ -94,7 +95,7 @@ mender_storage_read_file(const char *file_path, void **data, size_t *data_length
     ((unsigned char *)*data)[*data_length] = '\0';
     if (fread(*data, sizeof(unsigned char), *data_length, f) != *data_length) {
         mender_log_error("Unable to read data from file %s", file_path);
-        free(*data);
+        mender_free(*data);
         fclose(f);
         return MENDER_FAIL;
     }
@@ -129,7 +130,7 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
         return MENDER_NOT_FOUND;
     }
     if (MENDER_OK != mender_storage_read_file(MENDER_STORAGE_NVS_PUBLIC_KEY, (void **)public_key, public_key_length)) {
-        free(*private_key);
+        mender_free(*private_key);
         *private_key        = NULL;
         *private_key_length = 0;
         return MENDER_NOT_FOUND;
@@ -197,10 +198,10 @@ mender_storage_set_provides(mender_key_value_list_t *provides) {
     size_t provides_str_length = strlen(provides_str);
 
     if (MENDER_OK != mender_storage_write_file(MENDER_STORAGE_NVS_PROVIDES, provides_str, provides_str_length)) {
-        free(provides_str);
+        mender_free(provides_str);
         return MENDER_FAIL;
     }
-    free(provides_str);
+    mender_free(provides_str);
     return MENDER_OK;
 }
 
@@ -216,11 +217,11 @@ mender_storage_get_provides(mender_key_value_list_t **provides) {
     }
     if (MENDER_OK != mender_utils_string_to_key_value_list(provides_str, provides)) {
         mender_log_error("Unable to parse provides");
-        free(provides_str);
+        mender_free(provides_str);
         return MENDER_FAIL;
     }
 
-    free(provides_str);
+    mender_free(provides_str);
     return MENDER_OK;
 }
 

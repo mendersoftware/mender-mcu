@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
+#include "mender-alloc.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"
 #include "mender-utils.h"
@@ -133,7 +134,7 @@ mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender
     assert(NULL != work);
 
     /* Create work context */
-    mender_platform_work_t *work_context = calloc(1, sizeof(mender_platform_work_t));
+    mender_platform_work_t *work_context = mender_calloc(1, sizeof(mender_platform_work_t));
     if (NULL == work_context) {
         mender_log_error("Unable to allocate memory");
         goto FAIL;
@@ -142,7 +143,7 @@ mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender
     /* Copy work parameters */
     work_context->params.function = work_params->function;
     work_context->params.period   = work_params->period;
-    if (NULL == (work_context->params.name = strdup(work_params->name))) {
+    if (NULL == (work_context->params.name = mender_utils_strdup(work_params->name))) {
         mender_log_error("Unable to allocate memory");
         goto FAIL;
     }
@@ -174,8 +175,8 @@ FAIL:
     if (NULL != work_context) {
         timer_delete(work_context->timer_handle);
         pthread_mutex_destroy(&work_context->sem_handle);
-        free(work_context->params.name);
-        free(work_context);
+        mender_free(work_context->params.name);
+        mender_free(work_context);
     }
 
     return MENDER_FAIL;
@@ -281,8 +282,8 @@ mender_scheduler_work_delete(mender_work_t *work) {
 
     timer_delete(work->timer_handle);
     pthread_mutex_destroy(&work->sem_handle);
-    free(work->params.name);
-    free(work);
+    mender_free(work->params.name);
+    mender_free(work);
 
     return MENDER_OK;
 }
@@ -362,7 +363,7 @@ mender_scheduler_mutex_create(void **handle) {
     assert(NULL != handle);
 
     /* Create mutex */
-    if (NULL == (*handle = malloc(sizeof(pthread_mutex_t)))) {
+    if (NULL == (*handle = mender_malloc(sizeof(pthread_mutex_t)))) {
         return MENDER_FAIL;
     }
     if (0 != pthread_mutex_init(*handle, NULL)) {
@@ -415,7 +416,7 @@ mender_scheduler_mutex_delete(void *handle) {
 
     /* Release memory */
     pthread_mutex_destroy((pthread_mutex_t *)handle);
-    free(handle);
+    mender_free(handle);
 
     return MENDER_OK;
 }

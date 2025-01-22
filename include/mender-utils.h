@@ -34,6 +34,8 @@ extern "C" {
 #include <assert.h>
 #include <cJSON.h>
 
+#include "mender-alloc.h"
+
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif /* !MAX */
@@ -46,9 +48,9 @@ extern "C" {
     resource = NULL
 
 /**
- * @brief Macro for releasing a resource with free() followed by setting it to NULL.
+ * @brief Macro for releasing a resource with mender_free() followed by setting it to NULL.
  */
-#define FREE_AND_NULL(resource) DESTROY_AND_NULL(free, resource)
+#define FREE_AND_NULL(resource) DESTROY_AND_NULL(mender_free, resource)
 
 /**
  * @brief Macro for checking if string is NULL or empty
@@ -157,6 +159,18 @@ char *mender_utils_deployment_status_to_string(mender_deployment_status_t deploy
  * @return Pointer to the beginning of the substring, NULL is the substring is not found
  */
 char *mender_utils_strrstr(const char *haystack, const char *needle);
+
+/**
+ * @brief Duplicate string using Mender memory allocation
+ */
+char *mender_utils_strdup(const char *str);
+char *mender_utils_strndup(const char *str, size_t n);
+
+/**
+ * @brief Format a new string using Mender memory allocation
+ */
+int mender_utils_asprintf(char **result, const char *fmt, ...);
+int mender_utils_vasprintf(char **result, const char *fmt, va_list ap);
 
 /**
  * @brief Function used to check if string begins with wanted substring

@@ -25,6 +25,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "mender-alloc.h"
 #include "mender-utils.h"
 #include "mender-update-module.h"
 
@@ -54,6 +55,11 @@ typedef struct {
     uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
 #endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY */
     bool recommissioning;               /**< Used to force creation of new authentication keys */
+    struct {
+        MenderAllocator   mender_malloc_func;
+        MenderReallocator mender_realloc_func;
+        MenderDeallocator free_func;
+    } allocation_funcs;
 } mender_client_config_t;
 
 /**

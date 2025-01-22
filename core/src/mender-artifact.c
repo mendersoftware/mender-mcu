@@ -20,9 +20,11 @@
 
 #include <errno.h>
 
+#include "mender-alloc.h"
 #include "mender-artifact.h"
 #include "mender-deployment-data.h"
 #include "mender-log.h"
+#include "mender-utils.h"
 
 /**
  * @brief Device type key
@@ -226,15 +228,15 @@ artifact_checksum_get_or_create(mender_artifact_ctx_t *ctx, const char *filename
 
     if (NULL == checksum) {
         /* Create new if entry not found */
-        checksum = (mender_artifact_checksum_t *)calloc(1, sizeof(mender_artifact_checksum_t));
+        checksum = (mender_artifact_checksum_t *)mender_calloc(1, sizeof(mender_artifact_checksum_t));
         if (NULL == checksum) {
             mender_log_error("Unable to allocate memory");
             return NULL;
         }
-        checksum->filename = strdup(filename);
+        checksum->filename = mender_utils_strdup(filename);
         if (NULL == checksum->filename) {
             mender_log_error("Unable to allocate memory");
-            free(checksum);
+            mender_free(checksum);
             return NULL;
         }
         checksum->next               = ctx->artifact_info.checksums;
@@ -300,13 +302,13 @@ mender_artifact_create_ctx(size_t buf_size) {
     mender_artifact_ctx_t *ctx;
 
     /* Create new context */
-    if (NULL == (ctx = (mender_artifact_ctx_t *)calloc(1, sizeof(mender_artifact_ctx_t)))) {
+    if (NULL == (ctx = (mender_artifact_ctx_t *)mender_calloc(1, sizeof(mender_artifact_ctx_t)))) {
         mender_log_error("Unable to allocate memory for artifact context");
         return NULL;
     }
-    if (NULL == (ctx->input.data = malloc(buf_size))) {
+    if (NULL == (ctx->input.data = mender_malloc(buf_size))) {
         mender_log_error("Unable to allocate memory for artifact context buffer");
-        free(ctx);
+        mender_free(ctx);
         return NULL;
     }
     ctx->input.size      = buf_size;
@@ -377,8 +379,8 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
             }
             /* Let's try to get what we expect we will need anyway and if we don't get that much,
                let's get the minimum required now, leaving us with a chance to get more later. */
-            if (NULL == (tmp = realloc(ctx->input.data, MAX(new_size, expected_required)))) {
-                if (NULL == (tmp = realloc(ctx->input.data, new_size))) {
+            if (NULL == (tmp = mender_realloc(ctx->input.data, MAX(new_size, expected_required)))) {
+                if (NULL == (tmp = mender_realloc(ctx->input.data, new_size))) {
                     /* Unable to allocate memory */
                     return MENDER_FAIL;
                 }
@@ -487,37 +489,37 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 
     /* Release memory */
     if (NULL != ctx) {
-        free(ctx->input.data);
+        mender_free(ctx->input.data);
         if (NULL != ctx->payloads.values) {
             for (size_t index = 0; index < ctx->payloads.size; index++) {
-                free(ctx->payloads.values[index].type);
+                mender_free(ctx->payloads.values[index].type);
                 cJSON_Delete(ctx->payloads.values[index].meta_data);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
                 mender_utils_key_value_list_free(ctx->payloads.values[index].provides);
                 mender_utils_key_value_list_free(ctx->payloads.values[index].depends);
                 for (size_t i = 0; i < ctx->payloads.values[index].clears_provides_size; i++) {
-                    free(ctx->payloads.values[index].clears_provides[i]);
+                    mender_free(ctx->payloads.values[index].clears_provides[i]);
                 }
-                free(ctx->payloads.values[index].clears_provides);
+                mender_free(ctx->payloads.values[index].clears_provides);
 #endif
             }
-            free(ctx->payloads.values);
+            mender_free(ctx->payloads.values);
         }
-        free(ctx->file.name);
+        mender_free(ctx->file.name);
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         mender_utils_key_value_list_free(ctx->artifact_info.provides);
         mender_utils_key_value_list_free(ctx->artifact_info.depends);
         mender_artifact_checksum_t *next;
         for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = next) {
-            free(checksum->filename);
+            mender_free(checksum->filename);
             mender_sha256_finish(checksum->context, NULL);
             next = checksum->next;
-            free(checksum);
+            mender_free(checksum);
         }
         ctx->artifact_info.checksums = NULL;
 #endif
-        free(ctx);
+        mender_free(ctx);
     }
 }
 
@@ -591,14 +593,14 @@ artifact_parse_tar_header(mender_artifact_ctx_t *ctx) {
     /* Compute the new file name */
     if (NULL != ctx->file.name) {
         size_t str_length = strlen(ctx->file.name) + strlen("/") + strlen(tar_header->name) + 1;
-        if (NULL == (tmp = (char *)malloc(str_length))) {
+        if (NULL == (tmp = (char *)mender_malloc(str_length))) {
             mender_log_error("Unable to allocate memory");
             return MENDER_FAIL;
         }
         snprintf(tmp, str_length, "%s/%s", ctx->file.name, tar_header->name);
-        free(ctx->file.name);
+        mender_free(ctx->file.name);
     } else {
-        if (NULL == (tmp = strdup(tar_header->name))) {
+        if (NULL == (tmp = mender_utils_strdup(tar_header->name))) {
             mender_log_error("Unable to allocate memory");
             return MENDER_FAIL;
         }
@@ -856,7 +858,7 @@ artifact_read_header_info(mender_artifact_ctx_t *ctx) {
     cJSON *json_payloads = cJSON_GetObjectItemCaseSensitive(object, "payloads");
     if (true == cJSON_IsArray(json_payloads)) {
         ctx->payloads.size = cJSON_GetArraySize(json_payloads);
-        if (NULL == (ctx->payloads.values = (mender_artifact_payload_t *)calloc(ctx->payloads.size, sizeof(mender_artifact_payload_t)))) {
+        if (NULL == (ctx->payloads.values = (mender_artifact_payload_t *)mender_calloc(ctx->payloads.size, sizeof(mender_artifact_payload_t)))) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
@@ -867,7 +869,7 @@ artifact_read_header_info(mender_artifact_ctx_t *ctx) {
             if (true == cJSON_IsObject(json_payload)) {
                 cJSON *json_payload_type = cJSON_GetObjectItemCaseSensitive(json_payload, "type");
                 if (cJSON_IsString(json_payload_type)) {
-                    if (NULL == (ctx->payloads.values[index].type = strdup(cJSON_GetStringValue(json_payload_type)))) {
+                    if (NULL == (ctx->payloads.values[index].type = mender_utils_strdup(cJSON_GetStringValue(json_payload_type)))) {
                         mender_log_error("Unable to allocate memory");
                         ret = MENDER_FAIL;
                         goto END;
@@ -976,7 +978,7 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
     cJSON *json_clears_provides = cJSON_GetObjectItemCaseSensitive(object, "clears_artifact_provides");
     if (cJSON_IsArray(json_clears_provides)) {
         ctx->payloads.values[index].clears_provides_size = cJSON_GetArraySize(json_clears_provides);
-        ctx->payloads.values[index].clears_provides      = (char **)calloc(ctx->payloads.values[index].clears_provides_size, sizeof(char *));
+        ctx->payloads.values[index].clears_provides      = (char **)mender_calloc(ctx->payloads.values[index].clears_provides_size, sizeof(char *));
         if (NULL == ctx->payloads.values[index].clears_provides) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
@@ -988,7 +990,7 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
 
         cJSON_ArrayForEach(json_clears_provides_element, json_clears_provides) {
             if (cJSON_IsString(json_clears_provides_element)) {
-                char *clears_provides = strdup(json_clears_provides_element->valuestring);
+                char *clears_provides = mender_utils_strdup(json_clears_provides_element->valuestring);
                 if (NULL == clears_provides) {
                     mender_log_error("Unable to allocate memory");
                     ret = MENDER_FAIL;
@@ -1215,7 +1217,7 @@ artifact_read_data_prepare(mender_artifact_ctx_t *ctx, mender_artifact_download_
      * 'data/0000/zephyr.signed.bin'. Hence, we need to remove the
      * '.tar' extension from the string.
      */
-    if (NULL == (mdata_cache->checksum_fname = strdup(ctx->file.name))) {
+    if (NULL == (mdata_cache->checksum_fname = mender_utils_strdup(ctx->file.name))) {
         mender_log_error("Unable to allocate memory");
         return MENDER_FAIL;
     }

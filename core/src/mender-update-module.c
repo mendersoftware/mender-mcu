@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#include "mender-alloc.h"
 #include "mender-log.h"
 #include "mender-update-module.h"
 
@@ -41,7 +42,7 @@ mender_update_module_register(mender_update_module_t *update_module) {
     }
 
     /* Add mender artifact type to the list */
-    if (NULL == (tmp = (mender_update_module_t **)realloc(update_modules_list, (update_modules_count + 1) * sizeof(mender_update_module_t *)))) {
+    if (NULL == (tmp = (mender_update_module_t **)mender_realloc(update_modules_list, (update_modules_count + 1) * sizeof(mender_update_module_t *)))) {
         mender_log_error("Unable to allocate memory for update modules list");
         ret = MENDER_FAIL;
         goto END;
@@ -59,7 +60,7 @@ void
 mender_update_module_unregister_all(void) {
     if (NULL != update_modules_list) {
         for (size_t update_module_index = 0; update_module_index < update_modules_count; update_module_index++) {
-            free(update_modules_list[update_module_index]);
+            mender_free(update_modules_list[update_module_index]);
         }
         FREE_AND_NULL(update_modules_list);
     }

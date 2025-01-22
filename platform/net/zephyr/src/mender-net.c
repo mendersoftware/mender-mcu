@@ -16,9 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define _GNU_SOURCE //vasprintf
-#include <stdio.h>  //vasprintf
-
 #include <errno.h>
 #include <zephyr/net/socket.h>
 #include <zephyr/kernel.h>
@@ -53,7 +50,7 @@ mender_net_get_host_port_url(const char *path, char *config_host, char **host, c
 
         /* Path contains the URL only, retrieve host and port from configuration (config_host) */
         assert(NULL != url);
-        if (NULL == (*url = strdup(path))) {
+        if (NULL == (*url = mender_utils_strdup(path))) {
             mender_log_error("Unable to allocate memory");
             return MENDER_FAIL;
         }
@@ -71,7 +68,7 @@ mender_net_get_host_port_url(const char *path, char *config_host, char **host, c
     /* Extract url path: next '/' character in the path after finding protocol must be the beginning of url */
     char *path_url = strchr(path_no_prefix, '/');
     if ((NULL != path_url) && (NULL != url)) {
-        if (NULL == (*url = strdup(path_url))) {
+        if (NULL == (*url = mender_utils_strdup(path_url))) {
             mender_log_error("Unable to allocate memory for URL");
             return MENDER_FAIL;
         }
@@ -80,24 +77,24 @@ mender_net_get_host_port_url(const char *path, char *config_host, char **host, c
     /* Extract host and port */
     char *path_port = strchr(path_no_prefix, ':');
     if ((NULL == path_port) && (NULL == path_url)) {
-        *port = strdup(is_https ? "443" : "80");
-        *host = strdup(path_no_prefix);
+        *port = mender_utils_strdup(is_https ? "443" : "80");
+        *host = mender_utils_strdup(path_no_prefix);
     } else if ((NULL == path_port) && (NULL != path_url)) {
-        *port = strdup(is_https ? "443" : "80");
-        *host = strndup(path_no_prefix, path_url - path_no_prefix);
+        *port = mender_utils_strdup(is_https ? "443" : "80");
+        *host = mender_utils_strndup(path_no_prefix, path_url - path_no_prefix);
     } else if ((NULL != path_port) && (NULL == path_url)) {
-        *port = strdup(path_port + 1);
-        *host = strndup(path_no_prefix, path_port - path_no_prefix);
+        *port = mender_utils_strdup(path_port + 1);
+        *host = mender_utils_strndup(path_no_prefix, path_port - path_no_prefix);
     } else {
-        *host = strndup(path_no_prefix, path_port - path_no_prefix);
-        *port = strndup(path_port + 1, path_url - path_port - 1);
+        *host = mender_utils_strndup(path_no_prefix, path_port - path_no_prefix);
+        *port = mender_utils_strndup(path_port + 1, path_url - path_port - 1);
     }
 
     if (NULL == *host || NULL == *port) {
         /* Clean up */
-        free(*host);
-        free(*port);
-        free(*url);
+        mender_free(*host);
+        mender_free(*port);
+        mender_free(*url);
 
         mender_log_error("Unable to allocate memory for host or port");
         return MENDER_FAIL;
@@ -133,7 +130,7 @@ header_alloc_and_add(const char **header_list, size_t header_list_size, const ch
     va_list args;
 
     va_start(args, format);
-    int ret = vasprintf(&header, format, args);
+    int ret = mender_utils_vasprintf(&header, format, args);
     va_end(args);
     if (ret < 0) {
         mender_log_error("Unable to create header");
@@ -142,7 +139,7 @@ header_alloc_and_add(const char **header_list, size_t header_list_size, const ch
 
     if (MENDER_FAIL == header_add(header_list, header_list_size, header)) {
         mender_log_error("Unable to add header to the list");
-        free(header);
+        mender_free(header);
         return NULL;
     }
     return header;

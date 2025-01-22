@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#include "mender-alloc.h"
 #include "mender-sha.h"
 #include "mender-log.h"
 
@@ -26,7 +27,7 @@ mender_err_t
 mender_sha256_begin(mender_sha256_context_t *context) {
     assert(NULL != context);
 
-    mbedtls_sha256_context *ctx = malloc(sizeof(mbedtls_sha256_context));
+    mbedtls_sha256_context *ctx = mender_malloc(sizeof(mbedtls_sha256_context));
     if (NULL == ctx) {
         mender_log_error("Unable to allocate memory");
         return MENDER_FAIL;
@@ -35,7 +36,7 @@ mender_sha256_begin(mender_sha256_context_t *context) {
     mbedtls_sha256_init(ctx);
     if (0 != mbedtls_sha256_starts(ctx, 0 /* Use SHA-256, not SHA-224 */)) {
         mender_log_error("Failed to start SHA-256 checksum calculation");
-        free(ctx);
+        mender_free(ctx);
         return MENDER_FAIL;
     }
 
@@ -68,7 +69,7 @@ mender_sha256_finish(mender_sha256_context_t context, unsigned char *output) {
             }
         }
         mbedtls_sha256_free(ctx);
-        free(ctx);
+        mender_free(ctx);
     }
     return ret;
 }

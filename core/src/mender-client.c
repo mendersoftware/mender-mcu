@@ -18,6 +18,7 @@
  * limitations under the License.
  */
 
+#include "mender-alloc.h"
 #include "mender-api.h"
 #include "mender-client.h"
 #include "mender-artifact.h"
@@ -229,11 +230,29 @@ mender_client_version(void) {
 
 mender_err_t
 mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *callbacks) {
-
     assert(NULL != config);
     assert(NULL != callbacks);
     assert(NULL != callbacks->restart);
+
+    /* Either all allocation functions set or none. */
+    assert(((NULL == config->allocation_funcs.mender_malloc_func) && (NULL == config->allocation_funcs.mender_realloc_func)
+            && (NULL == config->allocation_funcs.free_func))
+           || ((NULL != config->allocation_funcs.mender_malloc_func) && (NULL != config->allocation_funcs.mender_realloc_func)
+               && (NULL != config->allocation_funcs.free_func)));
+
     mender_err_t ret;
+
+    if (NULL != config->allocation_funcs.mender_malloc_func) {
+        mender_set_allocation_funcs(
+            config->allocation_funcs.mender_malloc_func, config->allocation_funcs.mender_realloc_func, config->allocation_funcs.free_func);
+    } else {
+        mender_set_platform_allocation_funcs();
+    }
+
+    {
+        cJSON_Hooks cjson_alloc_funcs = { mender_malloc, mender_free };
+        cJSON_InitHooks(&cjson_alloc_funcs);
+    }
 
     /* Prefer client config over Kconfig */
     mender_client_config.device_type = IS_NULL_OR_EMPTY(config->device_type) ? CONFIG_MENDER_DEVICE_TYPE : config->device_type;
@@ -600,14 +619,14 @@ mender_commit_artifact_data(void) {
 static mender_err_t
 deployment_destroy(mender_api_deployment_data_t *deployment) {
     if (NULL != deployment) {
-        free(deployment->id);
-        free(deployment->artifact_name);
-        free(deployment->uri);
+        mender_free(deployment->id);
+        mender_free(deployment->artifact_name);
+        mender_free(deployment->uri);
         for (size_t i = 0; i < deployment->device_types_compatible_size; ++i) {
-            free(deployment->device_types_compatible[i]);
+            mender_free(deployment->device_types_compatible[i]);
         }
-        free(deployment->device_types_compatible);
-        free(deployment);
+        mender_free(deployment->device_types_compatible);
+        mender_free(deployment);
     }
     return MENDER_OK;
 }
@@ -833,7 +852,7 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
         return MENDER_FAIL;
     }
 
-    if (NULL == (*deployment_data = calloc(1, sizeof(mender_api_deployment_data_t)))) {
+    if (NULL == (*deployment_data = mender_calloc(1, sizeof(mender_api_deployment_data_t)))) {
         mender_log_error("Unable to allocate memory for deployment data");
         return MENDER_FAIL;
     }
@@ -1004,7 +1023,7 @@ mender_client_update_work_function(void) {
                                 else if (MENDER_OK != (ret = mender_deployment_data_set_artifact_name(mender_client_deployment_data, artifact_name))) {
                                     mender_log_error("Failed to set deployment data artifact name");
                                 }
-                                free(new_provides);
+                                mender_free(new_provides);
                             } else {
                                 mender_log_error("Unable to prepare new provides");
                             }

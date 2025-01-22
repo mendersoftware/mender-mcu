@@ -138,7 +138,7 @@ mender_http_perform(char                *jwt,
     request.payload     = payload;
     request.payload_len = (NULL != payload) ? strlen(payload) : 0;
     request.response    = http_response_cb;
-    if (NULL == (request.recv_buf = (uint8_t *)malloc(mender_http_recv_buf_length))) {
+    if (NULL == (request.recv_buf = (uint8_t *)mender_malloc(mender_http_recv_buf_length))) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -226,14 +226,14 @@ END:
     }
 
     /* Release memory */
-    free(host);
-    free(port);
-    free(url);
-    free(host_header);
-    free(auth_header);
-    free(signature_header);
+    mender_free(host);
+    mender_free(port);
+    mender_free(url);
+    mender_free(host_header);
+    mender_free(auth_header);
+    mender_free(signature_header);
 
-    free(request.recv_buf);
+    mender_free(request.recv_buf);
 
     return ret;
 }
@@ -269,7 +269,7 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     request.host     = host;
     request.protocol = "HTTP/1.1";
     request.response = artifact_response_cb;
-    if (NULL == (request.recv_buf = (uint8_t *)malloc(mender_http_recv_buf_length))) {
+    if (NULL == (request.recv_buf = (uint8_t *)mender_malloc(mender_http_recv_buf_length))) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -337,12 +337,12 @@ END:
     }
 
     /* Release memory */
-    free(host);
-    free(port);
-    free(url);
-    free(host_header);
+    mender_free(host);
+    mender_free(port);
+    mender_free(url);
+    mender_free(host_header);
 
-    free(request.recv_buf);
+    mender_free(request.recv_buf);
 
     return ret;
 }

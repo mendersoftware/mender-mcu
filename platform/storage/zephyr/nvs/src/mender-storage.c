@@ -65,7 +65,7 @@ nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
     *length = (size_t)ret;
 
     /* Allocate memory */
-    *data = malloc(*length);
+    *data = mender_malloc(*length);
     if (NULL == *data) {
         mender_log_error("Unable to allocate memory for: %d", id);
         return MENDER_FAIL;
@@ -97,7 +97,7 @@ crc_add(char **data, size_t *data_len) {
     assert(NULL != data_len);
 
     uint32_t crc = crc32_ieee(*data, *data_len);
-    char    *tmp = realloc(*data, *data_len + sizeof(crc));
+    char    *tmp = mender_realloc(*data, *data_len + sizeof(crc));
     if (NULL == tmp) {
         mender_log_error("Unable to allocate memory for deployment data");
         return MENDER_FAIL;
@@ -301,11 +301,11 @@ mender_storage_set_provides(mender_key_value_list_t *provides) {
     /* Write provides */
     if (nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_PROVIDES, provides_str, strlen(provides_str) + 1) < 0) {
         mender_log_error("Unable to write provides");
-        free(provides_str);
+        mender_free(provides_str);
         return MENDER_FAIL;
     }
 
-    free(provides_str);
+    mender_free(provides_str);
     return MENDER_OK;
 }
 
@@ -359,7 +359,7 @@ mender_storage_set_artifact_name(const char *artifact_name) {
         return MENDER_FAIL;
     }
 
-    free(cached_artifact_name);
+    mender_free(cached_artifact_name);
     cached_artifact_name = NULL;
 
     return MENDER_OK;

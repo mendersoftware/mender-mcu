@@ -34,7 +34,7 @@ mender_flash_open(const char *name, size_t size, void **handle) {
     mender_log_info("Start flashing artifact '%s' with size %d", name, size);
 
     /* Allocate memory to store the flash handle */
-    if (NULL == (*handle = malloc(sizeof(struct flash_img_context)))) {
+    if (NULL == (*handle = mender_malloc(sizeof(struct flash_img_context)))) {
         mender_log_error("Unable to allocate memory");
         return MENDER_FAIL;
     }

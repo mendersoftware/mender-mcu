@@ -18,9 +18,7 @@
  * limitations under the License.
  */
 
-#define _GNU_SOURCE // asprintf
-#include <stdio.h>  // asprintf
-
+#include "mender-alloc.h"
 #include "mender-api.h"
 #include "mender-artifact.h"
 #include "mender-error-counters.h"
@@ -29,6 +27,7 @@
 #include "mender-http.h"
 #include "mender-log.h"
 #include "mender-tls.h"
+#include "mender-utils.h"
 
 /**
  * @brief Paths of the mender-server APIs
@@ -243,9 +242,9 @@ perform_authentication(void) {
             goto END;
         }
         if (NULL != api_jwt) {
-            free(api_jwt);
+            mender_free(api_jwt);
         }
-        if (NULL == (api_jwt = strdup(response))) {
+        if (NULL == (api_jwt = mender_utils_strdup(response))) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
@@ -261,13 +260,13 @@ perform_authentication(void) {
 END:
 
     /* Release memory */
-    free(response);
-    free(signature);
-    free(payload);
+    mender_free(response);
+    mender_free(signature);
+    mender_free(payload);
     cJSON_Delete(json_payload);
     cJSON_Delete(json_identity);
-    free(identity_info);
-    free(public_key_pem);
+    mender_free(identity_info);
+    mender_free(public_key_pem);
 
     return ret;
 }
@@ -306,7 +305,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
         mender_log_info("Trying to re-authenticate");
         FREE_AND_NULL(api_jwt);
         if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
-            free(*response);
+            mender_free(*response);
             ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
             if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
                 mender_log_error("Unable to release the authentication lock");
@@ -407,7 +406,7 @@ END:
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
     cJSON_Delete(json_payload);
-    free(payload);
+    mender_free(payload);
     return ret;
 }
 
@@ -427,7 +426,7 @@ api_check_for_deployment_v1(int *status, char **response) {
     }
 
     /* Compute path */
-    if (-1 == asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, api_config.device_type)) {
+    if (-1 == mender_utils_asprintf(&path, MENDER_API_PATH_GET_NEXT_DEPLOYMENT "?artifact_name=%s&device_type=%s", artifact_name, api_config.device_type)) {
         mender_log_error("Unable to allocate memory");
         goto END;
     }
@@ -443,7 +442,7 @@ api_check_for_deployment_v1(int *status, char **response) {
 END:
 
     /* Release memory */
-    free(path);
+    mender_free(path);
 
     return ret;
 }
@@ -475,7 +474,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
         if (NULL != json_response) {
             cJSON *json_id = cJSON_GetObjectItem(json_response, "id");
             if (NULL != json_id) {
-                if (NULL == (deployment->id = strdup(cJSON_GetStringValue(json_id)))) {
+                if (NULL == (deployment->id = mender_utils_strdup(cJSON_GetStringValue(json_id)))) {
                     ret = MENDER_FAIL;
                     goto END;
                 }
@@ -484,7 +483,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
             if (NULL != json_artifact) {
                 cJSON *json_artifact_name = cJSON_GetObjectItem(json_artifact, "artifact_name");
                 if (NULL != json_artifact_name) {
-                    if (NULL == (deployment->artifact_name = strdup(cJSON_GetStringValue(json_artifact_name)))) {
+                    if (NULL == (deployment->artifact_name = mender_utils_strdup(cJSON_GetStringValue(json_artifact_name)))) {
                         ret = MENDER_FAIL;
                         goto END;
                     }
@@ -493,7 +492,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
                 if (NULL != json_source) {
                     cJSON *json_uri = cJSON_GetObjectItem(json_source, "uri");
                     if (NULL != json_uri) {
-                        if (NULL == (deployment->uri = strdup(cJSON_GetStringValue(json_uri)))) {
+                        if (NULL == (deployment->uri = mender_utils_strdup(cJSON_GetStringValue(json_uri)))) {
                             ret = MENDER_FAIL;
                             goto END;
                         }
@@ -509,7 +508,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
                 cJSON *json_device_types_compatible = cJSON_GetObjectItem(json_artifact, "device_types_compatible");
                 if (NULL != json_device_types_compatible && cJSON_IsArray(json_device_types_compatible)) {
                     deployment->device_types_compatible_size = cJSON_GetArraySize(json_device_types_compatible);
-                    deployment->device_types_compatible      = (char **)malloc(deployment->device_types_compatible_size * sizeof(char *));
+                    deployment->device_types_compatible      = (char **)mender_malloc(deployment->device_types_compatible_size * sizeof(char *));
                     if (NULL == deployment->device_types_compatible) {
                         mender_log_error("Unable to allocate memory");
                         ret = MENDER_FAIL;
@@ -518,7 +517,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
                     for (size_t i = 0; i < deployment->device_types_compatible_size; i++) {
                         cJSON *json_device_type = cJSON_GetArrayItem(json_device_types_compatible, i);
                         if (NULL != json_device_type && cJSON_IsString(json_device_type)) {
-                            if (NULL == (deployment->device_types_compatible[i] = strdup(cJSON_GetStringValue(json_device_type)))) {
+                            if (NULL == (deployment->device_types_compatible[i] = mender_utils_strdup(cJSON_GetStringValue(json_device_type)))) {
                                 ret = MENDER_FAIL;
                                 goto END;
                             }
@@ -551,7 +550,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
 END:
 
     /* Release memory */
-    free(response);
+    mender_free(response);
 
     return ret;
 }
@@ -590,7 +589,7 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
 
     /* Compute path */
     size_t str_length = strlen(MENDER_API_PATH_PUT_DEPLOYMENT_STATUS) - strlen("%s") + strlen(id) + 1;
-    if (NULL == (path = (char *)malloc(str_length))) {
+    if (NULL == (path = (char *)mender_malloc(str_length))) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto END;
@@ -619,9 +618,9 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
 END:
 
     /* Release memory */
-    free(response);
-    free(path);
-    free(payload);
+    mender_free(response);
+    mender_free(path);
+    mender_free(payload);
     cJSON_Delete(json_payload);
 
     return ret;
@@ -706,8 +705,8 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
 END:
 
     /* Release memory */
-    free(response);
-    free(payload);
+    mender_free(response);
+    mender_free(payload);
     cJSON_Delete(object);
 
     return ret;
@@ -752,7 +751,7 @@ mender_api_http_text_callback(mender_http_client_event_t event, void *data, size
             }
             /* Concatenate data to the response */
             size_t response_length = (NULL != *response) ? strlen(*response) : 0;
-            if (NULL == (tmp = realloc(*response, response_length + data_length + 1))) {
+            if (NULL == (tmp = mender_realloc(*response, response_length + data_length + 1))) {
                 mender_log_error("Unable to allocate memory");
                 ret = MENDER_FAIL;
                 break;

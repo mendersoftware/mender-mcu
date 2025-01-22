@@ -19,6 +19,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include "mender-alloc.h"
 #include "mender-flash.h"
 #include "mender-log.h"
 
@@ -46,7 +47,7 @@ mender_flash_open(const char *name, size_t size, void **handle) {
 
     /* Compute path */
     size_t str_length = strlen(CONFIG_MENDER_FLASH_PATH) + strlen(name) + 1;
-    if (NULL == (path = (char *)malloc(str_length))) {
+    if (NULL == (path = (char *)mender_malloc(str_length))) {
         mender_log_error("Unable to allocate memory");
         return MENDER_FAIL;
     }
@@ -55,12 +56,12 @@ mender_flash_open(const char *name, size_t size, void **handle) {
     /* Begin deployment with sequential writes */
     if (NULL == (*handle = fopen(path, "wb"))) {
         mender_log_error("fopen failed (%d)", errno);
-        free(path);
+        mender_free(path);
         return MENDER_FAIL;
     }
 
     /* Release memory */
-    free(path);
+    mender_free(path);
 
     return MENDER_OK;
 }

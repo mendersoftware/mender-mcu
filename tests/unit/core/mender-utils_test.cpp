@@ -103,6 +103,23 @@ TEST(MenderUtilsTest, StrStr) {
     EXPECT_STRNE(check.c_str(), haystack.c_str());
 }
 
+TEST(MenderUtilsTest, StrDup) {
+    const char *orig = "123456789";
+    char       *result;
+
+    result = mender_utils_strdup(orig);
+    EXPECT_STREQ(result, orig);
+    free(result);
+
+    result = mender_utils_strndup(orig, 4);
+    EXPECT_STREQ(result, "1234");
+    free(result);
+
+    result = mender_utils_strndup(orig, 9);
+    EXPECT_STREQ(result, orig);
+    free(result);
+}
+
 TEST(MenderUtilsTest, StringBeginsWith) {
     const string str = "string begins with";
 

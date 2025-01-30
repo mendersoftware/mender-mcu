@@ -89,7 +89,8 @@ test:unit:
   stage: test
   image: ubuntu:24.04
   before_script:
-    - apt update && apt install -yyq
+    - apt update &&
+      DEBIAN_FRONTEND=noninteractive apt install -yyq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
       clang wget

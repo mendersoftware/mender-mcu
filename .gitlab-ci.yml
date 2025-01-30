@@ -8,6 +8,10 @@ stages:
   - test
   - publish
 
+variables:
+  # Prevent Debian/Ubuntu OS from expecting interactive install of packages
+  DEBIAN_FRONTEND: noninteractive
+
 .test:static:
   stage: test
   image: ubuntu:24.04

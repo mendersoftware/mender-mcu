@@ -469,8 +469,10 @@ mender_client_work_function(void) {
             if (MENDER_OK != mender_err_count_reboot_inc()) {
                 /* It appears we are stuck in this state. The only thing we can do is to mark the
                    deployment as failed and revert to normal operation. */
-                mender_log_error("Waiting for reboot for too long, giving up");
+                mender_log_error("Waiting for reboot for too long, trying unconditional reboot");
+                mender_scheduler_reboot();
 
+                mender_log_error("Failed to reboot unconditionally, trying to resume operations");
                 if (NULL == mender_client_deployment_data) {
                     mender_log_error("No deployment data to use for deployment abortion");
                 } else {

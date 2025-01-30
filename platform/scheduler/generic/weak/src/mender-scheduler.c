@@ -106,3 +106,8 @@ mender_scheduler_exit(void) {
     /* Nothing to do */
     return MENDER_OK;
 }
+
+__attribute__((weak)) void
+mender_scheduler_reboot(void) {
+    return;
+}

@@ -22,8 +22,10 @@
 #include <mqueue.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/reboot.h>
 #include <time.h>
 #include <unistd.h>
+
 #include "mender-alloc.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"
@@ -419,4 +421,9 @@ mender_scheduler_mutex_delete(void *handle) {
     mender_free(handle);
 
     return MENDER_OK;
+}
+
+void
+mender_scheduler_reboot(void) {
+    reboot(RB_AUTOBOOT);
 }

@@ -26,6 +26,7 @@ test:static:format:
     - ./.github/workflows/check_include_guards.sh
     - ./.github/workflows/check_equivalence_tests.sh
     - ./.github/workflows/check_code_format.sh
+    - ./.github/workflows/check_allocations.sh
 
 test:smoke-build:posix:
   stage: test

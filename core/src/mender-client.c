@@ -567,6 +567,9 @@ REBOOT:
     mender_storage_delete_deployment_data();
 
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
+    /* Set the client's state to PENDING_REBOOT so that we can potentially
+       detect a failure to reboot (i.e. waiting for reboot taking too long).  */
+    mender_client_state = MENDER_CLIENT_STATE_PENDING_REBOOT;
     if (NULL != mender_client_callbacks.restart) {
         mender_client_callbacks.restart();
     }

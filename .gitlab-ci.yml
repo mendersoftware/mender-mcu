@@ -12,6 +12,10 @@ variables:
   # Prevent Debian/Ubuntu OS from expecting interactive install of packages
   DEBIAN_FRONTEND: noninteractive
 
+  # mender-artifact version for tests
+  MENDER_ARTIFACT_DEBIAN: bookworm
+  MENDER_ARTIFACT_VERSION: 3.11.2
+
 .test:static:
   stage: test
   image: ubuntu:24.04
@@ -57,13 +61,7 @@ test:smoke-build:weak:
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help
 
-.test:mender-artifact:template:
-  variables:
-    DEBIAN_RELEASE: bookworm
-    MENDER_ARTIFACT_VERSION: 3.11.2
-
 test:unit:
-  extends: .test:mender-artifact:template
   stage: test
   image: debian:12-slim
   before_script:
@@ -72,7 +70,7 @@ test:unit:
       libcurl4-openssl-dev libcjson-dev
       g++ lcov wget
     # Fetch and install mender-artifact
-    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${DEBIAN_RELEASE}_amd64.deb"
+    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${MENDER_ARTIFACT_DEBIAN}_amd64.deb"
       -O mender-artifact.deb &&
       dpkg --install mender-artifact.deb
   script:
@@ -88,7 +86,6 @@ test:unit:
       - coverage.lcov
 
 .test:static:template:
-  extends: .test:mender-artifact:template
   stage: test
   image: ubuntu:24.04
   before_script:
@@ -97,7 +94,7 @@ test:unit:
       libcurl4-openssl-dev libcjson-dev
       clang wget
     # Fetch and install mender-artifact
-    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${DEBIAN_RELEASE}_amd64.deb"
+    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${MENDER_ARTIFACT_DEBIAN}_amd64.deb"
       -O mender-artifact.deb &&
       dpkg --install mender-artifact.deb
     - export CC=$(which clang)

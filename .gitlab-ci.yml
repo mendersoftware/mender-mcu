@@ -20,7 +20,7 @@ test:static:license:
   script:
     - ./.github/workflows/check_headers.sh
 
-test:static:format:
+test:static:code:
   extends: .test:static
   script:
     - ./.github/workflows/check_include_guards.sh

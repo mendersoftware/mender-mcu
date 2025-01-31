@@ -19,6 +19,7 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/sys/reboot.h> /* sys_reboot() */
 #include "mender-alloc.h"
 #include "mender-log.h"
 #include "mender-scheduler.h"

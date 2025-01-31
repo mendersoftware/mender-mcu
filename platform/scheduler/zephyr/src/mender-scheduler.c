@@ -287,3 +287,8 @@ mender_scheduler_mutex_delete(void *handle) {
 
     return MENDER_OK;
 }
+
+void
+mender_scheduler_reboot(void) {
+    sys_reboot(SYS_REBOOT_WARM);
+}

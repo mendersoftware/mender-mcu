@@ -127,6 +127,11 @@ mender_err_t mender_scheduler_mutex_give(void *handle);
  */
 mender_err_t mender_scheduler_mutex_delete(void *handle);
 
+/**
+ * @brief Unconditionally reboot the system (e.g. if the reboot callback fails to do so)
+ */
+void mender_scheduler_reboot(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

@@ -469,8 +469,10 @@ mender_client_work_function(void) {
             if (MENDER_OK != mender_err_count_reboot_inc()) {
                 /* It appears we are stuck in this state. The only thing we can do is to mark the
                    deployment as failed and revert to normal operation. */
-                mender_log_error("Waiting for reboot for too long, giving up");
+                mender_log_error("Waiting for reboot for too long, trying unconditional reboot");
+                mender_scheduler_reboot();
 
+                mender_log_error("Failed to reboot unconditionally, trying to resume operations");
                 if (NULL == mender_client_deployment_data) {
                     mender_log_error("No deployment data to use for deployment abortion");
                 } else {
@@ -565,6 +567,9 @@ REBOOT:
     mender_storage_delete_deployment_data();
 
     /* Invoke restart callback, application is responsible to shutdown properly and restart the system */
+    /* Set the client's state to PENDING_REBOOT so that we can potentially
+       detect a failure to reboot (i.e. waiting for reboot taking too long).  */
+    mender_client_state = MENDER_CLIENT_STATE_PENDING_REBOOT;
     if (NULL != mender_client_callbacks.restart) {
         mender_client_callbacks.restart();
     }

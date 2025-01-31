@@ -24,7 +24,7 @@
 #include "mender-artifact.h"
 #include "mender-artifact-download.h"
 #include "mender-log.h"
-#include "mender-scheduler.h"
+#include "mender-os.h"
 #include "mender-storage.h"
 #include "mender-tls.h"
 #include "mender-update-module.h"
@@ -298,7 +298,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
 
     /* Initializations */
     // TODO: what to do with the authentication interval?
-    if (MENDER_OK != (ret = mender_scheduler_init())) {
+    if (MENDER_OK != (ret = mender_os_scheduler_init())) {
         mender_log_error("Unable to initialize scheduler");
         goto END;
     }
@@ -341,14 +341,14 @@ mender_err_t
 mender_client_activate(void) {
     mender_err_t ret;
 
-    mender_scheduler_work_params_t work_params = {
+    mender_os_scheduler_work_params_t work_params = {
         .function = mender_client_work_function,
         .period   = mender_client_config.update_poll_interval,
         .name     = "mender_client_main",
     };
 
-    if ((MENDER_OK != (ret = mender_scheduler_work_create(&work_params, &mender_client_work)))
-        || (MENDER_OK != (ret = mender_scheduler_work_activate(mender_client_work)))) {
+    if ((MENDER_OK != (ret = mender_os_scheduler_work_create(&work_params, &mender_client_work)))
+        || (MENDER_OK != (ret = mender_os_scheduler_work_activate(mender_client_work)))) {
         mender_log_error("Unable to activate the main work");
         return ret;
     }
@@ -414,13 +414,13 @@ mender_err_t
 mender_client_exit(void) {
     bool some_error = false;
 
-    if (MENDER_OK != mender_scheduler_work_deactivate(mender_client_work)) {
+    if (MENDER_OK != mender_os_scheduler_work_deactivate(mender_client_work)) {
         mender_log_error("Failed to deactivate main work");
         /* keep going on, we want to do as much cleanup as possible */
         some_error = true;
     }
 
-    if (MENDER_OK != mender_scheduler_work_delete(mender_client_work)) {
+    if (MENDER_OK != mender_os_scheduler_work_delete(mender_client_work)) {
         mender_log_error("Failed to delete main work");
         /* keep going on, we want to do as much cleanup as possible */
         some_error = true;
@@ -429,7 +429,7 @@ mender_client_exit(void) {
     }
 
     /* Stop scheduling new work */
-    mender_scheduler_exit();
+    mender_os_scheduler_exit();
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     if (MENDER_OK != mender_inventory_exit()) {
@@ -470,7 +470,7 @@ mender_client_work_function(void) {
                 /* It appears we are stuck in this state. The only thing we can do is to mark the
                    deployment as failed and revert to normal operation. */
                 mender_log_error("Waiting for reboot for too long, trying unconditional reboot");
-                mender_scheduler_reboot();
+                mender_os_reboot();
 
                 mender_log_error("Failed to reboot unconditionally, trying to resume operations");
                 if (NULL == mender_client_deployment_data) {

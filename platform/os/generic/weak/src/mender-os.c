@@ -1,6 +1,6 @@
 /**
- * @file      mender-scheduler.c
- * @brief     Mender scheduler interface for weak platform
+ * @file      mender-os.c
+ * @brief     Mender OS interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -18,53 +18,53 @@
  * limitations under the License.
  */
 
-#include "mender-scheduler.h"
+#include "mender-os.h"
 #include "mender-utils.h"
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_init(void) {
+mender_os_scheduler_init(void) {
     /* Nothing to do */
     return MENDER_OK;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_create(MENDER_ARG_UNUSED mender_scheduler_work_params_t *work_params, MENDER_ARG_UNUSED mender_work_t **work) {
+mender_os_scheduler_work_create(MENDER_ARG_UNUSED mender_os_scheduler_work_params_t *work_params, MENDER_ARG_UNUSED mender_work_t **work) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_activate(MENDER_ARG_UNUSED mender_work_t *work) {
+mender_os_scheduler_work_activate(MENDER_ARG_UNUSED mender_work_t *work) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_set_period(MENDER_ARG_UNUSED mender_work_t *work, MENDER_ARG_UNUSED uint32_t period) {
+mender_os_scheduler_work_set_period(MENDER_ARG_UNUSED mender_work_t *work, MENDER_ARG_UNUSED uint32_t period) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_execute(MENDER_ARG_UNUSED mender_work_t *work) {
+mender_os_scheduler_work_execute(MENDER_ARG_UNUSED mender_work_t *work) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_deactivate(MENDER_ARG_UNUSED mender_work_t *work) {
+mender_os_scheduler_work_deactivate(MENDER_ARG_UNUSED mender_work_t *work) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_work_delete(MENDER_ARG_UNUSED mender_work_t *work) {
+mender_os_scheduler_work_delete(MENDER_ARG_UNUSED mender_work_t *work) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_mutex_create(void **handle) {
+mender_os_mutex_create(void **handle) {
 
     (void)handle;
 
@@ -73,7 +73,7 @@ mender_scheduler_mutex_create(void **handle) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_mutex_take(void *handle, int32_t delay_ms) {
+mender_os_mutex_take(void *handle, int32_t delay_ms) {
 
     (void)handle;
     (void)delay_ms;
@@ -83,7 +83,7 @@ mender_scheduler_mutex_take(void *handle, int32_t delay_ms) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_mutex_give(void *handle) {
+mender_os_mutex_give(void *handle) {
 
     (void)handle;
 
@@ -92,7 +92,7 @@ mender_scheduler_mutex_give(void *handle) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_mutex_delete(void *handle) {
+mender_os_mutex_delete(void *handle) {
 
     (void)handle;
 
@@ -101,13 +101,13 @@ mender_scheduler_mutex_delete(void *handle) {
 }
 
 __attribute__((weak)) mender_err_t
-mender_scheduler_exit(void) {
+mender_os_scheduler_exit(void) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
 
 __attribute__((weak)) void
-mender_scheduler_reboot(void) {
+mender_os_reboot(void) {
     return;
 }

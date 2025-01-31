@@ -8,6 +8,10 @@ stages:
   - test
   - publish
 
+variables:
+  # mender-artifact version for tests
+  MENDER_ARTIFACT_VERSION: 3.11.2
+
 default:
   tags:
     # Don't run gitlab hosted runners by default
@@ -63,13 +67,7 @@ test:smoke-build:weak:
     - cmake --build build --parallel $(nproc --all)
     - ./build/mender-mcu-client.elf --help
 
-.test:mender-artifact:template:
-  variables:
-    DEBIAN_RELEASE: bookworm
-    MENDER_ARTIFACT_VERSION: 3.11.2
-
 test:unit:
-  extends: .test:mender-artifact:template
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   before_script:
@@ -78,7 +76,7 @@ test:unit:
       libcurl4-openssl-dev libcjson-dev
       g++ lcov wget
     # Fetch and install mender-artifact
-    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${DEBIAN_RELEASE}_amd64.deb"
+    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+bookworm_amd64.deb"
       -O mender-artifact.deb &&
       dpkg --install mender-artifact.deb
   script:
@@ -92,7 +90,6 @@ test:unit:
       - coverage.lcov
 
 .test:static:template:
-  extends: .test:mender-artifact:template
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/ubuntu:24.04
   before_script:
@@ -101,7 +98,7 @@ test:unit:
       libcurl4-openssl-dev libcjson-dev
       clang wget
     # Fetch and install mender-artifact
-    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+${DEBIAN_RELEASE}_amd64.deb"
+    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+ubuntu+noble_amd64.deb"
       -O mender-artifact.deb &&
       dpkg --install mender-artifact.deb
     - export CC=$(which clang)

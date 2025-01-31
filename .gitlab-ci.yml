@@ -10,7 +10,7 @@ stages:
 
 .test:static:
   stage: test
-  image: ubuntu:24.04
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/ubuntu:24.04
   needs: []
   before_script:
     - apt-get update && apt-get install -y git clang-format pcregrep
@@ -30,7 +30,7 @@ test:static:code:
 
 test:smoke-build:posix:
   stage: test
-  image: debian:12-slim
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   needs: []
   before_script:
     - apt-get update && apt-get install -yqq
@@ -43,7 +43,7 @@ test:smoke-build:posix:
 
 test:smoke-build:weak:
   stage: test
-  image: debian:12-slim
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   needs: []
   before_script:
     - apt-get update && apt-get install -yqq
@@ -62,7 +62,7 @@ test:smoke-build:weak:
 test:unit:
   extends: .test:mender-artifact:template
   stage: test
-  image: debian:12-slim
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   before_script:
     - apt update && apt install -yyq
       cmake git make pkg-config python3
@@ -87,7 +87,7 @@ test:unit:
 .test:static:template:
   extends: .test:mender-artifact:template
   stage: test
-  image: ubuntu:24.04
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/ubuntu:24.04
   before_script:
     - apt update && apt install -yyq
       cmake git make pkg-config python3
@@ -129,7 +129,7 @@ test:static:release:
 
 publish:tests:
   stage: publish
-  image: python:3.11
+  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/python:3.11
   dependencies:
     - test:unit
   before_script:

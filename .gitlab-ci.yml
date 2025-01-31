@@ -8,12 +8,21 @@ stages:
   - test
   - publish
 
+default:
+  tags:
+    # Don't run gitlab hosted runners by default
+    - hetzner-amd-beefy
+
 .test:static:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/ubuntu:24.04
   needs: []
   before_script:
     - apt-get update && apt-get install -y git clang-format pcregrep
+  tags:
+    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
+    # Temporarely setting it to GitLab Hosted runners
+    - saas-linux-medium-amd64
 
 test:static:license:
   extends: .test:static
@@ -75,8 +84,6 @@ test:unit:
   script:
     - cmake -D COVERAGE=ON tests/unit/
     - make --jobs=$(nproc --all) --keep-going coverage
-  tags:
-    - hetzner-amd-beefy
   artifacts:
     expire_in: 2w
     reports:

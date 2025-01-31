@@ -102,7 +102,9 @@ test:unit:
     - cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} tests/unit
     - make --jobs=$(nproc --all) --keep-going check
   tags:
-    - hetzner-amd-beefy
+    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
+    # Temporarily setting it to GitLab Hosted runners
+    - saas-linux-medium-amd64
 
 test:static:asan:
   extends: .test:static:template

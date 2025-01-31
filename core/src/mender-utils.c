@@ -119,6 +119,70 @@ mender_utils_strrstr(const char *haystack, const char *needle) {
     }
 }
 
+char *
+mender_utils_strdup(const char *str) {
+    assert(NULL != str);
+
+    size_t str_len = strlen(str);
+    return mender_utils_strndup(str, str_len);
+}
+
+char *
+mender_utils_strndup(const char *str, size_t n) {
+    assert(NULL != str);
+
+    char *dup = mender_malloc(n + 1);
+    if (NULL == dup) {
+        return dup;
+    }
+    dup[n] = '\0';
+    return memcpy(dup, str, n);
+}
+
+int
+mender_utils_asprintf(char **result, const char *fmt, ...) {
+    assert(NULL != result);
+
+    va_list ap;
+    int     ret;
+
+    va_start(ap, fmt);
+    ret = mender_utils_vasprintf(result, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+int
+mender_utils_vasprintf(char **result, const char *fmt, va_list ap) {
+    assert(NULL != result);
+
+    int     len;
+    va_list ap_copy;
+
+    /* We need to create a copy to not mess the original ap for the second
+       use (because we cannot use va_start() in this function). */
+    va_copy(ap_copy, ap);
+
+    /* First, run vsnprintf() in a way that it tells us how much space it needs,
+       then allocate the appropriate buffer and then run vsnprintf() again to
+       actually format the string into the buffer. */
+    len = vsnprintf(NULL, 0, fmt, ap_copy);
+    va_end(ap_copy);
+    if (len <= 0) {
+        return len;
+    }
+    *result = mender_malloc((size_t)len + 1);
+    if (NULL == *result) {
+        return -1;
+    }
+    va_copy(ap_copy, ap);
+    len = vsnprintf(*result, len + 1, fmt, ap_copy);
+    va_end(ap_copy);
+
+    return len;
+}
+
 bool
 mender_utils_strbeginswith(const char *s1, const char *s2) {
 
@@ -203,7 +267,7 @@ mender_keystore_t *
 mender_utils_keystore_new(size_t length) {
 
     /* Allocate memory */
-    mender_keystore_t *keystore = (mender_keystore_t *)malloc((length + 1) * sizeof(mender_item_t));
+    mender_keystore_t *keystore = (mender_keystore_t *)mender_malloc((length + 1) * sizeof(mender_item_t));
     if (NULL == keystore) {
         mender_log_error("Unable to allocate memory");
         return NULL;
@@ -318,13 +382,13 @@ mender_utils_keystore_set_item(mender_keystore_t *keystore, size_t index, char *
 
     /* Copy name and value */
     if (NULL != name) {
-        if (NULL == (keystore[index].name = strdup(name))) {
+        if (NULL == (keystore[index].name = mender_utils_strdup(name))) {
             mender_log_error("Unable to allocate memory");
             return MENDER_FAIL;
         }
     }
     if (NULL != value) {
-        if (NULL == (keystore[index].value = strdup(value))) {
+        if (NULL == (keystore[index].value = mender_utils_strdup(value))) {
             mender_log_error("Unable to allocate memory");
             return MENDER_FAIL;
         }
@@ -355,14 +419,14 @@ mender_utils_keystore_delete(mender_keystore_t *keystore) {
         size_t index = 0;
         while ((NULL != keystore[index].name) || (NULL != keystore[index].value)) {
             if (NULL != keystore[index].name) {
-                free(keystore[index].name);
+                mender_free(keystore[index].name);
             }
             if (NULL != keystore[index].value) {
-                free(keystore[index].value);
+                mender_free(keystore[index].value);
             }
             index++;
         }
-        free(keystore);
+        mender_free(keystore);
     }
 
     return MENDER_OK;
@@ -391,9 +455,9 @@ mender_utils_key_value_list_free(mender_key_value_list_t *list) {
     mender_key_value_list_t *item = list;
     while (NULL != item) {
         mender_key_value_list_t *next = item->next;
-        free(item->key);
-        free(item->value);
-        free(item);
+        mender_free(item->key);
+        mender_free(item->value);
+        mender_free(item);
         item = next;
     }
     return MENDER_OK;
@@ -405,19 +469,19 @@ mender_utils_key_value_list_create_node(const char *type, const char *value, men
     assert(NULL != value);
     assert(NULL != list);
 
-    mender_key_value_list_t *item = (mender_key_value_list_t *)calloc(1, sizeof(mender_key_value_list_t));
+    mender_key_value_list_t *item = (mender_key_value_list_t *)mender_calloc(1, sizeof(mender_key_value_list_t));
     if (NULL == item) {
         mender_log_error("Unable to allocate memory for linked list node");
         return MENDER_FAIL;
     }
 
-    item->key = strdup(type);
+    item->key = mender_utils_strdup(type);
     if (NULL == item->key) {
         mender_log_error("Unable to allocate memory for type");
         goto ERROR;
     }
 
-    item->value = strdup(value);
+    item->value = mender_utils_strdup(value);
     if (NULL == item->value) {
         mender_log_error("Unable to allocate memory for value");
         goto ERROR;
@@ -450,7 +514,7 @@ mender_utils_key_value_list_to_string(mender_key_value_list_t *list, char **key_
         }
     }
 
-    *key_value_str = (char *)calloc(1, total_len);
+    *key_value_str = (char *)mender_calloc(1, total_len);
     if (NULL == *key_value_str) {
         mender_log_error("Unable to allocate memory for string");
         return MENDER_FAIL;
@@ -486,7 +550,7 @@ mender_utils_string_to_key_value_list(const char *key_value_str, mender_key_valu
     assert(NULL != key_value_str);
     assert(NULL != list);
 
-    char *str = strdup(key_value_str);
+    char *str = mender_utils_strdup(key_value_str);
     if (NULL == str) {
         mender_log_error("Unable to allocate memory for string");
         return MENDER_FAIL;
@@ -514,7 +578,7 @@ mender_utils_string_to_key_value_list(const char *key_value_str, mender_key_valu
 
     ret = MENDER_OK;
 END:
-    free(str);
+    mender_free(str);
     return ret;
 }
 
@@ -617,9 +681,9 @@ mender_utils_key_value_list_delete_node(mender_key_value_list_t **list, const ch
     }
 
     if (NULL != to_free) {
-        free(to_free->key);
-        free(to_free->value);
-        free(to_free);
+        mender_free(to_free->key);
+        mender_free(to_free->value);
+        mender_free(to_free);
     }
     return MENDER_OK;
 }

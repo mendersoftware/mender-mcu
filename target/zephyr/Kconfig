@@ -140,6 +140,23 @@ if MENDER_MCU_CLIENT
             default "zephyr" if MENDER_PLATFORM_LOG_TYPE_DEFAULT
             default "generic/weak" if MENDER_PLATFORM_LOG_TYPE_WEAK
 
+        choice MENDER_PLATFORM_MEM_TYPE
+            prompt "Mender platform memory allocation implementation type"
+            default MENDER_PLATFORM_MEM_TYPE_DEFAULT
+            help
+                Specify platform memory allocation implementation type.
+
+            config MENDER_PLATFORM_MEM_TYPE_DEFAULT
+                bool "default"
+            config MENDER_PLATFORM_MEM_TYPE_GENERIC
+                bool "generic"
+        endchoice
+
+        config MENDER_PLATFORM_MEM_TYPE
+            string
+            default "zephyr" if MENDER_PLATFORM_MEM_TYPE_DEFAULT
+            default "generic" if MENDER_PLATFORM_MEM_TYPE_GENERIC
+
         choice MENDER_PLATFORM_NET_TYPE
             prompt "Mender platform network implementation type"
             default MENDER_PLATFORM_NET_TYPE_DEFAULT
@@ -229,6 +246,38 @@ if MENDER_MCU_CLIENT
             default "generic/weak" if MENDER_PLATFORM_SHA_TYPE_WEAK
 
     endmenu
+
+    if MENDER_PLATFORM_MEM_TYPE_DEFAULT
+
+        menu "Memory options (ADVANCED)"
+
+            config MENDER_SEPARATE_HEAP
+                bool "Use separate heap for Mender"
+                default y
+                help
+                    Mender can either allocate dynamic memory from its own heap (default) or from the system heap.
+
+            config MENDER_HEAP_SIZE
+               int "Mender heap size (kB)"
+               depends on MENDER_SEPARATE_HEAP
+               default 8
+               range 4 32
+               help
+                   Size of the Mender heap.
+
+            config HEAP_MEM_POOL_ADD_SIZE_MENDER
+               # Everything that starts with HEAP_MEM_POOL_ADD_SIZE_ contributes to the total
+               # default size of the system heap.
+               int "Mender extra system heap size (bytes)"
+               depends on MENDER_SEPARATE_HEAP=n
+               default 8192
+               range 4096 32768
+               help
+                   How much extra space should Mender request in the system heap.
+
+       endmenu
+
+    endif
 
     if MENDER_PLATFORM_NET_TYPE_DEFAULT
 

@@ -106,9 +106,9 @@ protected:
     mender_artifact_download_data_t *mock_download_data;
 
     void SetUp() {
-        update_module      = (mender_update_module_t *)malloc(sizeof(mender_update_module_t));
-        deployment_data    = (mender_deployment_data_t *)malloc(sizeof(mender_deployment_data_t));
-        mock_download_data = (mender_artifact_download_data_t *)malloc(sizeof(mender_artifact_download_data_t));
+        update_module      = (mender_update_module_t *)mender_malloc(sizeof(mender_update_module_t));
+        deployment_data    = (mender_deployment_data_t *)mender_malloc(sizeof(mender_deployment_data_t));
+        mock_download_data = (mender_artifact_download_data_t *)mender_malloc(sizeof(mender_artifact_download_data_t));
         InitializeData(update_module, deployment_data, mock_download_data);
         artifact_data = CreateArtifact();
         data          = (void *)artifact_data.data();
@@ -117,8 +117,8 @@ protected:
         fs::remove(script_file_name);
         fs::remove(artifact_path);
         DESTROY_AND_NULL(mender_delete_deployment_data, mock_download_data->deployment);
-        free(deployment_data);
-        free(mock_download_data);
+        mender_free(deployment_data);
+        mender_free(mock_download_data);
         mender_update_module_unregister_all();
     }
 };

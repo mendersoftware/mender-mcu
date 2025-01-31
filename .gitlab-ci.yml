@@ -20,12 +20,13 @@ test:static:license:
   script:
     - ./.github/workflows/check_headers.sh
 
-test:static:format:
+test:static:code:
   extends: .test:static
   script:
     - ./.github/workflows/check_include_guards.sh
     - ./.github/workflows/check_equivalence_tests.sh
     - ./.github/workflows/check_code_format.sh
+    - ./.github/workflows/check_allocations.sh
 
 test:smoke-build:posix:
   stage: test

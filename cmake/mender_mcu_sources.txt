@@ -95,6 +95,12 @@ if (NOT CONFIG_MENDER_PLATFORM_NET_TYPE)
 else()
     message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_NET_TYPE}' platform network implementation")
 endif()
+if (NOT CONFIG_MENDER_PLATFORM_MEM_TYPE)
+    message(STATUS "Using default 'generic' platform memory allocation implementation")
+    set(CONFIG_MENDER_PLATFORM_MEM_TYPE "generic")
+else()
+    message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_MEM_TYPE}' platform memory allocation implementation")
+endif()
 if (NOT CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE)
     message(STATUS "Using default 'generic/weak' platform scheduler implementation")
     set(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE "generic/weak")
@@ -122,6 +128,7 @@ endif()
 
 # Set MENDER_MCU_SOURCES
 file(GLOB MENDER_MCU_SOURCES
+    "${MENDER_MCU_ROOT}/core/src/mender-alloc.c"
     "${MENDER_MCU_ROOT}/core/src/mender-api.c"
     "${MENDER_MCU_ROOT}/core/src/mender-artifact.c"
     "${MENDER_MCU_ROOT}/core/src/mender-artifact-download.c"
@@ -131,6 +138,7 @@ file(GLOB MENDER_MCU_SOURCES
     "${MENDER_MCU_ROOT}/core/src/mender-update-module.c"
     "${MENDER_MCU_ROOT}/core/src/mender-utils.c"
     "${MENDER_MCU_ROOT}/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
+    "${MENDER_MCU_ROOT}/platform/memory/${CONFIG_MENDER_PLATFORM_MEM_TYPE}/src/mender-alloc.c"
     "${MENDER_MCU_ROOT}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
     "${MENDER_MCU_ROOT}/platform/scheduler/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/mender-scheduler.c"
     "${MENDER_MCU_ROOT}/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"

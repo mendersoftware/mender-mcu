@@ -10,7 +10,7 @@ stages:
 
 variables:
   # mender-artifact version for tests
-  MENDER_ARTIFACT_VERSION: 3.11.2
+  MENDER_ARTIFACT_VERSION: 4.0.0
 
 default:
   tags:

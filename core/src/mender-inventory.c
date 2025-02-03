@@ -22,7 +22,7 @@
 #include "mender-client.h"
 #include "mender-inventory.h"
 #include "mender-log.h"
-#include "mender-scheduler.h"
+#include "mender-os.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
@@ -55,17 +55,17 @@ mender_inventory_init(uint32_t interval) {
     mender_err_t ret;
 
     /* Create inventory mutex */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&mender_inventory_mutex))) {
+    if (MENDER_OK != (ret = mender_os_mutex_create(&mender_inventory_mutex))) {
         mender_log_error("Unable to create inventory mutex");
         return ret;
     }
 
     /* Create mender inventory work */
-    mender_scheduler_work_params_t inventory_work_params;
+    mender_os_scheduler_work_params_t inventory_work_params;
     inventory_work_params.function = mender_inventory_work_function;
     inventory_work_params.period   = (0 != interval ? interval : CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL);
     inventory_work_params.name     = "mender_inventory";
-    if (MENDER_OK != (ret = mender_scheduler_work_create(&inventory_work_params, &mender_inventory_work))) {
+    if (MENDER_OK != (ret = mender_os_scheduler_work_create(&inventory_work_params, &mender_inventory_work))) {
         mender_log_error("Unable to create inventory work");
         return ret;
     }
@@ -79,7 +79,7 @@ mender_inventory_activate(void) {
     mender_err_t ret;
 
     /* Activate inventory work */
-    if (MENDER_OK != (ret = mender_scheduler_work_activate(mender_inventory_work))) {
+    if (MENDER_OK != (ret = mender_os_scheduler_work_activate(mender_inventory_work))) {
         mender_log_error("Unable to activate inventory work");
         return ret;
     }
@@ -91,7 +91,7 @@ mender_err_t
 mender_inventory_deactivate(void) {
 
     /* Deactivate mender inventory work */
-    mender_scheduler_work_deactivate(mender_inventory_work);
+    mender_os_scheduler_work_deactivate(mender_inventory_work);
 
     return MENDER_OK;
 }
@@ -102,7 +102,7 @@ mender_inventory_set(mender_keystore_t *inventory) {
     mender_err_t ret;
 
     /* Take mutex used to protect access to the inventory key-store */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_inventory_mutex, -1))) {
+    if (MENDER_OK != (ret = mender_os_mutex_take(mender_inventory_mutex, -1))) {
         mender_log_error("Unable to take mutex");
         return ret;
     }
@@ -122,7 +122,7 @@ mender_inventory_set(mender_keystore_t *inventory) {
 END:
 
     /* Release mutex used to protect access to the inventory key-store */
-    mender_scheduler_mutex_give(mender_inventory_mutex);
+    mender_os_mutex_give(mender_inventory_mutex);
 
     return ret;
 }
@@ -133,7 +133,7 @@ mender_inventory_execute(void) {
     mender_err_t ret;
 
     /* Trigger execution of the work */
-    if (MENDER_OK != (ret = mender_scheduler_work_execute(mender_inventory_work))) {
+    if (MENDER_OK != (ret = mender_os_scheduler_work_execute(mender_inventory_work))) {
         mender_log_error("Unable to trigger inventory work");
         return ret;
     }
@@ -147,19 +147,19 @@ mender_inventory_exit(void) {
     mender_err_t ret;
 
     /* Delete mender inventory work */
-    mender_scheduler_work_delete(mender_inventory_work);
+    mender_os_scheduler_work_delete(mender_inventory_work);
     mender_inventory_work = NULL;
 
     /* Take mutex used to protect access to the inventory key-store */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_inventory_mutex, -1))) {
+    if (MENDER_OK != (ret = mender_os_mutex_take(mender_inventory_mutex, -1))) {
         mender_log_error("Unable to take mutex");
         return ret;
     }
 
     /* Release memory */
     DESTROY_AND_NULL(mender_utils_keystore_delete, mender_inventory_keystore);
-    mender_scheduler_mutex_give(mender_inventory_mutex);
-    DESTROY_AND_NULL(mender_scheduler_mutex_delete, mender_inventory_mutex);
+    mender_os_mutex_give(mender_inventory_mutex);
+    DESTROY_AND_NULL(mender_os_mutex_delete, mender_inventory_mutex);
 
     return ret;
 }
@@ -170,7 +170,7 @@ mender_inventory_work_function(void) {
     mender_err_t ret;
 
     /* Take mutex used to protect access to the inventory key-store */
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(mender_inventory_mutex, -1))) {
+    if (MENDER_OK != (ret = mender_os_mutex_take(mender_inventory_mutex, -1))) {
         mender_log_error("Unable to take mutex");
         return ret;
     }
@@ -189,7 +189,7 @@ mender_inventory_work_function(void) {
 END:
 
     /* Release mutex used to protect access to the inventory key-store */
-    mender_scheduler_mutex_give(mender_inventory_mutex);
+    mender_os_mutex_give(mender_inventory_mutex);
 
     return ret;
 }

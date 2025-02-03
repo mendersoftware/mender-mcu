@@ -1,6 +1,6 @@
 /**
- * @file      mender-scheduler.c
- * @brief     Mender scheduler interface for Posix platform
+ * @file      mender-os.c
+ * @brief     Mender OS interface for Posix platform
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -28,7 +28,7 @@
 
 #include "mender-alloc.h"
 #include "mender-log.h"
-#include "mender-scheduler.h"
+#include "mender-os.h"
 #include "mender-utils.h"
 
 /**
@@ -56,10 +56,10 @@
  * @brief Work context
  */
 typedef struct mender_platform_work_t {
-    mender_scheduler_work_params_t params;       /**< Work parameters */
-    pthread_mutex_t                sem_handle;   /**< Semaphore used to indicate work is pending or executing */
-    timer_t                        timer_handle; /**< Timer used to periodically execute work */
-    bool                           activated;    /**< Flag indicating the work is activated */
+    mender_os_scheduler_work_params_t params;       /**< Work parameters */
+    pthread_mutex_t                   sem_handle;   /**< Semaphore used to indicate work is pending or executing */
+    timer_t                           timer_handle; /**< Timer used to periodically execute work */
+    bool                              activated;    /**< Flag indicating the work is activated */
 } mender_platform_work_t;
 
 /**
@@ -73,27 +73,27 @@ typedef struct mender_platform_work_t {
  * @brief Function used to handle work context timer when it expires
  * @param timer_data Timer data
  */
-static void mender_scheduler_timer_callback(union sigval timer_data);
+static void mender_os_scheduler_timer_callback(union sigval timer_data);
 
 /**
  * @brief Thread used to handle work queue
  * @param arg Not used
  * @return Not used
  */
-static void *mender_scheduler_work_queue_thread(void *arg);
+static void *mender_os_scheduler_work_queue_thread(void *arg);
 
 /**
  * @brief Work queue handle
  */
-static mqd_t mender_scheduler_work_queue_handle;
+static mqd_t mender_os_scheduler_work_queue_handle;
 
 /**
  * @brief Work queue thread handle
  */
-static pthread_t mender_scheduler_work_queue_thread_handle;
+static pthread_t mender_os_scheduler_work_queue_thread_handle;
 
 mender_err_t
-mender_scheduler_init(void) {
+mender_os_scheduler_init(void) {
     int ret;
 
     /* Create and start work queue */
@@ -101,7 +101,8 @@ mender_scheduler_init(void) {
     mq_attr.mq_maxmsg      = CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH;
     mq_attr.mq_msgsize     = sizeof(mender_platform_work_t *);
     mq_unlink(MENDER_SCHEDULER_WORK_QUEUE_NAME);
-    if ((mender_scheduler_work_queue_handle = mq_open(MENDER_SCHEDULER_WORK_QUEUE_NAME, O_CREAT | O_RDWR, MENDER_SCHEDULER_WORK_QUEUE_PERMS, &mq_attr)) < 0) {
+    if ((mender_os_scheduler_work_queue_handle = mq_open(MENDER_SCHEDULER_WORK_QUEUE_NAME, O_CREAT | O_RDWR, MENDER_SCHEDULER_WORK_QUEUE_PERMS, &mq_attr))
+        < 0) {
         mender_log_error("Unable to create work queue (errno=%d)", errno);
         return MENDER_FAIL;
     }
@@ -116,11 +117,11 @@ mender_scheduler_init(void) {
         mender_log_error("Unable to set work queue thread stack size (ret=%d)", ret);
         return MENDER_FAIL;
     }
-    if (0 != (ret = pthread_create(&mender_scheduler_work_queue_thread_handle, &pthread_attr, mender_scheduler_work_queue_thread, NULL))) {
+    if (0 != (ret = pthread_create(&mender_os_scheduler_work_queue_thread_handle, &pthread_attr, mender_os_scheduler_work_queue_thread, NULL))) {
         mender_log_error("Unable to create work queue thread (ret=%d)", ret);
         return MENDER_FAIL;
     }
-    if (0 != (ret = pthread_setschedprio(mender_scheduler_work_queue_thread_handle, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY))) {
+    if (0 != (ret = pthread_setschedprio(mender_os_scheduler_work_queue_thread_handle, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY))) {
         mender_log_error("Unable to set work queue thread priority (ret=%d)", ret);
         return MENDER_FAIL;
     }
@@ -129,7 +130,7 @@ mender_scheduler_init(void) {
 }
 
 mender_err_t
-mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender_work_t **work) {
+mender_os_scheduler_work_create(mender_os_scheduler_work_params_t *work_params, mender_work_t **work) {
     assert(NULL != work_params);
     assert(NULL != work_params->function);
     assert(NULL != work_params->name);
@@ -159,7 +160,7 @@ mender_scheduler_work_create(mender_scheduler_work_params_t *work_params, mender
     /* Create timer to handle the work periodically */
     struct sigevent sev       = { 0 };
     sev.sigev_notify          = SIGEV_THREAD;
-    sev.sigev_notify_function = mender_scheduler_timer_callback;
+    sev.sigev_notify_function = mender_os_scheduler_timer_callback;
     sev.sigev_value.sival_ptr = work_context;
     if (0 != timer_create(CLOCK_REALTIME, &sev, &work_context->timer_handle)) {
         mender_log_error("Unable to create timer");
@@ -185,7 +186,7 @@ FAIL:
 }
 
 mender_err_t
-mender_scheduler_work_activate(mender_work_t *work) {
+mender_os_scheduler_work_activate(mender_work_t *work) {
     assert(NULL != work);
 
     /* Give semaphore used to protect the work function */
@@ -209,7 +210,7 @@ mender_scheduler_work_activate(mender_work_t *work) {
         /* Execute the work now */
         union sigval timer_data;
         timer_data.sival_ptr = (void *)work;
-        mender_scheduler_timer_callback(timer_data);
+        mender_os_scheduler_timer_callback(timer_data);
     }
 
     /* Indicate the work has been activated */
@@ -219,7 +220,7 @@ mender_scheduler_work_activate(mender_work_t *work) {
 }
 
 mender_err_t
-mender_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
+mender_os_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
     assert(NULL != work);
 
     /* Set timer period */
@@ -238,19 +239,19 @@ mender_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
 }
 
 mender_err_t
-mender_scheduler_work_execute(mender_work_t *work) {
+mender_os_scheduler_work_execute(mender_work_t *work) {
     assert(NULL != work);
 
     /* Execute the work now */
     union sigval timer_data;
     timer_data.sival_ptr = (void *)work;
-    mender_scheduler_timer_callback(timer_data);
+    mender_os_scheduler_timer_callback(timer_data);
 
     return MENDER_OK;
 }
 
 mender_err_t
-mender_scheduler_work_deactivate(mender_work_t *work) {
+mender_os_scheduler_work_deactivate(mender_work_t *work) {
     assert(NULL != work);
 
     /* Check if the work was activated */
@@ -277,7 +278,7 @@ mender_scheduler_work_deactivate(mender_work_t *work) {
 }
 
 mender_err_t
-mender_scheduler_work_delete(mender_work_t *work) {
+mender_os_scheduler_work_delete(mender_work_t *work) {
     if (NULL == work) {
         return MENDER_OK;
     }
@@ -290,22 +291,22 @@ mender_scheduler_work_delete(mender_work_t *work) {
     return MENDER_OK;
 }
 mender_err_t
-mender_scheduler_exit(void) {
+mender_os_scheduler_exit(void) {
     /* Submit empty work to the work queue, this ask the work queue thread to terminate */
     mender_platform_work_t *work = NULL;
-    if (0 != mq_send(mender_scheduler_work_queue_handle, (const char *)&work, sizeof(mender_platform_work_t *), 0)) {
+    if (0 != mq_send(mender_os_scheduler_work_queue_handle, (const char *)&work, sizeof(mender_platform_work_t *), 0)) {
         mender_log_error("Unable to submit empty work to the work queue");
         return MENDER_FAIL;
     }
 
     /* Wait end of execution of the work queue thread */
-    pthread_join(mender_scheduler_work_queue_thread_handle, NULL);
+    pthread_join(mender_os_scheduler_work_queue_thread_handle, NULL);
 
     return MENDER_OK;
 }
 
 static void
-mender_scheduler_timer_callback(union sigval timer_data) {
+mender_os_scheduler_timer_callback(union sigval timer_data) {
     /* Get work context */
     mender_platform_work_t *work = (mender_platform_work_t *)timer_data.sival_ptr;
     assert(NULL != work);
@@ -318,18 +319,18 @@ mender_scheduler_timer_callback(union sigval timer_data) {
     }
 
     /* Submit the work to the work queue */
-    if (0 != mq_send(mender_scheduler_work_queue_handle, (const char *)&work, sizeof(mender_platform_work_t *), 0)) {
+    if (0 != mq_send(mender_os_scheduler_work_queue_handle, (const char *)&work, sizeof(mender_platform_work_t *), 0)) {
         mender_log_warning("Unable to submit work '%s' to the work queue", work->params.name);
         pthread_mutex_unlock(&work->sem_handle);
     }
 }
 
 __attribute__((noreturn)) static void *
-mender_scheduler_work_queue_thread(MENDER_ARG_UNUSED void *arg) {
+mender_os_scheduler_work_queue_thread(MENDER_ARG_UNUSED void *arg) {
     mender_platform_work_t *work = NULL;
 
     /* Handle work to be executed */
-    while (mq_receive(mender_scheduler_work_queue_handle, (char *)&work, sizeof(mender_platform_work_t *), NULL) > 0) {
+    while (mq_receive(mender_os_scheduler_work_queue_handle, (char *)&work, sizeof(mender_platform_work_t *), NULL) > 0) {
 
         /* Check if empty work is received from the work queue, this ask the work queue thread to terminate */
         if (NULL == work) {
@@ -352,7 +353,7 @@ mender_scheduler_work_queue_thread(MENDER_ARG_UNUSED void *arg) {
 
 END:
     /* Release memory */
-    mq_close(mender_scheduler_work_queue_handle);
+    mq_close(mender_os_scheduler_work_queue_handle);
     mq_unlink(MENDER_SCHEDULER_WORK_QUEUE_NAME);
 
     /* Terminate work queue thread */
@@ -360,7 +361,7 @@ END:
 }
 
 mender_err_t
-mender_scheduler_mutex_create(void **handle) {
+mender_os_mutex_create(void **handle) {
 
     assert(NULL != handle);
 
@@ -377,7 +378,7 @@ mender_scheduler_mutex_create(void **handle) {
 }
 
 mender_err_t
-mender_scheduler_mutex_take(void *handle, int32_t delay_ms) {
+mender_os_mutex_take(void *handle, int32_t delay_ms) {
 
     assert(NULL != handle);
 
@@ -399,7 +400,7 @@ mender_scheduler_mutex_take(void *handle, int32_t delay_ms) {
 }
 
 mender_err_t
-mender_scheduler_mutex_give(void *handle) {
+mender_os_mutex_give(void *handle) {
 
     assert(NULL != handle);
 
@@ -412,7 +413,7 @@ mender_scheduler_mutex_give(void *handle) {
 }
 
 mender_err_t
-mender_scheduler_mutex_delete(void *handle) {
+mender_os_mutex_delete(void *handle) {
 
     assert(NULL != handle);
 
@@ -424,6 +425,6 @@ mender_scheduler_mutex_delete(void *handle) {
 }
 
 void
-mender_scheduler_reboot(void) {
+mender_os_reboot(void) {
     reboot(RB_AUTOBOOT);
 }

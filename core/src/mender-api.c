@@ -22,7 +22,7 @@
 #include "mender-api.h"
 #include "mender-artifact.h"
 #include "mender-error-counters.h"
-#include "mender-scheduler.h"
+#include "mender-os.h"
 #include "mender-storage.h"
 #include "mender-http.h"
 #include "mender-log.h"
@@ -97,7 +97,7 @@ mender_api_init(mender_api_config_t *config) {
         return ret;
     }
 
-    if (MENDER_OK != (ret = mender_scheduler_mutex_create(&auth_lock))) {
+    if (MENDER_OK != (ret = mender_os_mutex_create(&auth_lock))) {
         mender_log_error("Unable to initialize authentication lock");
         return ret;
     }
@@ -108,12 +108,12 @@ mender_api_init(mender_api_config_t *config) {
 mender_err_t
 mender_api_drop_authentication_data(void) {
     mender_err_t ret;
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(auth_lock, -1))) {
+    if (MENDER_OK != (ret = mender_os_mutex_take(auth_lock, -1))) {
         mender_log_error("Unable to obtain the authentication lock");
         return MENDER_LOCK_FAILED;
     }
     FREE_AND_NULL(api_jwt);
-    if (MENDER_OK != (ret = mender_scheduler_mutex_give(auth_lock))) {
+    if (MENDER_OK != (ret = mender_os_mutex_give(auth_lock))) {
         mender_log_error("Unable to release the authentication lock");
     }
 
@@ -128,7 +128,7 @@ mender_api_ensure_authenticated(void) {
         return MENDER_FAIL;
     }
 
-    if (MENDER_OK != (ret = mender_scheduler_mutex_give(auth_lock))) {
+    if (MENDER_OK != (ret = mender_os_mutex_give(auth_lock))) {
         mender_log_error("Unable to release the authentication lock");
     }
 
@@ -139,7 +139,7 @@ static mender_err_t
 ensure_authenticated_and_locked(void) {
     mender_err_t ret;
 
-    if (MENDER_OK != (ret = mender_scheduler_mutex_take(auth_lock, -1))) {
+    if (MENDER_OK != (ret = mender_os_mutex_take(auth_lock, -1))) {
         mender_log_error("Unable to obtain the authentication lock");
         return MENDER_LOCK_FAILED;
     }
@@ -281,7 +281,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
     if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
         /* Errors already logged. */
         if (MENDER_LOCK_FAILED != ret) {
-            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+            if (MENDER_OK != mender_os_mutex_give(auth_lock)) {
                 mender_log_error("Unable to release the authentication lock");
                 return MENDER_FAIL;
             }
@@ -290,7 +290,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
     }
 
     ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
-    if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+    if (MENDER_OK != mender_os_mutex_give(auth_lock)) {
         mender_log_error("Unable to release the authentication lock");
         return MENDER_FAIL;
     }
@@ -307,7 +307,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
         if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
             mender_free(*response);
             ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
-            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+            if (MENDER_OK != mender_os_mutex_give(auth_lock)) {
                 mender_log_error("Unable to release the authentication lock");
                 return MENDER_FAIL;
             }
@@ -316,7 +316,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
                 mender_err_count_net_inc();
             }
         } else if (MENDER_LOCK_FAILED != ret) {
-            if (MENDER_OK != mender_scheduler_mutex_give(auth_lock)) {
+            if (MENDER_OK != mender_os_mutex_give(auth_lock)) {
                 mender_log_error("Unable to release the authentication lock");
                 return MENDER_FAIL;
             }
@@ -721,7 +721,7 @@ mender_api_exit(void) {
     mender_http_exit();
 
     /* Destroy the authentication lock */
-    mender_scheduler_mutex_delete(auth_lock);
+    mender_os_mutex_delete(auth_lock);
 
     /* Release memory */
     FREE_AND_NULL(api_jwt);

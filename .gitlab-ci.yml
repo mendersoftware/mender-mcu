@@ -6,11 +6,14 @@ include:
 
 stages:
   - test
+  - trigger
   - publish
 
 variables:
   # mender-artifact version for tests
   MENDER_ARTIFACT_VERSION: 4.0.0
+  MENDER_MCU_REVISION: ${CI_COMMIT_BRANCH}
+  MENDER_MCU_INTEGRATION_REVISION: main
 
 default:
   tags:
@@ -130,6 +133,17 @@ test:static:release:
   extends: .test:static:template
   variables:
     BUILD_TYPE: Release
+
+trigger:mender-mcu-integration:
+  rules:
+  - if: $CI_COMMIT_BRANCH =~ /^pr_[0-9]+$/
+    variables:
+      MENDER_MCU_REVISION: ${CI_EXTERNAL_PULL_REQUEST_SOURCE_BRANCH_SHA}
+  - when: always
+  trigger:
+    project: Northern.tech/Mender/mender-mcu-integration
+    branch: ${MENDER_MCU_INTEGRATION_REVISION}
+    strategy: depend
 
 publish:tests:
   stage: publish

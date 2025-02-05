@@ -21,9 +21,9 @@
 #include "mender-utils.h"
 
 /* just some reasonable value, it's never used */
-__attribute__((weak)) const size_t mender_http_recv_buf_length = 512;
+MENDER_FUNC_WEAK const size_t mender_http_recv_buf_length = 512;
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_http_init(mender_http_config_t *config) {
 
     (void)config;
@@ -32,7 +32,7 @@ mender_http_init(mender_http_config_t *config) {
     return MENDER_OK;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_http_perform(char                *jwt,
                     char                *path,
                     mender_http_method_t method,
@@ -55,12 +55,12 @@ mender_http_perform(char                *jwt,
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_http_artifact_download(MENDER_ARG_UNUSED const char *uri, MENDER_ARG_UNUSED mender_artifact_download_data_t *dl_data, MENDER_ARG_UNUSED int *status) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_http_exit(void) {
 
     /* Nothing to do */

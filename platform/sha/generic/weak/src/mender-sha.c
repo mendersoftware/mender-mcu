@@ -19,19 +19,19 @@
 
 #include "mender-sha.h"
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_sha256_begin(MENDER_ARG_UNUSED mender_sha256_context_t *ctx) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_sha256_update(MENDER_ARG_UNUSED mender_sha256_context_t ctx, MENDER_ARG_UNUSED const unsigned char *input, MENDER_ARG_UNUSED size_t length) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_sha256_finish(MENDER_ARG_UNUSED mender_sha256_context_t ctx, MENDER_ARG_UNUSED unsigned char *output) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;

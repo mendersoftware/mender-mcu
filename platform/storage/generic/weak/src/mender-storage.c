@@ -21,14 +21,14 @@
 #include "mender-log.h"
 #include "mender-storage.h"
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_init(void) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_set_authentication_keys(unsigned char *private_key, size_t private_key_length, unsigned char *public_key, size_t public_key_length) {
 
     (void)private_key;
@@ -40,7 +40,7 @@ mender_storage_set_authentication_keys(unsigned char *private_key, size_t privat
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_get_authentication_keys(unsigned char **private_key, size_t *private_key_length, unsigned char **public_key, size_t *public_key_length) {
 
     (void)private_key;
@@ -52,14 +52,14 @@ mender_storage_get_authentication_keys(unsigned char **private_key, size_t *priv
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_delete_authentication_keys(void) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_set_deployment_data(char *deployment_data) {
 
     (void)deployment_data;
@@ -68,7 +68,7 @@ mender_storage_set_deployment_data(char *deployment_data) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_get_deployment_data(char **deployment_data) {
 
     (void)deployment_data;
@@ -77,14 +77,14 @@ mender_storage_get_deployment_data(char **deployment_data) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_delete_deployment_data(void) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_set_provides(mender_key_value_list_t *provides) {
 
     (void)provides;
@@ -93,7 +93,7 @@ mender_storage_set_provides(mender_key_value_list_t *provides) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_get_provides(mender_key_value_list_t **provides) {
 
     (void)provides;
@@ -102,7 +102,7 @@ mender_storage_get_provides(mender_key_value_list_t **provides) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_set_artifact_name(const char *artifact_name) {
 
     (void)artifact_name;
@@ -111,7 +111,7 @@ mender_storage_set_artifact_name(const char *artifact_name) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_get_artifact_name(const char **artifact_name) {
 
     (void)artifact_name;
@@ -120,7 +120,7 @@ mender_storage_get_artifact_name(const char **artifact_name) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_storage_exit(void) {
 
     /* Nothing to do */

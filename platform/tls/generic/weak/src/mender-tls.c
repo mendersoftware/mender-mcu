@@ -20,14 +20,14 @@
 
 #include "mender-tls.h"
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_tls_init(void) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char **user_provided_key, size_t *user_provided_key_length), bool recommissioning) {
 
     (void)get_user_provided_keys;
@@ -37,7 +37,7 @@ mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char 
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_tls_get_public_key_pem(char **public_key) {
 
     (void)public_key;
@@ -46,7 +46,7 @@ mender_tls_get_public_key_pem(char **public_key) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_tls_sign_payload(char *payload, char **signature, size_t *signature_length) {
 
     (void)payload;
@@ -57,7 +57,7 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_tls_exit(void) {
 
     /* Nothing to do */

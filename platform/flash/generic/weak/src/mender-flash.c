@@ -20,7 +20,7 @@
 
 #include "mender-flash.h"
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_flash_open(const char *name, size_t size, void **handle) {
 
     (void)name;
@@ -31,7 +31,7 @@ mender_flash_open(const char *name, size_t size, void **handle) {
     return MENDER_OK;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_flash_write(void *handle, const void *data, size_t index, size_t length) {
 
     (void)handle;
@@ -43,7 +43,7 @@ mender_flash_write(void *handle, const void *data, size_t index, size_t length) 
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_flash_close(void *handle) {
 
     (void)handle;
@@ -52,7 +52,7 @@ mender_flash_close(void *handle) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_flash_set_pending_image(void **handle) {
 
     (void)handle;
@@ -61,7 +61,7 @@ mender_flash_set_pending_image(void **handle) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_flash_abort_deployment(void **handle) {
 
     (void)handle;
@@ -70,14 +70,14 @@ mender_flash_abort_deployment(void **handle) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) mender_err_t
+MENDER_FUNC_WEAK mender_err_t
 mender_flash_confirm_image(void) {
 
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;
 }
 
-__attribute__((weak)) bool
+MENDER_FUNC_WEAK bool
 mender_flash_is_image_confirmed(void) {
 
     /* Nothing to do */

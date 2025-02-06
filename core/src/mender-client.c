@@ -1048,6 +1048,9 @@ mender_client_update_work_function(void) {
                         goto END;
                     }
                 }
+                if (MENDER_OK != ret) {
+                    mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                }
                 NEXT_STATE;
                 /* fallthrough */
 

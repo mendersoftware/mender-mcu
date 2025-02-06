@@ -88,9 +88,10 @@ static mender_err_t artifact_read_version(mender_artifact_ctx_t *ctx);
 /**
  * @brief Read header-info file of the artifact
  * @param ctx Artifact context
+ * @param dl_data Download data for the artifact
  * @return MENDER_DONE if the data have been parsed and payloads retrieved, MENDER_OK if there is not enough data to parse, error code if an error occurred
  */
-static mender_err_t artifact_read_header_info(mender_artifact_ctx_t *ctx);
+static mender_err_t artifact_read_header_info(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data);
 
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
 /**
@@ -423,7 +424,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
             } else if (StringEqual(ctx->file.name, "header.tar/header-info")) {
 
                 /* Read header-info file */
-                ret = artifact_read_header_info(ctx);
+                ret = artifact_read_header_info(ctx, dl_data);
 
             } else if ((true == mender_utils_strbeginswith(ctx->file.name, "header.tar/headers"))
                        && (true == mender_utils_strendswith(ctx->file.name, "meta-data"))) {
@@ -838,7 +839,7 @@ ERROR:
 #endif
 
 static mender_err_t
-artifact_read_header_info(mender_artifact_ctx_t *ctx) {
+artifact_read_header_info(mender_artifact_ctx_t *ctx, mender_artifact_download_data_t *dl_data) {
 
     assert(NULL != ctx);
     cJSON       *object = NULL;
@@ -871,6 +872,21 @@ artifact_read_header_info(mender_artifact_ctx_t *ctx) {
                 if (cJSON_IsString(json_payload_type)) {
                     if (NULL == (ctx->payloads.values[index].type = mender_utils_strdup(cJSON_GetStringValue(json_payload_type)))) {
                         mender_log_error("Unable to allocate memory");
+                        ret = MENDER_FAIL;
+                        goto END;
+                    }
+                    const char *payload_type = ctx->payloads.values[index].type;
+                    /* Choose update module */
+                    dl_data->update_module = mender_update_module_get(payload_type);
+                    if (NULL == dl_data->update_module) {
+                        /* Content is not supported by the mender-mcu-client */
+                        mender_log_error("Unable to handle artifact type '%s'", payload_type);
+                        ret = MENDER_FAIL;
+                        goto END;
+                    }
+                    /* Add the payload type to deployment data  */
+                    if (MENDER_OK != mender_deployment_data_add_payload_type(dl_data->deployment, payload_type)) {
+                        /* Error already logged */
                         ret = MENDER_FAIL;
                         goto END;
                     }
@@ -1183,20 +1199,6 @@ artifact_read_data_prepare(mender_artifact_ctx_t *ctx, mender_artifact_download_
     assert(StringEqualN(end_ptr, ".tar", 4)); /* just one last sanity check */
 
     const char *payload_type = ctx->payloads.values[index].type;
-
-    /* Choose update module */
-    dl_data->update_module = mender_update_module_get(payload_type);
-    if (NULL == dl_data->update_module) {
-        /* Content is not supported by the mender-mcu-client */
-        mender_log_error("Unable to handle artifact type '%s'", payload_type);
-        return MENDER_FAIL;
-    }
-
-    /* Add the payload type to deployment data  */
-    if (MENDER_OK != mender_deployment_data_add_payload_type(dl_data->deployment, payload_type)) {
-        /* Error already logged */
-        return MENDER_FAIL;
-    }
 
     /* Retrieve ID and artifact name */
     if (MENDER_OK != mender_deployment_data_get_id(dl_data->deployment, &(mdata_cache->deployment_id))) {

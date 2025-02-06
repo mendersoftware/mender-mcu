@@ -1033,6 +1033,8 @@ mender_client_update_work_function(void) {
                                 mender_log_error("Unable to prepare new provides");
                             }
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
+                        } else {
+                            mender_log_error("Artifact check failed");
                         }
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
                     } else {

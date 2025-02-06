@@ -29,6 +29,8 @@
  */
 static void *mcu_boot_flash_handle = NULL;
 
+static bool artifact_had_payload;
+
 /**
  * @brief Callback function to be invoked to perform the treatment of the data from the artifact type "zephyr-image"
  * @return MENDER_OK if the function succeeds, error code if an error occurred
@@ -126,6 +128,7 @@ mender_zephyr_image_download_artifact_flash_callback(MENDER_NDEBUG_UNUSED mender
         }
     }
 
+    artifact_had_payload = true;
 END:
 
     return ret;
@@ -135,6 +138,12 @@ static mender_err_t
 mender_zephyr_image_set_pending_image(MENDER_NDEBUG_UNUSED mender_update_state_t state, MENDER_ARG_UNUSED mender_update_state_data_t callback_data) {
     assert(MENDER_UPDATE_STATE_INSTALL == state);
     mender_err_t ret;
+
+    if (!artifact_had_payload) {
+        mender_log_error("No payload in artifact");
+        return MENDER_FAIL;
+    }
+    artifact_had_payload = false;
 
     if (NULL == mcu_boot_flash_handle) {
         mender_log_error("Set pending image requested but handle is cleared");
@@ -157,6 +166,7 @@ mender_zephyr_image_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t 
         mender_log_error("Unable to abort deployment");
         return ret;
     }
+    artifact_had_payload = false;
     return MENDER_OK;
 }
 

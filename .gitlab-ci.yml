@@ -135,6 +135,7 @@ test:static:release:
     BUILD_TYPE: Release
 
 trigger:mender-mcu-integration:
+  stage: trigger
   rules:
   - if: $CI_COMMIT_BRANCH =~ /^pr_[0-9]+$/
     variables:
@@ -144,6 +145,9 @@ trigger:mender-mcu-integration:
     project: Northern.tech/Mender/mender-mcu-integration
     branch: ${MENDER_MCU_INTEGRATION_REVISION}
     strategy: depend
+  variables:
+    PARENT_MENDER_MCU_PIPELINE_ID: $CI_PIPELINE_ID
+    PARENT_MENDER_MCU_COMMIT_BRANCH: $CI_COMMIT_BRANCH
 
 publish:tests:
   stage: publish

@@ -40,6 +40,11 @@
  */
 #define MAX_STATE_DATA_STORE_COUNT 28.0
 
+static cJSON_bool
+json_is_string_or_null(const cJSON *json) {
+    return cJSON_IsNull(json) || cJSON_IsString(json);
+}
+
 /**
  * @brief Validate deployment data
  * @param deployment_data Deployment data
@@ -57,10 +62,10 @@ validate_deployment_data(const cJSON *deployment_data) {
 
     static const struct key_and_type fields[] = {
         { .key = MENDER_DEPLOYMENT_DATA_KEY_VERSION, .type = cJSON_IsNumber },                /* So we can modify fields later */
-        { .key = MENDER_DEPLOYMENT_DATA_KEY_ID, .type = cJSON_IsString },                     /* Deployment identifier */
-        { .key = MENDER_DEPLOYMENT_DATA_KEY_ARTIFACT_NAME, .type = cJSON_IsString },          /* Name of artifact */
+        { .key = MENDER_DEPLOYMENT_DATA_KEY_ID, .type = json_is_string_or_null },             /* Deployment identifier */
+        { .key = MENDER_DEPLOYMENT_DATA_KEY_ARTIFACT_NAME, .type = json_is_string_or_null },  /* Name of artifact */
         { .key = MENDER_DEPLOYMENT_DATA_KEY_PAYLOAD_TYPES, .type = cJSON_IsArray },           /* Types of payloads embedded in artifact */
-        { .key = MENDER_DEPLOYMENT_DATA_KEY_PROVIDES, .type = cJSON_IsString },               /* Artifact provides (filtered on clears provides) */
+        { .key = MENDER_DEPLOYMENT_DATA_KEY_PROVIDES, .type = json_is_string_or_null },       /* Artifact provides (filtered on clears provides) */
         { .key = MENDER_DEPLOYMENT_DATA_KEY_STATE, .type = cJSON_IsNumber },                  /* State */
         { .key = MENDER_DEPLOYMENT_DATA_KEY_STATE_DATA_STORE_COUNT, .type = cJSON_IsNumber }, /* State data store count */
     };

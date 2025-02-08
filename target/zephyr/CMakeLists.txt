@@ -29,4 +29,34 @@ if(CONFIG_MENDER_MCU_CLIENT)
     zephyr_library_compile_definitions(-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\")
     zephyr_library_compile_definitions(-D_POSIX_C_SOURCE=200809L)  # Required for strdup and strtok_r support
     zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
+
+    set(output_signed ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.signed.bin)
+    set(mender_artifact ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender)
+
+    # Assemble the mender-artifact arguments
+    set(mender_artifact_args write module-image)
+    # No compression
+    set(mender_artifact_args ${mender_artifact_args} --compression none)
+    # Update Module
+    # TODO: take it from Kconfig
+    set(mender_artifact_args ${mender_artifact_args} --type zephyr-image)
+    # Device Type
+    set(mender_artifact_args ${mender_artifact_args} --device-type ${CONFIG_MENDER_DEVICE_TYPE})
+    # Artifact Name
+    # TODO: take it from Kconfig
+    set(mender_artifact_args ${mender_artifact_args} --artifact-name lluis-update)
+
+    set_property(
+        GLOBAL APPEND PROPERTY
+        extra_post_build_commands
+        COMMAND
+        mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+    )
+
+    set_property(
+        GLOBAL APPEND PROPERTY
+        extra_post_build_byproducts
+        ${mender_artifact}
+    )
+
 endif()

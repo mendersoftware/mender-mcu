@@ -30,6 +30,11 @@ if(CONFIG_MENDER_MCU_CLIENT)
     zephyr_library_compile_definitions(-D_POSIX_C_SOURCE=200809L)  # Required for strdup and strtok_r support
     zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
 
+    # TODO: get the property instead
+    # get_target_property(out runners_yaml_props_target bin_file)"
+    # get_target_property(out runners_yaml_props_target hex_file)"
+    # ...
+
     set(output_signed ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.signed.bin)
     set(mender_artifact ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender)
 
@@ -50,13 +55,49 @@ if(CONFIG_MENDER_MCU_CLIENT)
         GLOBAL APPEND PROPERTY
         extra_post_build_commands
         COMMAND
-        mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+        # mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+        rm -f ${mender_artifact}
     )
 
-    set_property(
-        GLOBAL APPEND PROPERTY
-        extra_post_build_byproducts
+    # set_property(
+    #     GLOBAL APPEND PROPERTY
+    #     extra_post_build_byproducts
+    #     ${mender_artifact}
+    # )
+
+    add_custom_target(
+        mender-artifact ALL
+        COMMAND
+        test -f ${mender_artifact} ||
+        echo "Generating Mender Artifact from ${output_signed} for board ${BOARD}" &&
+        mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+        DEPENDS
+        ${output_signed}
+        BYPRODUCTS
         ${mender_artifact}
     )
+
+    # add_custom_command(
+    #     TARGET zephyr_final
+    #     POST_BUILD
+    #     COMMAND mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+    #     BYPRODUCTS
+    #     ${mender_artifact}
+    # )
+
+    # add_custom_command(
+    #     OUTPUT ${mender_artifact}
+    #     DEPENDS zephyr_final
+    #     COMMAND mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+    # )
+
+    # add_custom_target (
+    #     something
+    #     COMMAND mender-artifact ${mender_artifact_args} --file ${output_signed} --output-path ${mender_artifact}
+    #     DEPENDS ${output_signed}
+    #     BYPRODUCTS
+    #     ${mender_artifact}
+    #     COMMENT "dummy Generating Mender Artifact from ${output_signed} for board ${BOARD}"
+    #  )
 
 endif()

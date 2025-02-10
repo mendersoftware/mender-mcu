@@ -9,4 +9,4 @@ manifest:
       submodules: true
       remote: mender
       path: modules/lib/cjson
-      revision: aaffa25beabf4df64f8259222af18c1eccbb3315
+      revision: 35dd41f010f66bedbd34d4ec2e5595ce74faf96f

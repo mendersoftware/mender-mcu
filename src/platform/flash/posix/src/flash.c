@@ -19,9 +19,9 @@
 
 #include <errno.h>
 #include <unistd.h>
-#include "mender-alloc.h"
-#include "mender-flash.h"
-#include "mender-log.h"
+#include <mender/alloc.h>
+#include <mender/flash.h>
+#include <mender/log.h>
 
 /**
  * @brief Default deployment path (working directory)

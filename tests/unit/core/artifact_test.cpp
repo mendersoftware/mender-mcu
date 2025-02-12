@@ -24,9 +24,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include "mender-artifact.h"
-#include "mender-deployment-data.h"
-#include "mender-update-module.h"
+#include <mender/artifact.h>
+#include <mender/deployment-data.h>
+#include <mender/update-module.h>
 
 using namespace std;
 namespace fs = filesystem;

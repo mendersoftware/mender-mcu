@@ -24,9 +24,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-deployment-data.h"
-#include "mender-update-module.h"
-#include "mender-utils.h"
+#include <mender/deployment-data.h>
+#include <mender/update-module.h>
+#include <mender/utils.h>
 
 /**
  * @brief Download artifact from the given URI

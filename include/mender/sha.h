@@ -24,7 +24,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-utils.h" /* mender_err_t */
+#include <mender/utils.h> /* mender_err_t */
 
 /**
  * @brief This type is just a pointer to whatever data structure is required by

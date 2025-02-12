@@ -24,7 +24,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-utils.h"
+#include <mender/utils.h>
 
 /**
  * @brief Open flash device

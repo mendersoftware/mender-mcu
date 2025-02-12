@@ -18,7 +18,7 @@
  */
 
 #include <time.h>
-#include "mender-log.h"
+#include <mender/log.h>
 
 mender_err_t
 mender_log_init(void) {

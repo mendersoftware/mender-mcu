@@ -19,7 +19,7 @@
 
 #include <zephyr/kernel.h>
 
-#include "mender-alloc.h"
+#include <mender/alloc.h>
 
 #ifdef CONFIG_MENDER_SEPARATE_HEAP
 K_HEAP_DEFINE(mender_heap, CONFIG_MENDER_HEAP_SIZE * 1024);

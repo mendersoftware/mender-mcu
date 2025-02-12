@@ -21,10 +21,10 @@
 #include <version.h>
 #include <zephyr/net/http/client.h>
 #include <zephyr/kernel.h>
-#include "mender-api.h"
-#include "mender-http.h"
-#include "mender-log.h"
-#include "mender-net.h"
+#include <mender/api.h>
+#include <mender/http.h>
+#include <mender/log.h>
+#include <mender/net.h>
 
 /**
  * @brief HTTP User-Agent

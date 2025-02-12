@@ -17,9 +17,9 @@
  * limitations under the License.
  */
 
-#include "mender-alloc.h"
-#include "mender-log.h"
-#include "mender-update-module.h"
+#include <mender/alloc.h>
+#include <mender/log.h>
+#include <mender/update-module.h>
 
 /**
  * @brief Mender update modules list

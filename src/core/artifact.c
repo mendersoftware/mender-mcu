@@ -20,11 +20,11 @@
 
 #include <errno.h>
 
-#include "mender-alloc.h"
-#include "mender-artifact.h"
-#include "mender-deployment-data.h"
-#include "mender-log.h"
-#include "mender-utils.h"
+#include <mender/alloc.h>
+#include <mender/artifact.h>
+#include <mender/deployment-data.h>
+#include <mender/log.h>
+#include <mender/utils.h>
 
 /**
  * @brief Device type key

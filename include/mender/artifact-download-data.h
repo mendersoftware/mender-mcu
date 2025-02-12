@@ -24,9 +24,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-deployment-data.h"
-#include "mender-http-client-event.h"
-#include "mender-update-module.h"
+#include <mender/deployment-data.h>
+#include <mender/http-client-event.h>
+#include <mender/update-module.h>
 
 typedef struct mender_artifact_download_data_t {
     mender_deployment_data_t *deployment;

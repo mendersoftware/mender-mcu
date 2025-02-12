@@ -18,7 +18,7 @@
  * limitations under the License.
  */
 
-#include "mender-tls.h"
+#include <mender/tls.h>
 
 MENDER_FUNC_WEAK mender_err_t
 mender_tls_init(void) {

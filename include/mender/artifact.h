@@ -25,9 +25,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-artifact-download-data.h"
-#include "mender-utils.h"
-#include "mender-sha.h"
+#include <mender/artifact-download-data.h>
+#include <mender/utils.h>
+#include <mender/sha.h>
 
 /**
  * @brief TAR block size

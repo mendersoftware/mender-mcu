@@ -24,7 +24,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender-utils.h>
+#include <mender/utils.h>
 
 #ifndef CONFIG_MENDER_ERRORS_THRESHOLD_NET
 #define CONFIG_MENDER_ERRORS_THRESHOLD_NET 0

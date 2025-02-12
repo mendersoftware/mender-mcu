@@ -24,8 +24,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-utils.h"
-#include "mender-update-module.h"
+#include <mender/utils.h>
+#include <mender/update-module.h>
 #include "cJSON.h"
 
 #define MENDER_DEPLOYMENT_DATA_KEY_VERSION                "version"

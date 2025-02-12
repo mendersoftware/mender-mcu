@@ -28,7 +28,7 @@ extern "C" {
 #include <stdint.h>
 #include <cJSON.h>
 
-#include "mender-utils.h"
+#include <mender/utils.h>
 
 typedef enum mender_update_state_t {
     MENDER_UPDATE_STATE_DOWNLOAD = 0,

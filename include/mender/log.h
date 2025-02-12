@@ -28,7 +28,7 @@ extern "C" {
 #include <zephyr/logging/log.h>
 #endif /* __ZEPHYR */
 
-#include "mender-utils.h"
+#include <mender/utils.h>
 
 /**
  * @brief Mender log levels

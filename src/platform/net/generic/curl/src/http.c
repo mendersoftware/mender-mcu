@@ -18,10 +18,10 @@
  */
 
 #include <curl/curl.h>
-#include "mender-alloc.h"
-#include "mender-http.h"
-#include "mender-log.h"
-#include "mender-utils.h"
+#include <mender/alloc.h>
+#include <mender/http.h>
+#include <mender/log.h>
+#include <mender/utils.h>
 
 /**
  * @brief HTTP User-Agent

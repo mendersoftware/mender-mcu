@@ -20,7 +20,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "mender-utils.h"
+#include <mender/utils.h>
 }
 
 using namespace std;

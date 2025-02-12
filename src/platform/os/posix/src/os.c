@@ -26,10 +26,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "mender-alloc.h"
-#include "mender-log.h"
-#include "mender-os.h"
-#include "mender-utils.h"
+#include <mender/alloc.h>
+#include <mender/log.h>
+#include <mender/os.h>
+#include <mender/utils.h>
 
 /**
  * @brief Default work queue stack size (kB)

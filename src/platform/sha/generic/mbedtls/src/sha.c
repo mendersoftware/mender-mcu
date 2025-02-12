@@ -17,9 +17,9 @@
  * limitations under the License.
  */
 
-#include "mender-alloc.h"
-#include "mender-sha.h"
-#include "mender-log.h"
+#include <mender/alloc.h>
+#include <mender/sha.h>
+#include <mender/log.h>
 
 #include <mbedtls/sha256.h>
 

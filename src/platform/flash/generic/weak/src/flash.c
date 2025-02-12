@@ -18,7 +18,7 @@
  * limitations under the License.
  */
 
-#include "mender-flash.h"
+#include <mender/flash.h>
 
 MENDER_FUNC_WEAK mender_err_t
 mender_flash_open(const char *name, size_t size, void **handle) {

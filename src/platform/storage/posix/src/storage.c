@@ -18,9 +18,9 @@
  */
 
 #include <unistd.h>
-#include "mender-alloc.h"
-#include "mender-log.h"
-#include "mender-storage.h"
+#include <mender/alloc.h>
+#include <mender/log.h>
+#include <mender/storage.h>
 
 /**
  * @brief Default storage path (working directory)

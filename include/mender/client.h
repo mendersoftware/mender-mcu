@@ -25,9 +25,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-alloc.h"
-#include "mender-utils.h"
-#include "mender-update-module.h"
+#include <mender/alloc.h>
+#include <mender/utils.h>
+#include <mender/update-module.h>
 
 /**
  * @brief Mender client states

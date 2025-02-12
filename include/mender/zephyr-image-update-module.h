@@ -24,7 +24,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-update-module.h"
+#include <mender/update-module.h>
 
 #ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
 

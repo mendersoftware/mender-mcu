@@ -25,9 +25,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "mender-artifact-download-data.h"
-#include "mender-http-client-event.h"
-#include "mender-utils.h"
+#include <mender/artifact-download-data.h>
+#include <mender/http-client-event.h>
+#include <mender/utils.h>
 
 /**
  * @brief Receive buffer length

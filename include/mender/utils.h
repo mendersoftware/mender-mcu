@@ -34,7 +34,7 @@ extern "C" {
 #include <assert.h>
 #include <cJSON.h>
 
-#include "mender-alloc.h"
+#include <mender/alloc.h>
 
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))

@@ -18,22 +18,22 @@
  * limitations under the License.
  */
 
-#include "mender-alloc.h"
-#include "mender-api.h"
-#include "mender-client.h"
-#include "mender-artifact.h"
-#include "mender-artifact-download.h"
-#include "mender-log.h"
-#include "mender-os.h"
-#include "mender-storage.h"
-#include "mender-tls.h"
-#include "mender-update-module.h"
-#include "mender-utils.h"
-#include "mender-deployment-data.h"
-#include "mender-error-counters.h"
+#include <mender/alloc.h>
+#include <mender/api.h>
+#include <mender/client.h>
+#include <mender/artifact.h>
+#include <mender/artifact-download.h>
+#include <mender/log.h>
+#include <mender/os.h>
+#include <mender/storage.h>
+#include <mender/tls.h>
+#include <mender/update-module.h>
+#include <mender/utils.h>
+#include <mender/deployment-data.h>
+#include <mender/error-counters.h>
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
-#include "mender-inventory.h"
+#include <mender/inventory.h>
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 /**

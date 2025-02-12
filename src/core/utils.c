@@ -18,7 +18,7 @@
  * limitations under the License.
  */
 
-#include "mender-log.h"
+#include <mender/log.h>
 
 /* ASCII unit separator */
 #define MENDER_KEY_VALUE_DELIMITER "\x1F"

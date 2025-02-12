@@ -28,12 +28,12 @@
 #include <mbedtls/pk.h>
 #include <mbedtls/ecdsa.h>
 #include <mbedtls/x509.h>
-#include "mender-alloc.h"
-#include "mender-log.h"
-#include "mender-storage.h"
-#include "mender-tls.h"
+#include <mender/alloc.h>
+#include <mender/log.h>
+#include <mender/storage.h>
+#include <mender/tls.h>
 
-#include "mender-utils.h"
+#include <mender/utils.h>
 
 /**
  * @brief Keys buffer length

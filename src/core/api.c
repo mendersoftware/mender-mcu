@@ -18,16 +18,16 @@
  * limitations under the License.
  */
 
-#include "mender-alloc.h"
-#include "mender-api.h"
-#include "mender-artifact.h"
-#include "mender-error-counters.h"
-#include "mender-os.h"
-#include "mender-storage.h"
-#include "mender-http.h"
-#include "mender-log.h"
-#include "mender-tls.h"
-#include "mender-utils.h"
+#include <mender/alloc.h>
+#include <mender/api.h>
+#include <mender/artifact.h>
+#include <mender/error-counters.h>
+#include <mender/os.h>
+#include <mender/storage.h>
+#include <mender/http.h>
+#include <mender/log.h>
+#include <mender/tls.h>
+#include <mender/utils.h>
 
 /**
  * @brief Paths of the mender-server APIs

@@ -23,15 +23,15 @@
 #include <regex.h>
 #include <signal.h>
 #include <stdio.h>
-#include "mender-client.h"
-#include "mender-flash.h"
+#include <mender/client.h>
+#include <mender/flash.h>
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
-#include "mender-inventory.h"
+#include <mender/inventory.h>
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
-#include "mender-log.h"
+#include <mender/log.h>
 
 #ifdef CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
-#include "mender-zephyr-image-update-module.h"
+#include <mender/zephyr-image-update-module.h>
 #endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
 /**

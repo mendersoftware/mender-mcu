@@ -23,8 +23,9 @@
 #include <zephyr/net/tls_credentials.h>
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
 #include <mender/log.h>
-#include <mender/net.h>
 #include <mender/utils.h>
+
+#include "net.h"
 
 /**
  * @brief Default TLS_PEER_VERIFY option

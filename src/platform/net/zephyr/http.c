@@ -24,7 +24,8 @@
 #include <mender/api.h>
 #include <mender/http.h>
 #include <mender/log.h>
-#include <mender/net.h>
+
+#include "net.h"
 
 /**
  * @brief HTTP User-Agent

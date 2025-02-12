@@ -119,7 +119,7 @@ target_compile_options(main_test PRIVATE ${PLATFORM_SPECIFIC_COMPILE_OPTIONS})
 add_dependencies(tests main_test)
 
 # test for core source files
-add_executable(core_test EXCLUDE_FROM_ALL core/mender-utils_test.cpp core/mender-artifact_test.cpp)
+add_executable(core_test EXCLUDE_FROM_ALL core/utils_test.cpp core/artifact_test.cpp)
 target_link_libraries(core_test PUBLIC
   mender-mcu-client
   gtest

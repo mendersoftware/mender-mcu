@@ -128,37 +128,37 @@ endif()
 
 # Set MENDER_MCU_SOURCES
 file(GLOB MENDER_MCU_SOURCES
-    "${MENDER_MCU_ROOT}/core/src/mender-alloc.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-api.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-artifact.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-artifact-download.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-client.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-deployment-data.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-error-counters.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-update-module.c"
-    "${MENDER_MCU_ROOT}/core/src/mender-utils.c"
-    "${MENDER_MCU_ROOT}/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/mender-log.c"
-    "${MENDER_MCU_ROOT}/platform/memory/${CONFIG_MENDER_PLATFORM_MEM_TYPE}/src/mender-alloc.c"
-    "${MENDER_MCU_ROOT}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-http.c"
-    "${MENDER_MCU_ROOT}/platform/os/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/mender-os.c"
-    "${MENDER_MCU_ROOT}/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/mender-storage.c"
-    "${MENDER_MCU_ROOT}/platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/mender-tls.c"
-    "${MENDER_MCU_ROOT}/platform/sha/${CONFIG_MENDER_PLATFORM_SHA_TYPE}/src/mender-sha.c"
+    "${MENDER_MCU_ROOT}/src/core/alloc.c"
+    "${MENDER_MCU_ROOT}/src/core/api.c"
+    "${MENDER_MCU_ROOT}/src/core/artifact.c"
+    "${MENDER_MCU_ROOT}/src/core/artifact-download.c"
+    "${MENDER_MCU_ROOT}/src/core/client.c"
+    "${MENDER_MCU_ROOT}/src/core/deployment-data.c"
+    "${MENDER_MCU_ROOT}/src/core/error-counters.c"
+    "${MENDER_MCU_ROOT}/src/core/update-module.c"
+    "${MENDER_MCU_ROOT}/src/core/utils.c"
+    "${MENDER_MCU_ROOT}/src/platform/log/${CONFIG_MENDER_PLATFORM_LOG_TYPE}/src/log.c"
+    "${MENDER_MCU_ROOT}/src/platform/memory/${CONFIG_MENDER_PLATFORM_MEM_TYPE}/src/alloc.c"
+    "${MENDER_MCU_ROOT}/src/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/http.c"
+    "${MENDER_MCU_ROOT}/src/platform/os/${CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE}/src/os.c"
+    "${MENDER_MCU_ROOT}/src/platform/storage/${CONFIG_MENDER_PLATFORM_STORAGE_TYPE}/src/storage.c"
+    "${MENDER_MCU_ROOT}/src/platform/tls/${CONFIG_MENDER_PLATFORM_TLS_TYPE}/src/tls.c"
+    "${MENDER_MCU_ROOT}/src/platform/sha/${CONFIG_MENDER_PLATFORM_SHA_TYPE}/src/sha.c"
 )
 if (CONFIG_MENDER_CLIENT_INVENTORY)
     list(APPEND MENDER_MCU_SOURCES
-        "${MENDER_MCU_ROOT}/core/src/mender-inventory.c"
+        "${MENDER_MCU_ROOT}/src/core/inventory.c"
     )
 endif()
 if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
     list(APPEND MENDER_MCU_SOURCES
-        "${MENDER_MCU_ROOT}/core/src/mender-zephyr-image-update-module.c"
-        "${MENDER_MCU_ROOT}/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/mender-flash.c"
+        "${MENDER_MCU_ROOT}/src/core/zephyr-image-update-module.c"
+        "${MENDER_MCU_ROOT}/src/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/src/flash.c"
     )
 endif()
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     list(APPEND MENDER_MCU_SOURCES
-        "${MENDER_MCU_ROOT}/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/mender-net.c"
+        "${MENDER_MCU_ROOT}/src/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/src/net.c"
     )
 endif()
 

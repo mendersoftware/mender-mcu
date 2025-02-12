@@ -55,7 +55,7 @@ else()
 endif()
 
 # Add sources
-file(GLOB_RECURSE SOURCES_TEMP "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
+file(GLOB_RECURSE SOURCES_TEMP "${CMAKE_CURRENT_LIST_DIR}/*.c")
 target_sources(${EXECUTABLE_NAME} PRIVATE ${SOURCES_TEMP})
 
 # Include mender-mcu-client library

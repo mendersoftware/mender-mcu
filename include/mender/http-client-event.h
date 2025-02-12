@@ -1,5 +1,5 @@
 /**
- * @file      mender-http-client-event.h
+ * @file      http-client-event.h
  * @brief     Mender HTTP client event type
  *
  * Copyright joelguittet and mender-mcu-client contributors

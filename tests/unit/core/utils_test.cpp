@@ -1,5 +1,5 @@
 /**
- * @file      mender-utils_test.cpp
+ * @file      utils_test.cpp
  * @brief     Unit Tests for mender-utils.c
  *
  * Copyright Northern.tech AS

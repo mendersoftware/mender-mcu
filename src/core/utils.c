@@ -1,5 +1,5 @@
 /**
- * @file      mender-utils.c
+ * @file      utils.c
  * @brief     Mender utility functions
  *
  * Copyright joelguittet and mender-mcu-client contributors

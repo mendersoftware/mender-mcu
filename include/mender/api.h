@@ -1,5 +1,5 @@
 /**
- * @file      mender-api.h
+ * @file      api.h
  * @brief     Implementation of the Mender API
  *
  * Copyright joelguittet and mender-mcu-client contributors

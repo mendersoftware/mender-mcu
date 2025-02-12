@@ -1,5 +1,5 @@
 /**
- * @file      mender-update-module.c
+ * @file      update-module.c
  * @brief     Mender update Module implementation
  *
  * Copyright Northern.tech AS

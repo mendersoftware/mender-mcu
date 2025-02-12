@@ -1,5 +1,5 @@
 /**
- * @file      mender-inventory.h
+ * @file      inventory.h
  * @brief     Mender MCU Inventory implementation
  *
  * Copyright joelguittet and mender-mcu-client contributors

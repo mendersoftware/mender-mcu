@@ -1,5 +1,5 @@
 /**
- * @file      mender-artifact-download.c
+ * @file      artifact-download.c
  * @brief     Mender artifact download implementation
  *
  * Copyright joelguittet and mender-mcu-client contributors

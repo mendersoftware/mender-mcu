@@ -1,5 +1,5 @@
 /**
- * @file      mender-flash.c
+ * @file      flash.c
  * @brief     Mender flash interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

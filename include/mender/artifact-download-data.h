@@ -1,5 +1,5 @@
 /**
- * @file      mender-artifact-download-data.h
+ * @file      artifact-download-data.h
  * @brief     Mender artifact download data definition
  *
  * Copyright Northern.tech AS

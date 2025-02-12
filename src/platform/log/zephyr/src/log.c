@@ -1,5 +1,5 @@
 /**
- * @file      mender-log.c
+ * @file      log.c
  * @brief     Mender logging interface for Zephyr platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

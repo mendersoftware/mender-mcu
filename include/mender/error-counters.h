@@ -1,5 +1,5 @@
 /**
- * @file      mender-error-counters.h
+ * @file      error-counters.h
  * @brief     Mender Error Counters interface
  *
  * Copyright Northern.tech AS

@@ -1,5 +1,5 @@
 /**
- * @file      mender-alloc.c
+ * @file      alloc.c
  * @brief     Zephyr-specific implementation of the Mender memory management functions
  *
  * Copyright Northern.tech AS

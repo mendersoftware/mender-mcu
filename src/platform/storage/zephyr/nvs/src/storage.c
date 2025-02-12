@@ -1,5 +1,5 @@
 /**
- * @file      mender-storage.c
+ * @file      storage.c
  * @brief     Mender storage interface for Zephyr platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

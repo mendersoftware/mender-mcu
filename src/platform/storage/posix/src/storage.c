@@ -1,5 +1,5 @@
 /**
- * @file      mender-storage.c
+ * @file      storage.c
  * @brief     Mender storage interface for Posix platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

@@ -1,5 +1,5 @@
 /**
- * @file      mender-sha.c
+ * @file      sha.c
  * @brief     Mender SHA interface for MbedTLS platform
  *
  * Copyright Northern.tech AS

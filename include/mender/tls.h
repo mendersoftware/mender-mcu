@@ -1,5 +1,5 @@
 /**
- * @file      mender-tls.h
+ * @file      tls.h
  * @brief     Mender TLS interface
  *
  * Copyright joelguittet and mender-mcu-client contributors

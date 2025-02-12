@@ -1,5 +1,5 @@
 /**
- * @file      mender-flash.h
+ * @file      flash.h
  * @brief     Mender flash interface, to be used in mender client callbacks (but you can also have your owns)
  *
  * Copyright joelguittet and mender-mcu-client contributors

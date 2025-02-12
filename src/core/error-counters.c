@@ -1,5 +1,5 @@
 /**
- * @file      mender-error-counters.c
+ * @file      error-counters.c
  * @brief     Mender Error counters implementation
  *
  * Copyright Northern.tech AS

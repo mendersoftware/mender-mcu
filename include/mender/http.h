@@ -1,5 +1,5 @@
 /**
- * @file      mender-http.h
+ * @file      http.h
  * @brief     Mender HTTP interface
  *
  * Copyright joelguittet and mender-mcu-client contributors

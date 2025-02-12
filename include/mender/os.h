@@ -1,5 +1,5 @@
 /**
- * @file      mender-os.h
+ * @file      os.h
  * @brief     Mender OS interface
  *
  * Copyright joelguittet and mender-mcu-client contributors

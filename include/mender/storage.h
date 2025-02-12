@@ -1,5 +1,5 @@
 /**
- * @file      mender-storage.h
+ * @file      storage.h
  * @brief     Mender storage interface
  *
  * Copyright joelguittet and mender-mcu-client contributors

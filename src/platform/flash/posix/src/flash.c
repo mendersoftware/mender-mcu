@@ -1,5 +1,5 @@
 /**
- * @file      mender-flash.c
+ * @file      flash.c
  * @brief     Mender flash interface for Posix platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

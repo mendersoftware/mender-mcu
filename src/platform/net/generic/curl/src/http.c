@@ -1,5 +1,5 @@
 /**
- * @file      mender-http.c
+ * @file      http.c
  * @brief     Mender HTTP interface for curl platform, requires libcurl >= 7.80.0
  *
  * Copyright joelguittet and mender-mcu-client contributors

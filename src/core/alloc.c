@@ -1,5 +1,5 @@
 /**
- * @file      mender-alloc.c
+ * @file      alloc.c
  * @brief     Platform-independent parts of the Mender memory management implementation
  *
  * Copyright Northern.tech AS

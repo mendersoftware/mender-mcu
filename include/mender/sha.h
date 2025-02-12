@@ -1,5 +1,5 @@
 /**
- * @file      mender-sha.h
+ * @file      sha.h
  * @brief     Mender SHA interface
  *
  * Copyright Northern.tech AS

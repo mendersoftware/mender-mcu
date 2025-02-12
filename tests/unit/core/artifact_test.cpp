@@ -1,5 +1,5 @@
 /**
- * @file      mender-artifact_test.cpp
+ * @file      artifact_test.cpp
  * @brief     Unit Tests for mender-artifact.c
  *
  * Copyright Northern.tech AS

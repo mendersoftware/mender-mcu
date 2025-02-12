@@ -1,5 +1,5 @@
 /**
- * @file      mender-artifact.c
+ * @file      artifact.c
  * @brief     Mender artifact parser
  *
  * Copyright joelguittet and mender-mcu-client contributors

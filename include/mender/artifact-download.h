@@ -1,5 +1,5 @@
 /**
- * @file      mender-artifact-download.h
+ * @file      artifact-download.h
  * @brief     Mender artifact download interface
  *
  * Copyright Northern.tech AS

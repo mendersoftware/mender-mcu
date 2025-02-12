@@ -1,5 +1,5 @@
 /**
- * @file      mender-http.c
+ * @file      http.c
  * @brief     Mender HTTP interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

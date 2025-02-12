@@ -1,5 +1,5 @@
 /**
- * @file      mender-zephyr-image-update-module.h
+ * @file      zephyr-image-update-module.h
  * @brief     The basic Zephyr update module based on MCUboot
  *
  * Copyright Northern.tech AS

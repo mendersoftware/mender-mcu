@@ -1,5 +1,5 @@
 /**
- * @file      mender-os.c
+ * @file      os.c
  * @brief     Mender OS interface for Posix platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

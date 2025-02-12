@@ -1,5 +1,5 @@
 /**
- * @file      mender-os.c
+ * @file      os.c
  * @brief     Mender OS interface for Zephyr platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

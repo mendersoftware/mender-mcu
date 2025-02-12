@@ -1,5 +1,5 @@
 /**
- * @file      mender-deployment-data.c
+ * @file      deployment-data.c
  * @brief     Mender Deployment Data interface
  *
  * Copyright Northern.tech AS

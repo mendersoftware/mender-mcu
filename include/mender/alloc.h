@@ -1,5 +1,5 @@
 /**
- * @file      mender-alloc.h
+ * @file      alloc.h
  * @brief     Mender memory management functions
  *
  * Copyright Northern.tech AS

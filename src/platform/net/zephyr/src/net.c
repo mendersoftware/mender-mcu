@@ -1,5 +1,5 @@
 /**
- * @file      mender-net.c
+ * @file      net.c
  * @brief     Mender network common file for Zephyr platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

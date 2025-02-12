@@ -1,5 +1,5 @@
 /**
- * @file      mender-tls.c
+ * @file      tls.c
  * @brief     Mender TLS interface for weak platform
  *
  * Copyright joelguittet and mender-mcu-client contributors

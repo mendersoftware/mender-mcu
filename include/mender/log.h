@@ -1,5 +1,5 @@
 /**
- * @file      mender-log.h
+ * @file      log.h
  * @brief     Mender logging interface
  *
  * Copyright joelguittet and mender-mcu-client contributors

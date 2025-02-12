@@ -1,5 +1,5 @@
 /**
- * @file      mender-client.h
+ * @file      client.h
  * @brief     Mender MCU client implementation
  *
  * Copyright joelguittet and mender-mcu-client contributors

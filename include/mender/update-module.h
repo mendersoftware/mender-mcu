@@ -1,6 +1,6 @@
 /**
  * @file      update-module.h
- * @brief     Mender Update Module interface
+ * @brief     Mender Update Module interface (public API)
  *
  * Copyright Northern.tech AS
  *

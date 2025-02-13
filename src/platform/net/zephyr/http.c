@@ -21,9 +21,9 @@
 #include <version.h>
 #include <zephyr/net/http/client.h>
 #include <zephyr/kernel.h>
-#include <mender/api.h>
-#include <mender/http.h>
-#include <mender/log.h>
+#include "api.h"
+#include "http.h"
+#include "log.h"
 
 #include "net.h"
 

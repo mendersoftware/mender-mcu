@@ -1,6 +1,6 @@
 /**
  * @file      utils.h
- * @brief     Mender utility functions
+ * @brief     Mender utility functions (public API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS

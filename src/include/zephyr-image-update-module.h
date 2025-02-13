@@ -1,6 +1,6 @@
 /**
- * @file      artifact-download.h
- * @brief     Mender artifact download interface
+ * @file      zephyr-image-update-module.h
+ * @brief     The basic Zephyr update module based on MCUboot (public API)
  *
  * Copyright Northern.tech AS
  *
@@ -17,27 +17,17 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_ARTIFACT_DOWNLOAD_H__
-#define __MENDER_ARTIFACT_DOWNLOAD_H__
+#ifndef __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_PRIV_H__
+#define __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/deployment-data.h>
-#include <mender/update-module.h>
-#include <mender/utils.h>
-
-/**
- * @brief Download artifact from the given URI
- * @param uri URI to download the artifact from
- * @param deployment_data Deployment data to extend with artifact metadata
- * @param update_module A place to store the update module selected for the artifact
- */
-mender_err_t mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_data, mender_update_module_t **update_module);
+#include <mender/zephyr-image-update-module.h>
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_ARTIFACT_DOWNLOAD_H__ */
+#endif /* __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_PRIV_H__ */

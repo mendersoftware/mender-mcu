@@ -20,8 +20,8 @@
 #include <zephyr/dfu/flash_img.h>
 #include <zephyr/dfu/mcuboot.h>
 #include <zephyr/sys/reboot.h>
-#include <mender/flash.h>
-#include <mender/log.h>
+#include "flash.h"
+#include "log.h"
 
 mender_err_t
 mender_flash_open(const char *name, size_t size, void **handle) {

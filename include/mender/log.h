@@ -1,6 +1,6 @@
 /**
  * @file      log.h
- * @brief     Mender logging interface
+ * @brief     Mender logging interface (public API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -28,7 +28,7 @@ extern "C" {
 #include <zephyr/logging/log.h>
 #endif /* __ZEPHYR */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 /**
  * @brief Mender log levels

@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#include <mender/log.h>
-#include <mender/storage.h>
+#include "log.h"
+#include "storage.h"
 
 MENDER_FUNC_WEAK mender_err_t
 mender_storage_init(void) {

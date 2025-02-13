@@ -18,11 +18,11 @@
  * limitations under the License.
  */
 
-#include <mender/api.h>
-#include <mender/client.h>
-#include <mender/inventory.h>
-#include <mender/log.h>
-#include <mender/os.h>
+#include "api.h"
+#include "client.h"
+#include "inventory.h"
+#include "log.h"
+#include "os.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 

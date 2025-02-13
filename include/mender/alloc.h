@@ -1,6 +1,6 @@
 /**
  * @file      alloc.h
- * @brief     Mender memory management functions
+ * @brief     Mender memory management functions (public API)
  *
  * Copyright Northern.tech AS
  *

@@ -18,11 +18,11 @@
  * limitations under the License.
  */
 
-#include <mender/client.h>
-#include <mender/flash.h>
-#include <mender/log.h>
-#include <mender/update-module.h>
-#include <mender/zephyr-image-update-module.h>
+#include "client.h"
+#include "flash.h"
+#include "log.h"
+#include "update-module.h"
+#include "zephyr-image-update-module.h"
 
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data

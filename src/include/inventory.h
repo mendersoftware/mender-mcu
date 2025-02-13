@@ -1,6 +1,6 @@
 /**
- * @file      log.c
- * @brief     Mender logging interface for Zephyr platform
+ * @file      inventory.h
+ * @brief     Mender MCU Inventory implementation (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -17,26 +17,17 @@
  * limitations under the License.
  */
 
-#include <zephyr/logging/log.h>
+#ifndef __MENDER_INVENTORY_PRIV_H__
+#define __MENDER_INVENTORY_PRIV_H__
 
-/* XXX: Cannot #include "log.h" here because LOG_MODULE_DECLARE() and
-        LOG_MODULE_REGISTER() cannot be present in the same source file
-        (compilation unit).  */
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
-#include "utils.h"
+#include <mender/inventory.h>
 
-LOG_MODULE_REGISTER(mender, CONFIG_MENDER_LOG_LEVEL);
-
-mender_err_t
-mender_log_init(void) {
-
-    /* Nothing to do */
-    return MENDER_OK;
+#ifdef __cplusplus
 }
+#endif /* __cplusplus */
 
-mender_err_t
-mender_log_exit(void) {
-
-    /* Nothing to do */
-    return MENDER_OK;
-}
+#endif /* __MENDER_INVENTORY_PRIV_H__ */

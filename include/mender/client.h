@@ -1,6 +1,6 @@
 /**
  * @file      client.h
- * @brief     Mender MCU client implementation
+ * @brief     Mender MCU client implementation (public API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS

@@ -20,10 +20,10 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/reboot.h> /* sys_reboot() */
-#include <mender/alloc.h>
-#include <mender/log.h>
-#include <mender/os.h>
-#include <mender/utils.h>
+#include "alloc.h"
+#include "log.h"
+#include "os.h"
+#include "utils.h"
 
 #ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
 /**

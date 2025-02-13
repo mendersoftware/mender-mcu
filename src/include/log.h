@@ -26,6 +26,18 @@ extern "C" {
 
 #include <mender/log.h>
 
+/**
+ * @brief Initialize mender log
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_log_init(void);
+
+/**
+ * @brief Release mender log
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_log_exit(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

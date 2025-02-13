@@ -45,11 +45,6 @@ void  mender_free(void *ptr);
  */
 void mender_set_allocation_funcs(MenderAllocator malloc_func, MenderReallocator realloc_func, MenderDeallocator free_func);
 
-/**
- * @brief Set platform-specific memory allocation functions (if any)
- */
-void mender_set_platform_allocation_funcs(void);
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

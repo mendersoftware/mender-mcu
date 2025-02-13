@@ -26,6 +26,18 @@ extern "C" {
 
 #include <mender/update-module.h>
 
+/**
+ * @brief Unregister all registered update modules
+ */
+void mender_update_module_unregister_all(void);
+
+/**
+ * @brief Get update module for the given artifact type
+ * @param artifact_type Artifact type to get the update module for
+ * @return An update module or %NULL if no matching one found
+ */
+mender_update_module_t *mender_update_module_get(const char *artifact_type);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

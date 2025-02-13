@@ -26,6 +26,8 @@ extern "C" {
 
 #include <mender/zephyr-image-update-module.h>
 
+/* No private API here, but having this file allows #include consistency in our sources. */
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

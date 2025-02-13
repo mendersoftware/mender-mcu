@@ -27,6 +27,28 @@ extern "C" {
 
 #include <mender/client.h>
 
+/**
+ * @brief Mender client states
+ */
+typedef enum {
+    MENDER_CLIENT_STATE_INITIALIZATION, /**< Perform initialization */
+    MENDER_CLIENT_STATE_OPERATIONAL,    /**< Under standard operation */
+    MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
+} mender_client_state_t;
+
+/**
+ * @brief Mender client state
+ */
+extern mender_client_state_t mender_client_state;
+
+/**
+ * @brief  Ensures the client has a network connection
+ * @return MENDER_DONE if already connected,
+ *         MENDER_OK if successfully connected,
+ *         MENDER_FAIL otherwise
+ */
+mender_err_t mender_client_ensure_connected(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

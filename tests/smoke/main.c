@@ -24,7 +24,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <mender/client.h>
-#include <mender/flash.h>
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 #include <mender/inventory.h>
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */

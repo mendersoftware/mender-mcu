@@ -1,6 +1,6 @@
 /**
  * @file      inventory.h
- * @brief     Mender MCU Inventory implementation
+ * @brief     Mender MCU Inventory implementation (public API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -29,26 +29,6 @@ extern "C" {
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 /**
- * @brief Initialize mender inventory
- * @param interval The interval to perform inventory updates at
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_inventory_init(uint32_t interval);
-
-/**
- * @brief Activate mender inventory
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_inventory_activate(void);
-
-/**
- * @brief Deactivate mender inventory
- * @note This function stops synchronization with the server
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_inventory_deactivate(void);
-
-/**
  * @brief Set mender inventory
  * @param inventory Mender inventory key/value pairs table, must end with a NULL/NULL element, NULL if not defined
  * @return MENDER_OK if the function succeeds, error code otherwise
@@ -62,12 +42,6 @@ mender_err_t mender_inventory_set(mender_keystore_t *inventory);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_inventory_execute(void);
-
-/**
- * @brief Release mender inventory
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_inventory_exit(void);
 
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 

@@ -46,18 +46,6 @@ extern "C" {
 #define CONFIG_MENDER_LOG_LEVEL MENDER_LOG_LEVEL_INF
 #endif /* CONFIG_MENDER_LOG_LEVEL */
 
-/**
- * @brief Initialize mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_init(void);
-
-/**
- * @brief Release mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_exit(void);
-
 #ifdef __ZEPHYR__
 
 LOG_MODULE_DECLARE(mender, CONFIG_MENDER_LOG_LEVEL);

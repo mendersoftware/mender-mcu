@@ -26,6 +26,11 @@ extern "C" {
 
 #include <mender/alloc.h>
 
+/**
+ * @brief Set platform-specific memory allocation functions (if any)
+ */
+void mender_set_platform_allocation_funcs(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

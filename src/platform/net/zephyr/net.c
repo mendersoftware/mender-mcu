@@ -173,12 +173,13 @@ mender_net_connect(const char *host, const char *port) {
         if (0 == result) {
             break;
         }
+        mender_log_debug("Unable to resolve host name '%s:%s': %s", host, port, zsock_gai_strerror(result));
         /* Introduce a backoff mechanism to try every 10ms, 20ms, ..., 100ms */
         k_sleep(K_MSEC(10 * (RESOLVE_ATTEMPTS - resolve_attempts + 1)));
     } while (0 != --resolve_attempts);
 
     if (0 != result) {
-        mender_log_error("Unable to resolve host name '%s:%s', result = %d, errno = %d", host, port, result, errno);
+        mender_log_error("Unable to resolve host name '%s:%s': %s", host, port, zsock_gai_strerror(result));
         goto END;
     }
 

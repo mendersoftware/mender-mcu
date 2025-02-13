@@ -1,6 +1,6 @@
 /**
  * @file      sha.h
- * @brief     Mender SHA interface
+ * @brief     Mender SHA interface (private API)
  *
  * Copyright Northern.tech AS
  *
@@ -17,14 +17,14 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_SHA_H__
-#define __MENDER_SHA_H__
+#ifndef __MENDER_SHA_PRIV_H__
+#define __MENDER_SHA_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h> /* mender_err_t */
+#include "utils.h" /* mender_err_t */
 
 /**
  * @brief This type is just a pointer to whatever data structure is required by
@@ -73,4 +73,4 @@ mender_err_t mender_sha256_finish(mender_sha256_context_t context, unsigned char
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_SHA_H__ */
+#endif /* __MENDER_SHA_PRIV_H__ */

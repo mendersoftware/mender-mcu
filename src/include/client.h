@@ -1,6 +1,6 @@
 /**
- * @file      http-client-event.h
- * @brief     Mender HTTP client event type
+ * @file      client.h
+ * @brief     Mender MCU client implementation (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -18,25 +18,17 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_HTTP_CLIENT_EVENT_H__
-#define __MENDER_HTTP_CLIENT_EVENT_H__
+#ifndef __MENDER_CLIENT_PRIV_H__
+#define __MENDER_CLIENT_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-/**
- * @brief HTTP client events
- */
-typedef enum {
-    MENDER_HTTP_EVENT_CONNECTED,     /**< Connected to the server */
-    MENDER_HTTP_EVENT_DATA_RECEIVED, /**< Data received from the server */
-    MENDER_HTTP_EVENT_DISCONNECTED,  /**< Disconnected from the server */
-    MENDER_HTTP_EVENT_ERROR          /**< An error occurred */
-} mender_http_client_event_t;
+#include <mender/client.h>
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_HTTP_CLIENT_EVENT_H__ */
+#endif /* __MENDER_CLIENT_PRIV_H__ */

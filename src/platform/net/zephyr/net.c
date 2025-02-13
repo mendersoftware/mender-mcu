@@ -22,8 +22,8 @@
 #ifdef CONFIG_NET_SOCKETS_SOCKOPT_TLS
 #include <zephyr/net/tls_credentials.h>
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
-#include <mender/log.h>
-#include <mender/utils.h>
+#include "log.h"
+#include "utils.h"
 
 #include "net.h"
 

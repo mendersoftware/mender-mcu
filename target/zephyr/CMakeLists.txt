@@ -22,6 +22,7 @@ if(CONFIG_MENDER_MCU_CLIENT)
 
     zephyr_library()
     zephyr_library_sources(${MENDER_MCU_SOURCES})
+    zephyr_library_include_directories(${MENDER_PRIV_INCLUDE})
     zephyr_include_directories(${MENDER_MCU_INCLUDE})
 
     file (STRINGS ${MENDER_MCU_VERSION_FILE} MENDER_CLIENT_VERSION)

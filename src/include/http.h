@@ -1,6 +1,6 @@
 /**
  * @file      http.h
- * @brief     Mender HTTP interface
+ * @brief     Mender HTTP interface (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -18,16 +18,16 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_HTTP_H__
-#define __MENDER_HTTP_H__
+#ifndef __MENDER_HTTP_PRIV_H__
+#define __MENDER_HTTP_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/artifact-download-data.h>
-#include <mender/http-client-event.h>
-#include <mender/utils.h>
+#include "artifact-download-data.h"
+#include "http-client-event.h"
+#include "utils.h"
 
 /**
  * @brief Receive buffer length
@@ -97,4 +97,4 @@ mender_err_t mender_http_exit(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_HTTP_H__ */
+#endif /* __MENDER_HTTP_PRIV_H__ */

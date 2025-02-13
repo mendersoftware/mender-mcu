@@ -17,14 +17,14 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_FLASH_H__
-#define __MENDER_FLASH_H__
+#ifndef __MENDER_FLASH_PRIV_H__
+#define __MENDER_FLASH_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 /**
  * @brief Open flash device
@@ -82,4 +82,4 @@ bool mender_flash_is_image_confirmed(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_FLASH_H__ */
+#endif /* __MENDER_FLASH_PRIV_H__ */

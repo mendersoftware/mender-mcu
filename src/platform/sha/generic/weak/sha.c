@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include <mender/sha.h>
+#include "sha.h"
 
 MENDER_FUNC_WEAK mender_err_t
 mender_sha256_begin(MENDER_ARG_UNUSED mender_sha256_context_t *ctx) {

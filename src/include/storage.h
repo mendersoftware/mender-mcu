@@ -1,6 +1,6 @@
 /**
  * @file      storage.h
- * @brief     Mender storage interface
+ * @brief     Mender storage interface (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -17,15 +17,15 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_STORAGE_H__
-#define __MENDER_STORAGE_H__
+#ifndef __MENDER_STORAGE_PRIV_H__
+#define __MENDER_STORAGE_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
-#include <mender/update-module.h>
+#include "utils.h"
+#include "update-module.h"
 
 /**
  * @brief Initialize mender storage
@@ -127,4 +127,4 @@ mender_err_t mender_storage_exit(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_STORAGE_H__ */
+#endif /* __MENDER_STORAGE_PRIV_H__ */

@@ -1,6 +1,6 @@
 /**
  * @file      artifact.h
- * @brief     Mender artifact parser
+ * @brief     Mender artifact parser (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -18,16 +18,16 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_ARTIFACT_H__
-#define __MENDER_ARTIFACT_H__
+#ifndef __MENDER_ARTIFACT_PRIV_H__
+#define __MENDER_ARTIFACT_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/artifact-download-data.h>
-#include <mender/utils.h>
-#include <mender/sha.h>
+#include "artifact-download-data.h"
+#include "utils.h"
+#include "sha.h"
 
 /**
  * @brief TAR block size
@@ -148,4 +148,4 @@ void mender_artifact_release_ctx(mender_artifact_ctx_t *ctx);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_ARTIFACT_H__ */
+#endif /* __MENDER_ARTIFACT_PRIV_H__ */

@@ -1,6 +1,6 @@
 /**
  * @file      tls.h
- * @brief     Mender TLS interface
+ * @brief     Mender TLS interface (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -18,14 +18,14 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_TLS_H__
-#define __MENDER_TLS_H__
+#ifndef __MENDER_TLS_PRIV_H__
+#define __MENDER_TLS_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 /**
  * @brief Initialize mender TLS
@@ -68,4 +68,4 @@ mender_err_t mender_tls_exit(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_TLS_H__ */
+#endif /* __MENDER_TLS_PRIV_H__ */

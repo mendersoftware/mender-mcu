@@ -22,7 +22,7 @@ result=""
 # Check header files
 for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.h$|.*\.hpp$)'`
 do
-    uppercase=$(echo $(basename ${source_file^^}) | tr '.' '_' | tr '-' '_')
+    uppercase="MENDER_$(echo $(basename ${source_file^^}) | tr '.' '_' | tr '-' '_')"
     pcregrep -Me "#ifndef __${uppercase}__\n#define __${uppercase}__\n\n#ifdef __cplusplus\nextern \"C\" {\n#endif /\* __cplusplus \*/" ${source_file} > /dev/null 2>&1
     if [[ ! $? -eq 0 ]]; then
         result="${result}\n${source_file}"

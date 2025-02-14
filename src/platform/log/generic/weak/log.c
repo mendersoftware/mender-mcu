@@ -18,6 +18,7 @@
  */
 
 #include "log.h"
+#include "utils.h"
 
 MENDER_FUNC_WEAK mender_err_t
 mender_log_init(void) {

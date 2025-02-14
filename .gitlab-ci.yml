@@ -11,9 +11,12 @@ stages:
 
 variables:
   # mender-artifact version for tests
-  MENDER_ARTIFACT_VERSION: 4.0.0
-  MENDER_MCU_REVISION: ${CI_COMMIT_BRANCH}
-  MENDER_MCU_INTEGRATION_REVISION: main
+  MENDER_ARTIFACT_VERSION:
+    description: "mender-artifact version for tests"
+    value: 4.0.0
+  MENDER_MCU_INTEGRATION_REVISION:
+    description: "Revision of mender-mcu-integration to trigger."
+    value: main
 
 default:
   tags:
@@ -136,16 +139,12 @@ test:static:release:
 
 trigger:mender-mcu-integration:
   stage: trigger
-  rules:
-  - if: $CI_COMMIT_BRANCH =~ /^pr_[0-9]+$/
-    variables:
-      MENDER_MCU_REVISION: ${CI_EXTERNAL_PULL_REQUEST_SOURCE_BRANCH_SHA}
-  - when: always
   trigger:
     project: Northern.tech/Mender/mender-mcu-integration
     branch: ${MENDER_MCU_INTEGRATION_REVISION}
     strategy: depend
   variables:
+    MENDER_MCU_REVISION: $CI_COMMIT_SHA
     PARENT_MENDER_MCU_PIPELINE_ID: $CI_PIPELINE_ID
     PARENT_MENDER_MCU_COMMIT_BRANCH: $CI_COMMIT_BRANCH
 

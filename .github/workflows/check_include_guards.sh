@@ -22,12 +22,18 @@ result=""
 # Check header files
 for source_file in `git ls-tree -r HEAD --name-only | grep -E '(.*\.h$|.*\.hpp$)'`
 do
-    uppercase="MENDER_$(echo $(basename ${source_file^^}) | tr '.' '_' | tr '-' '_')"
-    pcregrep -Me "#ifndef __${uppercase}__\n#define __${uppercase}__\n\n#ifdef __cplusplus\nextern \"C\" {\n#endif /\* __cplusplus \*/" ${source_file} > /dev/null 2>&1
+    f_basename="$(basename $source_file)"
+    uppercase="${f_basename^^}"
+    guard="MENDER_${uppercase//[^A-Z]/_}"
+    if expr "$source_file" : "src/include/.*" >/dev/null; then
+      # private headers have _PRIV_ in the guards
+      guard="${guard%%_H}_PRIV_H"
+    fi
+    pcregrep -Me "#ifndef __${guard}__\n#define __${guard}__\n\n#ifdef __cplusplus\nextern \"C\" {\n#endif /\* __cplusplus \*/" ${source_file} > /dev/null 2>&1
     if [[ ! $? -eq 0 ]]; then
         result="${result}\n${source_file}"
     else
-        pcregrep -Me "#ifdef __cplusplus\n}\n#endif /\* __cplusplus \*/\n\n#endif /\* __${uppercase}__ \*/" ${source_file} > /dev/null 2>&1
+        pcregrep -Me "#ifdef __cplusplus\n}\n#endif /\* __cplusplus \*/\n\n#endif /\* __${guard}__ \*/" ${source_file} > /dev/null 2>&1
         if [[ ! $? -eq 0 ]]; then
             result="${result}\n${source_file}"
         fi

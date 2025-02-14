@@ -19,6 +19,7 @@
  */
 
 #include "log.h"
+#include "utils.h"
 
 /* ASCII unit separator */
 #define MENDER_KEY_VALUE_DELIMITER "\x1F"

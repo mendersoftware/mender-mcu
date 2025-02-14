@@ -20,6 +20,7 @@
 #include "alloc.h"
 #include "log.h"
 #include "update-module.h"
+#include "utils.h"
 
 /**
  * @brief Mender update modules list

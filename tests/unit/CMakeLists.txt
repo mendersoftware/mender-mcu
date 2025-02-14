@@ -120,6 +120,7 @@ add_dependencies(tests main_test)
 
 # test for core source files
 add_executable(core_test EXCLUDE_FROM_ALL core/utils_test.cpp core/artifact_test.cpp)
+target_include_directories(core_test PRIVATE ${CMAKE_SOURCE_DIR}/../../src/include)
 target_link_libraries(core_test PUBLIC
   mender-mcu-client
   gtest

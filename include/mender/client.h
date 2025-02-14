@@ -67,7 +67,7 @@ extern mender_client_callbacks_t mender_client_callbacks;
  * @brief Return mender client version
  * @return Mender client version as string
  */
-char *mender_client_version(void);
+const char *mender_client_version(void);
 
 /**
  * @brief Initialize mender client

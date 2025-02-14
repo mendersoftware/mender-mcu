@@ -94,7 +94,7 @@ network_release_cb(void) {
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 static mender_err_t
-deployment_status_cb(mender_deployment_status_t status, char *desc) {
+deployment_status_cb(mender_deployment_status_t status, const char *desc) {
 
     /* We can do something else if required */
     mender_log_info("Deployment status is '%s'", desc);
@@ -122,7 +122,7 @@ restart_cb(void) {
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 static mender_err_t
-get_identity_cb(mender_identity_t **identity) {
+get_identity_cb(const mender_identity_t **identity) {
     if (NULL != identity) {
         *identity = &mender_identity;
         return MENDER_OK;

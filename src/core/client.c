@@ -221,7 +221,7 @@ static mender_err_t mender_client_publish_deployment_status(const char *id, mend
  */
 static mender_err_t set_and_store_state(const mender_update_state_t state);
 
-char *
+const char *
 mender_client_version(void) {
 
     /* Return version as string */

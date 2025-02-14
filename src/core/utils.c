@@ -18,7 +18,8 @@
  * limitations under the License.
  */
 
-#include <mender/log.h>
+#include "log.h"
+#include "utils.h"
 
 /* ASCII unit separator */
 #define MENDER_KEY_VALUE_DELIMITER "\x1F"
@@ -214,7 +215,7 @@ mender_utils_strendswith(const char *s1, const char *s2) {
     return (0 == strncmp(s1 + len1 - len2, s2, len2));
 }
 
-char *
+const char *
 mender_utils_deployment_status_to_string(mender_deployment_status_t deployment_status) {
 
     /* Return deployment status as string */

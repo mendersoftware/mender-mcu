@@ -20,7 +20,7 @@
 #include <stdlib.h> /* malloc(),... */
 #include <string.h> /* memset() */
 
-#include <mender/alloc.h>
+#include "alloc.h"
 
 static MenderAllocator   malloc_fn  = NULL;
 static MenderReallocator realloc_fn = NULL;

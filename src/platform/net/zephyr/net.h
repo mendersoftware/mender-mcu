@@ -24,7 +24,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 /**
  * @brief Returns host name, port and URL from path

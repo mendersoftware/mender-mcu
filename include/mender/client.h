@@ -1,6 +1,6 @@
 /**
  * @file      client.h
- * @brief     Mender MCU client implementation
+ * @brief     Mender MCU client implementation (public API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -30,20 +30,6 @@ extern "C" {
 #include <mender/update-module.h>
 
 /**
- * @brief Mender client states
- */
-typedef enum {
-    MENDER_CLIENT_STATE_INITIALIZATION, /**< Perform initialization */
-    MENDER_CLIENT_STATE_OPERATIONAL,    /**< Under standard operation */
-    MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
-} mender_client_state_t;
-
-/**
- * @brief Mender client state
- */
-extern mender_client_state_t mender_client_state;
-
-/**
  * @brief Mender client configuration
  */
 typedef struct {
@@ -66,11 +52,11 @@ typedef struct {
  * @brief Mender client callbacks
  */
 typedef struct {
-    mender_err_t (*network_connect)(void);                                 /**< Invoked when mender-client requests access to the network */
-    mender_err_t (*network_release)(void);                                 /**< Invoked when mender-client releases access to the network */
-    mender_err_t (*deployment_status)(mender_deployment_status_t, char *); /**< Invoked on transition changes to inform of the new deployment status */
-    mender_err_t (*restart)(void);                                         /**< Invoked to restart the device */
-    mender_err_t (*get_identity)(const mender_identity_t **identity);      /**< Invoked to retrieve identity */
+    mender_err_t (*network_connect)(void);                                       /**< Invoked when mender-client requests access to the network */
+    mender_err_t (*network_release)(void);                                       /**< Invoked when mender-client releases access to the network */
+    mender_err_t (*deployment_status)(mender_deployment_status_t, const char *); /**< Invoked on transition changes to inform of the new deployment status */
+    mender_err_t (*restart)(void);                                               /**< Invoked to restart the device */
+    mender_err_t (*get_identity)(const mender_identity_t **identity);            /**< Invoked to retrieve identity */
     mender_err_t (*get_user_provided_keys)(
         char **user_provided_key, size_t *user_provided_key_length); /**< Invoked to retrieve buffer and buffer size of PEM encoded user-provided key */
 } mender_client_callbacks_t;
@@ -81,7 +67,7 @@ extern mender_client_callbacks_t mender_client_callbacks;
  * @brief Return mender client version
  * @return Mender client version as string
  */
-char *mender_client_version(void);
+const char *mender_client_version(void);
 
 /**
  * @brief Initialize mender client
@@ -111,14 +97,6 @@ mender_err_t mender_client_deactivate(void);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_client_execute(void);
-
-/**
- * @brief  Ensures the client has a network connection
- * @return MENDER_DONE if already connected,
- *         MENDER_OK if successfully connected,
- *         MENDER_FAIL otherwise
- */
-mender_err_t mender_client_ensure_connected(void);
 
 /**
  * @brief Release mender client

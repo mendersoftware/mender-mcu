@@ -17,8 +17,8 @@
  * limitations under the License.
  */
 
-#include <mender/http.h>
-#include <mender/utils.h>
+#include "http.h"
+#include "utils.h"
 
 /* just some reasonable value, it's never used */
 MENDER_FUNC_WEAK const size_t mender_http_recv_buf_length = 512;

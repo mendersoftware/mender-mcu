@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_OS_H__
-#define __MENDER_OS_H__
+#ifndef __MENDER_OS_PRIV_H__
+#define __MENDER_OS_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -136,4 +136,4 @@ void mender_os_reboot(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_OS_H__ */
+#endif /* __MENDER_OS_PRIV_H__ */

@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#include <mender/os.h>
-#include <mender/utils.h>
+#include "os.h"
+#include "utils.h"
 
 MENDER_FUNC_WEAK mender_err_t
 mender_os_scheduler_init(void) {

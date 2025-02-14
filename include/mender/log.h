@@ -1,6 +1,6 @@
 /**
  * @file      log.h
- * @brief     Mender logging interface
+ * @brief     Mender logging interface (public API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -28,7 +28,7 @@ extern "C" {
 #include <zephyr/logging/log.h>
 #endif /* __ZEPHYR */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 /**
  * @brief Mender log levels
@@ -45,18 +45,6 @@ extern "C" {
 #ifndef CONFIG_MENDER_LOG_LEVEL
 #define CONFIG_MENDER_LOG_LEVEL MENDER_LOG_LEVEL_INF
 #endif /* CONFIG_MENDER_LOG_LEVEL */
-
-/**
- * @brief Initialize mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_init(void);
-
-/**
- * @brief Release mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_exit(void);
 
 #ifdef __ZEPHYR__
 

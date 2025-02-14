@@ -34,6 +34,8 @@ endif()
 add_library(mender-mcu-client STATIC)
 target_sources(mender-mcu-client PRIVATE ${MENDER_MCU_SOURCES})
 target_include_directories(mender-mcu-client PUBLIC ${MENDER_MCU_INCLUDE})
+target_include_directories(mender-mcu-client PUBLIC ${MENDER_MCU_INCLUDE})
+target_include_directories(mender-mcu-client PRIVATE ${MENDER_PRIV_INCLUDE})
 
 option(COVERAGE "Turn coverage instrumentation on (Default: OFF)" OFF)
 if($CACHE{COVERAGE})

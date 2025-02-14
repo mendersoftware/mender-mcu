@@ -19,11 +19,11 @@
 
 #include <zephyr/logging/log.h>
 
-/* XXX: Cannot #include <mender/log.h> here because LOG_MODULE_DECLARE() and
+/* XXX: Cannot #include "log.h" here because LOG_MODULE_DECLARE() and
         LOG_MODULE_REGISTER() cannot be present in the same source file
         (compilation unit).  */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 LOG_MODULE_REGISTER(mender, CONFIG_MENDER_LOG_LEVEL);
 

@@ -18,22 +18,22 @@
  * limitations under the License.
  */
 
-#include <mender/alloc.h>
-#include <mender/api.h>
-#include <mender/client.h>
-#include <mender/artifact.h>
-#include <mender/artifact-download.h>
-#include <mender/log.h>
-#include <mender/os.h>
-#include <mender/storage.h>
-#include <mender/tls.h>
-#include <mender/update-module.h>
-#include <mender/utils.h>
-#include <mender/deployment-data.h>
-#include <mender/error-counters.h>
+#include "alloc.h"
+#include "api.h"
+#include "client.h"
+#include "artifact.h"
+#include "artifact-download.h"
+#include "log.h"
+#include "os.h"
+#include "storage.h"
+#include "tls.h"
+#include "update-module.h"
+#include "utils.h"
+#include "deployment-data.h"
+#include "error-counters.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
-#include <mender/inventory.h>
+#include "inventory.h"
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 /**
@@ -221,7 +221,7 @@ static mender_err_t mender_client_publish_deployment_status(const char *id, mend
  */
 static mender_err_t set_and_store_state(const mender_update_state_t state);
 
-char *
+const char *
 mender_client_version(void) {
 
     /* Return version as string */

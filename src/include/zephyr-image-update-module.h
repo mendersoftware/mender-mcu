@@ -1,8 +1,7 @@
 /**
- * @file      http-client-event.h
- * @brief     Mender HTTP client event type
+ * @file      zephyr-image-update-module.h
+ * @brief     The basic Zephyr update module based on MCUboot (public API)
  *
- * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,25 +17,19 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_HTTP_CLIENT_EVENT_H__
-#define __MENDER_HTTP_CLIENT_EVENT_H__
+#ifndef __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_PRIV_H__
+#define __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-/**
- * @brief HTTP client events
- */
-typedef enum {
-    MENDER_HTTP_EVENT_CONNECTED,     /**< Connected to the server */
-    MENDER_HTTP_EVENT_DATA_RECEIVED, /**< Data received from the server */
-    MENDER_HTTP_EVENT_DISCONNECTED,  /**< Disconnected from the server */
-    MENDER_HTTP_EVENT_ERROR          /**< An error occurred */
-} mender_http_client_event_t;
+#include <mender/zephyr-image-update-module.h>
+
+/* No private API here, but having this file allows #include consistency in our sources. */
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_HTTP_CLIENT_EVENT_H__ */
+#endif /* __MENDER_ZEPHYR_IMAGE_UPDATE_MODULE_PRIV_H__ */

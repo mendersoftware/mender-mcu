@@ -17,10 +17,10 @@
  * limitations under the License.
  */
 
-#include <mender/deployment-data.h>
+#include "deployment-data.h"
 
-#include <mender/log.h>
-#include <mender/storage.h>
+#include "log.h"
+#include "storage.h"
 
 /**
  * @brief Deployment data version number.

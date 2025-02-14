@@ -52,11 +52,11 @@ typedef struct {
  * @brief Mender client callbacks
  */
 typedef struct {
-    mender_err_t (*network_connect)(void);                                 /**< Invoked when mender-client requests access to the network */
-    mender_err_t (*network_release)(void);                                 /**< Invoked when mender-client releases access to the network */
-    mender_err_t (*deployment_status)(mender_deployment_status_t, char *); /**< Invoked on transition changes to inform of the new deployment status */
-    mender_err_t (*restart)(void);                                         /**< Invoked to restart the device */
-    mender_err_t (*get_identity)(const mender_identity_t **identity);      /**< Invoked to retrieve identity */
+    mender_err_t (*network_connect)(void);                                       /**< Invoked when mender-client requests access to the network */
+    mender_err_t (*network_release)(void);                                       /**< Invoked when mender-client releases access to the network */
+    mender_err_t (*deployment_status)(mender_deployment_status_t, const char *); /**< Invoked on transition changes to inform of the new deployment status */
+    mender_err_t (*restart)(void);                                               /**< Invoked to restart the device */
+    mender_err_t (*get_identity)(const mender_identity_t **identity);            /**< Invoked to retrieve identity */
     mender_err_t (*get_user_provided_keys)(
         char **user_provided_key, size_t *user_provided_key_length); /**< Invoked to retrieve buffer and buffer size of PEM encoded user-provided key */
 } mender_client_callbacks_t;

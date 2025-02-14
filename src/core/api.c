@@ -560,7 +560,7 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     assert(NULL != id);
 
     mender_err_t ret;
-    char        *value        = NULL;
+    const char  *value        = NULL;
     cJSON       *json_payload = NULL;
     char        *payload      = NULL;
     char        *path         = NULL;

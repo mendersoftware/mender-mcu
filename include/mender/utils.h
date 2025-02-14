@@ -87,7 +87,7 @@ typedef mender_item_t mender_identity_t;
  * @param deployment_status Deployment status
  * @return Deployment status as string, NULL if it is not found
  */
-char *mender_utils_deployment_status_to_string(mender_deployment_status_t deployment_status);
+const char *mender_utils_deployment_status_to_string(mender_deployment_status_t deployment_status);
 
 #ifdef __cplusplus
 }

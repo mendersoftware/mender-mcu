@@ -235,16 +235,14 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     assert(NULL != callbacks->restart);
 
     /* Either all allocation functions set or none. */
-    assert(((NULL == config->allocation_funcs.mender_malloc_func) && (NULL == config->allocation_funcs.mender_realloc_func)
-            && (NULL == config->allocation_funcs.free_func))
-           || ((NULL != config->allocation_funcs.mender_malloc_func) && (NULL != config->allocation_funcs.mender_realloc_func)
-               && (NULL != config->allocation_funcs.free_func)));
+    assert(
+        ((NULL == config->allocation_funcs.malloc_func) && (NULL == config->allocation_funcs.realloc_func) && (NULL == config->allocation_funcs.free_func))
+        || ((NULL != config->allocation_funcs.malloc_func) && (NULL != config->allocation_funcs.realloc_func) && (NULL != config->allocation_funcs.free_func)));
 
     mender_err_t ret;
 
-    if (NULL != config->allocation_funcs.mender_malloc_func) {
-        mender_set_allocation_funcs(
-            config->allocation_funcs.mender_malloc_func, config->allocation_funcs.mender_realloc_func, config->allocation_funcs.free_func);
+    if (NULL != config->allocation_funcs.malloc_func) {
+        mender_set_allocation_funcs(config->allocation_funcs.malloc_func, config->allocation_funcs.realloc_func, config->allocation_funcs.free_func);
     } else {
         mender_set_platform_allocation_funcs();
     }

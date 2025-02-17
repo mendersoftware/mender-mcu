@@ -60,24 +60,9 @@ extern "C" {
 #define StringEqualN(str1, str2, n) (0 == strncmp(str1, str2, n))
 
 /**
- * @brief A utility macro to make marking unused arguments less noisy/disruptive
- */
-#define MENDER_ARG_UNUSED __attribute__((unused))
-
-/**
  * @brief A utility macro to make marking weak functions less noisy/disruptive
  */
 #define MENDER_FUNC_WEAK __attribute__((weak))
-
-/**
- * For variables only used in debug builds, in particular only in assert()
- * calls, use MENDER_NDEBUG_UNUSED.
- */
-#ifdef NDEBUG
-#define MENDER_NDEBUG_UNUSED __attribute__((unused))
-#else
-#define MENDER_NDEBUG_UNUSED
-#endif
 
 /**
  * @brief Linked-list

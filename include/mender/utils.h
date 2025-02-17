@@ -37,6 +37,21 @@ extern "C" {
 #include <mender/alloc.h>
 
 /**
+ * @brief A utility macro to make marking unused arguments less noisy/disruptive
+ */
+#define MENDER_ARG_UNUSED __attribute__((unused))
+
+/**
+ * For variables only used in debug builds, in particular only in assert()
+ * calls, use MENDER_NDEBUG_UNUSED.
+ */
+#ifdef NDEBUG
+#define MENDER_NDEBUG_UNUSED __attribute__((unused))
+#else
+#define MENDER_NDEBUG_UNUSED
+#endif
+
+/**
  * @brief Mender error codes
  */
 typedef enum {

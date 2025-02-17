@@ -142,6 +142,7 @@ typedef struct mender_update_module_s {
  * @param update_module The update module to register
  * @return MENDER_OK if the function succeeds, error code otherwise
  * @note Takes ownership of #update_module in case of success
+ *       (make sure to use mender_malloc() or mender_calloc() for allocation)
  */
 mender_err_t mender_update_module_register(mender_update_module_t *update_module);
 

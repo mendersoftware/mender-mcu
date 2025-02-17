@@ -1,6 +1,6 @@
 /**
  * @file      error-counters.h
- * @brief     Mender Error Counters interface
+ * @brief     Mender Error Counters interface (private API)
  *
  * Copyright Northern.tech AS
  *
@@ -17,14 +17,14 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_ERROR_COUNTERS_H__
-#define __MENDER_ERROR_COUNTERS_H__
+#ifndef __MENDER_ERROR_COUNTERS_PRIV_H__
+#define __MENDER_ERROR_COUNTERS_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
+#include "utils.h"
 
 #ifndef CONFIG_MENDER_ERRORS_THRESHOLD_NET
 #define CONFIG_MENDER_ERRORS_THRESHOLD_NET 0
@@ -104,4 +104,4 @@ mender_err_count_reboot_reset(void) {
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_ERROR_COUNTERS_H__ */
+#endif /* __MENDER_ERROR_COUNTERS_PRIV_H__ */

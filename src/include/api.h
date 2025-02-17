@@ -1,6 +1,6 @@
 /**
  * @file      api.h
- * @brief     Implementation of the Mender API
+ * @brief     Implementation of the Mender API (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  * Copyright Northern.tech AS
@@ -18,16 +18,16 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_API_H__
-#define __MENDER_API_H__
+#ifndef __MENDER_API_PRIV_H__
+#define __MENDER_API_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/artifact.h>
-#include <mender/http.h>
-#include <mender/utils.h>
+#include "artifact.h"
+#include "http.h"
+#include "utils.h"
 
 /**
  * @brief Mender API configuration
@@ -130,4 +130,4 @@ mender_err_t mender_api_exit(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_API_H__ */
+#endif /* __MENDER_API_PRIV_H__ */

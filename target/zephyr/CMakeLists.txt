@@ -22,8 +22,8 @@ if(CONFIG_MENDER_MCU_CLIENT)
 
     zephyr_library()
     zephyr_library_sources(${MENDER_MCU_SOURCES})
+    zephyr_library_include_directories(${MENDER_PRIV_INCLUDE})
     zephyr_include_directories(${MENDER_MCU_INCLUDE})
-    zephyr_include_directories("${MENDER_MCU_ROOT}/platform/net/zephyr/include")
 
     file (STRINGS ${MENDER_MCU_VERSION_FILE} MENDER_CLIENT_VERSION)
     zephyr_library_compile_definitions(-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\")

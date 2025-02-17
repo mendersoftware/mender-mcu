@@ -1,6 +1,6 @@
 /**
  * @file      deployment-data.h
- * @brief     Mender Deployment Data interface
+ * @brief     Mender Deployment Data interface (private API)
  *
  * Copyright Northern.tech AS
  *
@@ -17,15 +17,15 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_DEPLOYMENT_DATA_H__
-#define __MENDER_DEPLOYMENT_DATA_H__
+#ifndef __MENDER_DEPLOYMENT_DATA_PRIV_H__
+#define __MENDER_DEPLOYMENT_DATA_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
-#include <mender/update-module.h>
+#include "utils.h"
+#include "update-module.h"
 #include "cJSON.h"
 
 #define MENDER_DEPLOYMENT_DATA_KEY_VERSION                "version"
@@ -180,4 +180,4 @@ mender_err_t mender_deployment_data_set_state(mender_deployment_data_t *deployme
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_DEPLOYMENT_DATA_H__ */
+#endif /* __MENDER_DEPLOYMENT_DATA_PRIV_H__ */

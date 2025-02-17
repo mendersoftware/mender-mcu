@@ -1,6 +1,6 @@
 /**
  * @file      alloc.h
- * @brief     Mender memory management functions
+ * @brief     Mender memory management functions (public API)
  *
  * Copyright Northern.tech AS
  *
@@ -44,11 +44,6 @@ void  mender_free(void *ptr);
  * @note  All three parameters have to be non-%NULL
  */
 void mender_set_allocation_funcs(MenderAllocator malloc_func, MenderReallocator realloc_func, MenderDeallocator free_func);
-
-/**
- * @brief Set platform-specific memory allocation functions (if any)
- */
-void mender_set_platform_allocation_funcs(void);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 /**
  * @file      inventory.h
- * @brief     Mender MCU Inventory implementation (public API)
+ * @brief     Mender MCU Inventory implementation (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -17,36 +17,43 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_INVENTORY_H__
-#define __MENDER_INVENTORY_H__
+#ifndef __MENDER_INVENTORY_PRIV_H__
+#define __MENDER_INVENTORY_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
-
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#include <mender/inventory.h>
 
 /**
- * @brief Set mender inventory
- * @param inventory Mender inventory key/value pairs table, must end with a NULL/NULL element, NULL if not defined
+ * @brief Initialize mender inventory
+ * @param interval The interval to perform inventory updates at
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_set(mender_keystore_t *inventory);
+mender_err_t mender_inventory_init(uint32_t interval);
 
 /**
- * @brief Function used to trigger execution of the inventory work
- * @note Calling this function is optional when the periodic execution of the work is configured
- * @note It only permits to execute the work as soon as possible to synchronize inventory
+ * @brief Activate mender inventory
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_execute(void);
+mender_err_t mender_inventory_activate(void);
 
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+/**
+ * @brief Deactivate mender inventory
+ * @note This function stops synchronization with the server
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_inventory_deactivate(void);
+
+/**
+ * @brief Release mender inventory
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_inventory_exit(void);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_INVENTORY_H__ */
+#endif /* __MENDER_INVENTORY_PRIV_H__ */

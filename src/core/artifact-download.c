@@ -18,13 +18,13 @@
  * limitations under the License.
  */
 
-#include <mender/api.h>
-#include <mender/artifact.h>
-#include <mender/artifact-download.h>
-#include <mender/artifact-download-data.h>
-#include <mender/error-counters.h>
-#include <mender/http.h>
-#include <mender/log.h>
+#include "api.h"
+#include "artifact.h"
+#include "artifact-download.h"
+#include "artifact-download-data.h"
+#include "error-counters.h"
+#include "http.h"
+#include "log.h"
 
 static mender_err_t mender_download_artifact_callback(mender_http_client_event_t       event,
                                                       void                            *data,

@@ -19,9 +19,9 @@
 
 #include <stdint.h>
 
-#include <mender/error-counters.h>
-#include <mender/log.h>
-#include <mender/utils.h>
+#include "error-counters.h"
+#include "log.h"
+#include "utils.h"
 
 #if CONFIG_MENDER_ERRORS_THRESHOLD_NET > 0
 

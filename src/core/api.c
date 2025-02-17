@@ -18,16 +18,16 @@
  * limitations under the License.
  */
 
-#include <mender/alloc.h>
-#include <mender/api.h>
-#include <mender/artifact.h>
-#include <mender/error-counters.h>
-#include <mender/os.h>
-#include <mender/storage.h>
-#include <mender/http.h>
-#include <mender/log.h>
-#include <mender/tls.h>
-#include <mender/utils.h>
+#include "alloc.h"
+#include "api.h"
+#include "artifact.h"
+#include "error-counters.h"
+#include "os.h"
+#include "storage.h"
+#include "http.h"
+#include "log.h"
+#include "tls.h"
+#include "utils.h"
 
 /**
  * @brief Paths of the mender-server APIs
@@ -560,7 +560,7 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     assert(NULL != id);
 
     mender_err_t ret;
-    char        *value        = NULL;
+    const char  *value        = NULL;
     cJSON       *json_payload = NULL;
     char        *payload      = NULL;
     char        *path         = NULL;

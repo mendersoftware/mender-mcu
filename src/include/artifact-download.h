@@ -1,6 +1,6 @@
 /**
  * @file      artifact-download.h
- * @brief     Mender artifact download interface
+ * @brief     Mender artifact download interface (private API)
  *
  * Copyright Northern.tech AS
  *
@@ -17,16 +17,16 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_ARTIFACT_DOWNLOAD_H__
-#define __MENDER_ARTIFACT_DOWNLOAD_H__
+#ifndef __MENDER_ARTIFACT_DOWNLOAD_PRIV_H__
+#define __MENDER_ARTIFACT_DOWNLOAD_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/deployment-data.h>
-#include <mender/update-module.h>
-#include <mender/utils.h>
+#include "deployment-data.h"
+#include "update-module.h"
+#include "utils.h"
 
 /**
  * @brief Download artifact from the given URI
@@ -40,4 +40,4 @@ mender_err_t mender_download_artifact(const char *uri, mender_deployment_data_t 
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_ARTIFACT_DOWNLOAD_H__ */
+#endif /* __MENDER_ARTIFACT_DOWNLOAD_PRIV_H__ */

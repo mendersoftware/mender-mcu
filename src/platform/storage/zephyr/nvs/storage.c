@@ -23,8 +23,8 @@
 #include <zephyr/fs/nvs.h>
 #include <zephyr/sys/crc.h>
 #include <zephyr/storage/flash_map.h>
-#include <mender/log.h>
-#include <mender/storage.h>
+#include "log.h"
+#include "storage.h"
 
 /**
  * @brief NVS storage

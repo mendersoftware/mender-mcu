@@ -1,6 +1,6 @@
 /**
- * @file      inventory.h
- * @brief     Mender MCU Inventory implementation (public API)
+ * @file      log.h
+ * @brief     Mender logging interface (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
  *
@@ -17,36 +17,29 @@
  * limitations under the License.
  */
 
-#ifndef __MENDER_INVENTORY_H__
-#define __MENDER_INVENTORY_H__
+#ifndef __MENDER_LOG_PRIV_H__
+#define __MENDER_LOG_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include <mender/utils.h>
-
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#include <mender/log.h>
 
 /**
- * @brief Set mender inventory
- * @param inventory Mender inventory key/value pairs table, must end with a NULL/NULL element, NULL if not defined
+ * @brief Initialize mender log
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_set(mender_keystore_t *inventory);
+mender_err_t mender_log_init(void);
 
 /**
- * @brief Function used to trigger execution of the inventory work
- * @note Calling this function is optional when the periodic execution of the work is configured
- * @note It only permits to execute the work as soon as possible to synchronize inventory
+ * @brief Release mender log
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_execute(void);
-
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+mender_err_t mender_log_exit(void);
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* __MENDER_INVENTORY_H__ */
+#endif /* __MENDER_LOG_PRIV_H__ */

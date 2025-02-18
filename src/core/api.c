@@ -706,6 +706,7 @@ mender_api_publish_inventory_data(mender_keystore_t *inventory) {
 END:
 
     /* Release memory */
+    mender_free((void *)artifact_name);
     mender_free(response);
     mender_free(payload);
     cJSON_Delete(object);

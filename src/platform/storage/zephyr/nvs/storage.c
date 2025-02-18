@@ -329,8 +329,10 @@ mender_storage_get_provides(mender_key_value_list_t **provides) {
 
     /* Convert str to key-value list */
     if (MENDER_OK != mender_utils_string_to_key_value_list(provides_str, provides)) {
+        mender_free(provides_str);
         return MENDER_FAIL;
     }
+    mender_free(provides_str);
     return MENDER_OK;
 }
 

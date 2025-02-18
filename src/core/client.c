@@ -428,9 +428,6 @@ mender_client_exit(void) {
         }
     }
 
-    /* Stop scheduling new work */
-    mender_os_scheduler_exit();
-
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
     if (MENDER_OK != mender_inventory_exit()) {
         mender_log_error("Unable to cleanup after the inventory functionality");
@@ -438,6 +435,9 @@ mender_client_exit(void) {
         some_error = true;
     }
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
+    /* Stop scheduling new work */
+    mender_os_scheduler_exit();
 
     /* Release all modules */
     mender_api_exit();

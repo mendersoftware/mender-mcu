@@ -138,6 +138,7 @@ mender_set_deployment_data(mender_deployment_data_t *deployment_data) {
         mender_free(json_str);
         return MENDER_FAIL;
     }
+    mender_free(json_str);
 
     return MENDER_OK;
 }

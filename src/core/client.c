@@ -749,9 +749,11 @@ mender_prepare_new_provides(mender_artifact_ctx_t *mender_artifact_ctx, char **n
     }
 
     if (MENDER_OK != mender_utils_key_value_list_to_string(provides, new_provides)) {
+        mender_utils_key_value_list_free(provides);
         return MENDER_FAIL;
     }
 
+    mender_utils_key_value_list_free(provides);
     return MENDER_OK;
 }
 

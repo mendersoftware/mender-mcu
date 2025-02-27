@@ -60,11 +60,6 @@ extern "C" {
 #define StringEqualN(str1, str2, n) (0 == strncmp(str1, str2, n))
 
 /**
- * @brief A utility macro to make marking weak functions less noisy/disruptive
- */
-#define MENDER_FUNC_WEAK __attribute__((weak))
-
-/**
  * @brief Linked-list
  */
 typedef struct mender_key_value_list_t {

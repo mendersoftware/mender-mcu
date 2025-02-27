@@ -520,6 +520,10 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
         }
         ctx->artifact_info.checksums = NULL;
 #endif
+        if (artifact_ctx == ctx) {
+            artifact_ctx = NULL;
+        }
+
         mender_free(ctx);
     }
 }

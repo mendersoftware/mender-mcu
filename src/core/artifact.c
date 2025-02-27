@@ -972,7 +972,7 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
         ret = MENDER_FAIL;
         goto END;
     }
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+
     cJSON *json_provides = cJSON_GetObjectItemCaseSensitive(object, "artifact_provides");
     if (cJSON_IsObject(json_provides)) {
         if (MENDER_FAIL == artifact_parse_provides_depends(json_provides, &(ctx->payloads.values[index].provides))) {
@@ -1021,7 +1021,6 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
             }
         }
     }
-#endif
 
     /* Shift data in the buffer */
     /* header.tar has a checksum entry in the manifest as a whole */

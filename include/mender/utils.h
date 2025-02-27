@@ -52,6 +52,11 @@ extern "C" {
 #endif
 
 /**
+ * @brief A utility macro to make marking weak functions less noisy/disruptive
+ */
+#define MENDER_FUNC_WEAK __attribute__((weak))
+
+/**
  * @brief Mender error codes
  */
 typedef enum {

@@ -234,13 +234,13 @@ TEST_F(MenderArtifactTest, ProcessData_EmptyDownloadData) {
     mender_artifact_release_ctx(ctx);
 }
 
-TEST_F(MenderArtifactTest, CheckIntegrity) {
+TEST_F(MenderArtifactTest, CheckIntegrityFull) {
     mender_artifact_ctx_t *ctx = mender_artifact_create_ctx(1024);
 
     /* Process artifact data */
     EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx, data, artifact_data.size(), mock_download_data));
 
-    EXPECT_EQ(MENDER_OK, mender_artifact_check_integrity(ctx));
+    EXPECT_EQ(MENDER_OK, mender_artifact_check_integrity_remaining(ctx));
 
     /* We can't call check_integrity on the same context twice, as it modifies the context
      * Therefore we create a new one and corrupt that */
@@ -248,13 +248,72 @@ TEST_F(MenderArtifactTest, CheckIntegrity) {
     /* Process artifact data */
     EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx2, data, artifact_data.size(), mock_download_data));
 
-    mender_artifact_checksum_t *checksum = ctx2->artifact_info.checksums;
-    /* Corrupt the artifact checksum */
-    checksum->manifest[0] = '\x1F';
-    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity(ctx2));
+    /* Corrupt the payload checksum */
+    for (mender_artifact_checksum_t *checksum = ctx2->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+        if (mender_utils_strbeginswith(checksum->filename, "data/")) {
+            checksum->manifest[0] = '\x1F';
+        }
+    }
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_remaining(ctx2));
 
     mender_artifact_release_ctx(ctx);
     mender_artifact_release_ctx(ctx2);
+}
+
+TEST_F(MenderArtifactTest, CheckIntegrityItem) {
+    mender_artifact_ctx_t *ctx = mender_artifact_create_ctx(1024);
+
+    /* Process artifact data */
+    EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx, data, artifact_data.size(), mock_download_data));
+
+    /* Non-existing should fail */
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_item(ctx, "nonexisting"));
+
+    mender_artifact_release_ctx(ctx);
+}
+
+TEST_F(MenderArtifactTest, CheckIntegrityBadChecksums) {
+
+    /* Artifacts created with commands like the following:
+    mender-artifact write module-image --type unit-test --file LICENSE --artifact-name test-bad-version --device-type unit-test --compression none
+    tar -xf artifact.mender
+    sed -i '/version/ s/^[0-9a-f]\{8\}/deadbeef/' manifest 
+    tar -cf test-bad-version.artifact version manifest header.tar data/0000.tar 
+    */
+
+    /* Bad version file */
+    fs::path bad_version_artifact = "./test-bad-version.artifact";
+    ifstream bad_version_file(bad_version_artifact);
+    ASSERT_TRUE(bad_version_file.good());
+    artifact_data = vector<uint8_t>((istreambuf_iterator<char>(bad_version_file)), istreambuf_iterator<char>());
+    data          = (void *)artifact_data.data();
+
+    mender_artifact_ctx_t *bad_version_ctx = mender_artifact_create_ctx(1024);
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_process_data(bad_version_ctx, data, artifact_data.size(), mock_download_data));
+    mender_artifact_release_ctx(bad_version_ctx);
+
+    /* Bad header */
+    fs::path bad_header_artifact = "./test-bad-header.artifact";
+    ifstream bad_header_file(bad_header_artifact);
+    ASSERT_TRUE(bad_header_file.good());
+    artifact_data = vector<uint8_t>((istreambuf_iterator<char>(bad_header_file)), istreambuf_iterator<char>());
+    data          = (void *)artifact_data.data();
+
+    mender_artifact_ctx_t *bad_header_ctx = mender_artifact_create_ctx(1024);
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_process_data(bad_header_ctx, data, artifact_data.size(), mock_download_data));
+    mender_artifact_release_ctx(bad_header_ctx);
+
+    /* Bad payload - note MENDER_OK for meta-data items and MENDER_FAIL on "remaining" */
+    fs::path bad_payload_artifact = "./test-bad-payload.artifact";
+    ifstream bad_payload_file(bad_payload_artifact);
+    ASSERT_TRUE(bad_payload_file.good());
+    artifact_data = vector<uint8_t>((istreambuf_iterator<char>(bad_payload_file)), istreambuf_iterator<char>());
+    data          = (void *)artifact_data.data();
+
+    mender_artifact_ctx_t *bad_payload_ctx = mender_artifact_create_ctx(1024);
+    EXPECT_EQ(MENDER_OK, mender_artifact_process_data(bad_payload_ctx, data, artifact_data.size(), mock_download_data));
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_remaining(bad_payload_ctx));
+    mender_artifact_release_ctx(bad_payload_ctx);
 }
 
 TEST_F(MenderArtifactTest, IsCompressed) {

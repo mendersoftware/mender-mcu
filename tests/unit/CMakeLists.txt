@@ -128,6 +128,7 @@ target_link_libraries(core_test PUBLIC
 )
 gtest_discover_tests(core_test
   ${MENDER_TEST_FLAGS}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/core/testdata/
   NO_PRETTY_VALUES
 )
 add_dependencies(tests core_test)

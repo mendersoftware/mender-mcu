@@ -383,7 +383,10 @@ mender_storage_get_artifact_name(const char **artifact_name) {
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTICACT_NAME, (void **)artifact_name, &artifact_name_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            *artifact_name = "unknown";
+            if (NULL == (*artifact_name = mender_utils_strdup("unknown"))) {
+                mender_log_error("Unable to allocate memory");
+                return MENDER_FAIL;
+            }
             return MENDER_OK;
 
         } else {

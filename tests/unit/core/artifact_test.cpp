@@ -234,13 +234,13 @@ TEST_F(MenderArtifactTest, ProcessData_EmptyDownloadData) {
     mender_artifact_release_ctx(ctx);
 }
 
-TEST_F(MenderArtifactTest, CheckIntegrity) {
+TEST_F(MenderArtifactTest, CheckIntegrityFull) {
     mender_artifact_ctx_t *ctx = mender_artifact_create_ctx(1024);
 
     /* Process artifact data */
     EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx, data, artifact_data.size(), mock_download_data));
 
-    EXPECT_EQ(MENDER_OK, mender_artifact_check_integrity(ctx));
+    EXPECT_EQ(MENDER_OK, mender_artifact_check_integrity_remaining(ctx));
 
     /* We can't call check_integrity on the same context twice, as it modifies the context
      * Therefore we create a new one and corrupt that */
@@ -248,13 +248,97 @@ TEST_F(MenderArtifactTest, CheckIntegrity) {
     /* Process artifact data */
     EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx2, data, artifact_data.size(), mock_download_data));
 
-    mender_artifact_checksum_t *checksum = ctx2->artifact_info.checksums;
-    /* Corrupt the artifact checksum */
-    checksum->manifest[0] = '\x1F';
-    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity(ctx2));
+    /* Corrupt the payload checksum */
+    for (mender_artifact_checksum_t *checksum = ctx2->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+        if (mender_utils_strbeginswith(checksum->filename, "data/")) {
+            checksum->manifest[0] = '\x1F';
+        }
+    }
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_remaining(ctx2));
 
     mender_artifact_release_ctx(ctx);
     mender_artifact_release_ctx(ctx2);
+}
+
+TEST_F(MenderArtifactTest, CheckIntegrityItem) {
+    mender_artifact_ctx_t *ctx = mender_artifact_create_ctx(1024);
+
+    /* Process artifact data */
+    EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx, data, artifact_data.size(), mock_download_data));
+
+    /* Non-existing should fail */
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_item(ctx, "nonexisting"));
+
+    mender_artifact_release_ctx(ctx);
+}
+
+TEST_F(MenderArtifactTest, CheckIntegrityBadChecksums) {
+
+    /* Bad version file */
+    string script = R"(#! /bin/sh
+
+set -e
+DIRNAME=$(dirname $0)
+echo bad-version > ${DIRNAME}/testdata
+
+mender-artifact write module-image --type unit-test --compression none \
+--artifact-name test-bad-version --device-type unit-test \
+--file ${DIRNAME}/testdata --output-path ${DIRNAME}/unit-test-artifact.mender
+
+tar --extract --file ${DIRNAME}/unit-test-artifact.mender
+sed --in-place '/version/ s/^[0-9a-f]\{8\}/deadbeef/' manifest
+tar --create --file ${DIRNAME}/unit-test-artifact.mender version manifest header.tar data/0000.tar)";
+
+    artifact_data                          = CreateArtifact(script);
+    data                                   = (void *)artifact_data.data();
+    mender_artifact_ctx_t *bad_version_ctx = mender_artifact_create_ctx(1024);
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_process_data(bad_version_ctx, data, artifact_data.size(), mock_download_data));
+    mender_artifact_release_ctx(bad_version_ctx);
+
+    /* Bad header */
+    script = R"(#! /bin/sh
+
+set -e
+DIRNAME=$(dirname $0)
+echo bad-header > ${DIRNAME}/testdata
+
+mender-artifact write module-image --type unit-test --compression none \
+--artifact-name test-bad-header --device-type unit-test \
+--file ${DIRNAME}/testdata --output-path ${DIRNAME}/unit-test-artifact.mender
+
+tar --extract --file ${DIRNAME}/unit-test-artifact.mender
+sed --in-place '/header/ s/^[0-9a-f]\{8\}/deadbeef/' manifest
+tar --create --file ${DIRNAME}/unit-test-artifact.mender version manifest header.tar data/0000.tar)";
+
+    artifact_data = CreateArtifact(script);
+    data          = (void *)artifact_data.data();
+
+    mender_artifact_ctx_t *bad_header_ctx = mender_artifact_create_ctx(1024);
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_process_data(bad_header_ctx, data, artifact_data.size(), mock_download_data));
+    mender_artifact_release_ctx(bad_header_ctx);
+
+    /* Bad payload - note MENDER_OK for meta-data items and MENDER_FAIL on "remaining" */
+    script = R"(#! /bin/sh
+
+set -e
+DIRNAME=$(dirname $0)
+echo bad-payload > ${DIRNAME}/testdata
+
+mender-artifact write module-image --type unit-test --compression none \
+--artifact-name test-bad-payload --device-type unit-test \
+--file ${DIRNAME}/testdata --output-path ${DIRNAME}/unit-test-artifact.mender
+
+tar --extract --file ${DIRNAME}/unit-test-artifact.mender
+sed --in-place '/testdata/ s/^[0-9a-f]\{8\}/deadbeef/' manifest
+tar --create --file ${DIRNAME}/unit-test-artifact.mender version manifest header.tar data/0000.tar)";
+
+    artifact_data = CreateArtifact(script);
+    data          = (void *)artifact_data.data();
+
+    mender_artifact_ctx_t *bad_payload_ctx = mender_artifact_create_ctx(1024);
+    EXPECT_EQ(MENDER_OK, mender_artifact_process_data(bad_payload_ctx, data, artifact_data.size(), mock_download_data));
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_remaining(bad_payload_ctx));
+    mender_artifact_release_ctx(bad_payload_ctx);
 }
 
 TEST_F(MenderArtifactTest, IsCompressed) {

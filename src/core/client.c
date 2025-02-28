@@ -988,6 +988,9 @@ mender_client_update_work_function(void) {
     while (MENDER_UPDATE_STATE_END != update_state) {
         switch (update_state) {
             case MENDER_UPDATE_STATE_DOWNLOAD:
+                /* This is usually logged in the NEXT_STATE macro, but since nothing
+                 * transitions to this state, we log it here */
+                mender_log_debug("Entering state %s", update_state_str[update_state]);
 
                 /* Check for deployment */
                 if (MENDER_OK != (ret = mender_client_check_deployment(&deployment))) {

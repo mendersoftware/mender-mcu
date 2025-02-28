@@ -387,6 +387,14 @@ if MENDER_MCU_CLIENT
 
         menu "Error detection and recovery"
 
+           config MENDER_MAX_STATE_DATA_STORE_COUNT
+                int "Maximum number of state transitions before detecting a state loop during a deployment"
+                range 1 255
+                default 28
+                help
+                    If this limit is reached, a state loop is detected, and the deployment will be marked
+                    as a failure.
+
             config MENDER_DETECT_NETWORK_ERRORS
                 bool "Try to detect network errors and reset network to fix them"
                 default y

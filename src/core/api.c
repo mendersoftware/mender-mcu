@@ -641,7 +641,8 @@ mender_api_publish_inventory_data(cJSON *inventory, bool patch) {
 
     if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
         mender_log_error("Unable to get artifact name");
-        return MENDER_FAIL;
+        ret = MENDER_FAIL;
+        goto END;
     }
 
     /* Format payload */

@@ -318,12 +318,14 @@ mender_inventory_work_function(void) {
     }
 
     /* Publish inventory */
-    if (MENDER_OK != (ret = mender_api_publish_inventory_data(inventory_data, !full_push_done))) {
+    if (MENDER_OK != (ret = mender_api_publish_inventory_data(inventory_data, full_push_done))) {
         mender_log_error("Unable to publish inventory data");
     } else {
         /* we either pushed the persistent inventory or it was pushed before */
         full_push_done = true;
     }
+    /* mender_api_publish_inventory_data() takes ownership of inventory_data */
+    inventory_data = NULL;
 
 END:
 

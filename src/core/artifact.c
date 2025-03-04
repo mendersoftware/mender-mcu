@@ -294,25 +294,36 @@ is_checksum_valid(mender_artifact_checksum_t *checksum) {
 }
 
 mender_err_t
-mender_artifact_check_integrity_item(mender_artifact_ctx_t *ctx, const char *filename) {
+mender_artifact_check_integrity_and_remove_item(mender_artifact_ctx_t *ctx, const char *filename) {
     assert(NULL != ctx);
-    for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+
+    mender_err_t                 ret          = MENDER_FAIL;
+    mender_artifact_checksum_t **checksum_ptr = &ctx->artifact_info.checksums;
+    mender_artifact_checksum_t  *checksum     = *checksum_ptr;
+    while (NULL != checksum) {
         if (StringEqual(filename, checksum->filename)) {
-            checksum->checked = true;
-            return is_checksum_valid(checksum);
+            ret = is_checksum_valid(checksum);
+
+            // Remove the node from the list and free the data
+            *checksum_ptr = checksum->next;
+            mender_free(checksum->filename);
+            mender_sha256_finish(checksum->context, NULL);
+            mender_free(checksum);
+            checksum = *checksum_ptr;
+        } else {
+            checksum_ptr = &checksum->next;
+            checksum     = checksum->next;
         }
     }
-    return MENDER_FAIL;
+    return ret;
 }
 
 mender_err_t
 mender_artifact_check_integrity_remaining(mender_artifact_ctx_t *ctx) {
     assert(NULL != ctx);
     for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
-        if (!checksum->checked) {
-            if (MENDER_OK != is_checksum_valid(checksum)) {
-                return MENDER_FAIL;
-            }
+        if (MENDER_OK != is_checksum_valid(checksum)) {
+            return MENDER_FAIL;
         }
     }
     return MENDER_OK;
@@ -443,7 +454,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
                 ret = artifact_read_manifest(ctx);
 
                 /* Early integrity check for version file */
-                if ((MENDER_DONE == ret) && (MENDER_OK != mender_artifact_check_integrity_item(ctx, "version"))) {
+                if ((MENDER_DONE == ret) && (MENDER_OK != mender_artifact_check_integrity_and_remove_item(ctx, "version"))) {
                     mender_log_error("Integrity check failed for version file");
                     ret = MENDER_FAIL;
                 }
@@ -473,7 +484,7 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
                 if (!data_mdata_cache.valid) {
 
                     /* Early integrity check for header.tar */
-                    if (MENDER_OK != mender_artifact_check_integrity_item(ctx, "header.tar")) {
+                    if (MENDER_OK != mender_artifact_check_integrity_and_remove_item(ctx, "header.tar")) {
                         mender_log_error("Integrity check failed for header.tar");
                         ret = MENDER_FAIL;
                     } else {

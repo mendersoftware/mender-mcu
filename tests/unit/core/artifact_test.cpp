@@ -267,7 +267,7 @@ TEST_F(MenderArtifactTest, CheckIntegrityItem) {
     EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx, data, artifact_data.size(), mock_download_data));
 
     /* Non-existing should fail */
-    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_item(ctx, "nonexisting"));
+    EXPECT_EQ(MENDER_FAIL, mender_artifact_check_integrity_and_remove_item(ctx, "nonexisting"));
 
     mender_artifact_release_ctx(ctx);
 }

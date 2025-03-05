@@ -1047,11 +1047,8 @@ mender_client_update_work_function(void) {
                     }
                 } else {
                     mender_log_error("Unable to download artifact");
-                    if (NULL == mender_update_module) {
-                        /* Error logged in mender_client_download_artifact_callback() */
-                        mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_FAILURE);
-                        goto END;
-                    }
+                    /* Error logged in mender_client_download_artifact_callback() */
+                    ret = MENDER_FAIL;
                 }
                 if (MENDER_OK != ret) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
@@ -1140,8 +1137,12 @@ mender_client_update_work_function(void) {
                 /* fallthrough */
 
             case MENDER_UPDATE_STATE_CLEANUP:
-                if (NULL != mender_update_module->callbacks[update_state]) {
-                    ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
+                if (NULL != mender_update_module) {
+                    if (NULL != mender_update_module->callbacks[update_state]) {
+                        ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
+                    }
+                } else {
+                    ret = MENDER_FAIL;
                 }
                 NEXT_STATE;
                 mender_storage_delete_deployment_data();

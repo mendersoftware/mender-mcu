@@ -59,6 +59,16 @@ protected:
     fs::path        artifact_path;
     fs::path        script_file_name;
 
+    void ExecuteScript(string script, fs::path tmp_dir) {
+        script_file_name = tmp_dir / "test-script.sh";
+        ofstream os(script_file_name.c_str());
+        os << script;
+        os.close();
+
+        chmod(script_file_name.c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
+        ASSERT_EQ(0, system(script_file_name.c_str()));
+    }
+
     vector<uint8_t> CreateArtifact(string custom_script = "") {
         string script;
         if (custom_script.empty()) {
@@ -74,15 +84,7 @@ protected:
         }
 
         fs::path tmp_dir = fs::temp_directory_path();
-        script_file_name = tmp_dir / "test-script.sh";
-
-        ofstream os(script_file_name.c_str());
-
-        os << script;
-        os.close();
-
-        chmod(script_file_name.c_str(), S_IRUSR | S_IWUSR | S_IXUSR);
-        system(script_file_name.c_str());
+        ExecuteScript(script, tmp_dir);
 
         artifact_path = tmp_dir / "unit-test-artifact.mender";
         ifstream file(artifact_path);

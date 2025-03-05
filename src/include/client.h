@@ -35,6 +35,7 @@ typedef enum {
     MENDER_CLIENT_STATE_OPERATIONAL,    /**< Under standard operation */
     MENDER_CLIENT_STATE_PENDING_REBOOT, /**< Waiting for a reboot */
 } mender_client_state_t;
+#define N_MENDER_CLIENT_STATES ((size_t)MENDER_CLIENT_STATE_PENDING_REBOOT)
 
 /**
  * @brief Mender client state

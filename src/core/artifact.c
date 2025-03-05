@@ -254,46 +254,78 @@ artifact_checksum_get_or_create(mender_artifact_ctx_t *ctx, const char *filename
 }
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
+static mender_err_t
+is_checksum_valid(mender_artifact_checksum_t *checksum) {
+#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+    unsigned char computed[MENDER_DIGEST_BUFFER_SIZE];
+    mender_log_debug("Checking integrity for artifact file '%s'", checksum->filename);
+
+    if (MENDER_OK != mender_sha256_finish(checksum->context, computed)) {
+        mender_log_error("Failed to finish checksum for file '%s'", checksum->filename);
+        checksum->context = NULL;
+        return MENDER_FAIL;
+    }
+    checksum->context = NULL;
+
+    if (0 != memcmp(checksum->manifest, computed, MENDER_DIGEST_BUFFER_SIZE)) {
+        mender_log_error("Computed checksum for file '%s' does not match manifest", checksum->filename);
+#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
+        /* Log the mismatching checksums for debugging */
+        char checksum_str[(MENDER_DIGEST_BUFFER_SIZE * 2) + 1];
+
+        for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
+            if (2 != snprintf(checksum_str + (i * 2), 3, "%02hhx", checksum->manifest[i])) {
+                break;
+            }
+        }
+        mender_log_debug("%s: '%s' (manifest)", checksum->filename, checksum_str);
+
+        for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
+            if (2 != snprintf(checksum_str + (i * 2), 3, "%02hhx", computed[i])) {
+                break;
+            }
+        }
+        mender_log_debug("%s: '%s' (computed)", checksum->filename, checksum_str);
+#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG */
+        return MENDER_FAIL;
+    }
+#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
+    return MENDER_OK;
+}
+
 mender_err_t
-mender_artifact_check_integrity(mender_artifact_ctx_t *ctx) {
+mender_artifact_check_integrity_and_remove_item(mender_artifact_ctx_t *ctx, const char *filename) {
     assert(NULL != ctx);
 
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
-    for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
-        unsigned char computed[MENDER_DIGEST_BUFFER_SIZE];
-        mender_log_debug("Checking integrity for artifact file '%s'", checksum->filename);
+    mender_err_t                 ret          = MENDER_FAIL;
+    mender_artifact_checksum_t **checksum_ptr = &ctx->artifact_info.checksums;
+    mender_artifact_checksum_t  *checksum     = *checksum_ptr;
+    while (NULL != checksum) {
+        if (StringEqual(filename, checksum->filename)) {
+            ret = is_checksum_valid(checksum);
 
-        if (MENDER_OK != mender_sha256_finish(checksum->context, computed)) {
-            mender_log_error("Failed to finish checksum for file '%s'", checksum->filename);
-            checksum->context = NULL;
-            return MENDER_FAIL;
+            // Remove the node from the list and free the data
+            *checksum_ptr = checksum->next;
+            mender_free(checksum->filename);
+            mender_sha256_finish(checksum->context, NULL);
+            mender_free(checksum);
+            checksum = *checksum_ptr;
+        } else {
+            checksum_ptr = &checksum->next;
+            checksum     = checksum->next;
         }
-        checksum->context = NULL;
+    }
+    return ret;
+}
 
-        if (0 != memcmp(checksum->manifest, computed, MENDER_DIGEST_BUFFER_SIZE)) {
-            mender_log_error("Computed checksum for file '%s' does not match manifest", checksum->filename);
-#if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
-            /* Log the mismatching checksums for debugging */
-            char checksum_str[(MENDER_DIGEST_BUFFER_SIZE * 2) + 1];
-
-            for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
-                if (2 != snprintf(checksum_str + (i * 2), 3, "%02hhx", checksum->manifest[i])) {
-                    break;
-                }
-            }
-            mender_log_debug("%s: '%s' (manifest)", checksum->filename, checksum_str);
-
-            for (int i = 0; i < MENDER_DIGEST_BUFFER_SIZE; i++) {
-                if (2 != snprintf(checksum_str + (i * 2), 3, "%02hhx", computed[i])) {
-                    break;
-                }
-            }
-            mender_log_debug("%s: '%s' (computed)", checksum->filename, checksum_str);
-#endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG */
+mender_err_t
+mender_artifact_check_integrity_remaining(mender_artifact_ctx_t *ctx) {
+    assert(NULL != ctx);
+    for (mender_artifact_checksum_t *checksum = ctx->artifact_info.checksums; NULL != checksum; checksum = checksum->next) {
+        if (MENDER_OK != is_checksum_valid(checksum)) {
             return MENDER_FAIL;
         }
     }
-#endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
     return MENDER_OK;
 }
 
@@ -420,6 +452,12 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
 
                 /* Read manifest file */
                 ret = artifact_read_manifest(ctx);
+
+                /* Early integrity check for version file */
+                if ((MENDER_DONE == ret) && (MENDER_OK != mender_artifact_check_integrity_and_remove_item(ctx, "version"))) {
+                    mender_log_error("Integrity check failed for version file");
+                    ret = MENDER_FAIL;
+                }
 #endif
             } else if (StringEqual(ctx->file.name, "header.tar/header-info")) {
 
@@ -444,8 +482,15 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
                    for which we don't need to do anything here. Hence the
                    strlen() check above. */
                 if (!data_mdata_cache.valid) {
-                    /* Populate the cache and do one-off things */
-                    ret = artifact_read_data_prepare(ctx, dl_data, &data_mdata_cache);
+
+                    /* Early integrity check for header.tar */
+                    if (MENDER_OK != mender_artifact_check_integrity_and_remove_item(ctx, "header.tar")) {
+                        mender_log_error("Integrity check failed for header.tar");
+                        ret = MENDER_FAIL;
+                    } else {
+                        /* Populate the cache and do one-off things */
+                        ret = artifact_read_data_prepare(ctx, dl_data, &data_mdata_cache);
+                    }
                 }
 
                 if (MENDER_OK == ret) {
@@ -520,6 +565,10 @@ mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
         }
         ctx->artifact_info.checksums = NULL;
 #endif
+        if (artifact_ctx == ctx) {
+            artifact_ctx = NULL;
+        }
+
         mender_free(ctx);
     }
 }
@@ -972,7 +1021,7 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
         ret = MENDER_FAIL;
         goto END;
     }
-#ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
+
     cJSON *json_provides = cJSON_GetObjectItemCaseSensitive(object, "artifact_provides");
     if (cJSON_IsObject(json_provides)) {
         if (MENDER_FAIL == artifact_parse_provides_depends(json_provides, &(ctx->payloads.values[index].provides))) {
@@ -1021,7 +1070,6 @@ artifact_read_type_info(mender_artifact_ctx_t *ctx) {
             }
         }
     }
-#endif
 
     /* Shift data in the buffer */
     /* header.tar has a checksum entry in the manifest as a whole */

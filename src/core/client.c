@@ -839,9 +839,9 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
     }
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
 
-    /* Check artifact integrity by comparing computed checksums with those
-     * listed in the artifacts manifest */
-    if (MENDER_OK != mender_artifact_check_integrity(mender_artifact_ctx)) {
+    /* Check payload integrity by comparing computed checksum(s) with those
+     * listed in the artifact manifest */
+    if (MENDER_OK != mender_artifact_check_integrity_remaining(mender_artifact_ctx)) {
         return MENDER_FAIL;
     }
 

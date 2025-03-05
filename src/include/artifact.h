@@ -131,12 +131,21 @@ mender_err_t mender_artifact_get_ctx(mender_artifact_ctx_t **ctx);
 mender_err_t mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_t input_length, mender_artifact_download_data_t *dl_data);
 
 /**
- * @brief Do integrity checks by comparing the manifest checksums to the computed ones
+ * @brief Do integrity check to one item by comparing the manifest checksum to the computed one and remove it from the list.
+ * @param ctx Artifact context
+ * @param filename Unique key for the integrity item to check
+ * @return MENDER_OK if integrity is enforced, error code otherwise
+ * @note Call this for early validation after the processing the data of an item in the artifact stream
+ */
+mender_err_t mender_artifact_check_integrity_and_remove_item(mender_artifact_ctx_t *ctx, const char *filename);
+
+/**
+ * @brief Do integrity checks to the remaining items by comparing the manifest checksums to the computed ones.
  * @param ctx Artifact context
  * @return MENDER_OK if integrity is enforced, error code otherwise
- * @note Call the after the processing of data from artifact stream is complete
+ * @note Call this after the processing of the data from the artifact stream is complete
  */
-mender_err_t mender_artifact_check_integrity(mender_artifact_ctx_t *ctx);
+mender_err_t mender_artifact_check_integrity_remaining(mender_artifact_ctx_t *ctx);
 
 /**
  * @brief Function used to release artifact context

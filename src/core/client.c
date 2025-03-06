@@ -112,6 +112,12 @@ static const char *update_state_str[N_MENDER_UPDATE_STATES + 1] = {
     "MENDER_UPDATE_STATE_FAILURE",
     "MENDER_UPDATE_STATE_END",
 };
+static const char *client_state_str[N_MENDER_CLIENT_STATES + 1] = {
+    "MENDER_CLIENT_STATE_INITIALIZATION",
+    "MENDER_CLIENT_STATE_OPERATIONAL",
+    "MENDER_CLIENT_STATE_PENDING_REBOOT",
+};
+
 #endif
 
 /**
@@ -461,7 +467,7 @@ mender_client_exit(void) {
 static mender_err_t
 mender_client_work_function(void) {
     mender_err_t ret;
-    mender_log_debug("Inside work function [state: %d]", mender_client_state);
+    mender_log_debug("Inside work function [state: %s]", client_state_str[mender_client_state]);
 
     switch (mender_client_state) {
         case MENDER_CLIENT_STATE_PENDING_REBOOT:

@@ -84,18 +84,6 @@ const char *mender_utils_http_status_to_string(int status);
 char *mender_utils_strrstr(const char *haystack, const char *needle);
 
 /**
- * @brief Duplicate string using Mender memory allocation
- */
-char *mender_utils_strdup(const char *str);
-char *mender_utils_strndup(const char *str, size_t n);
-
-/**
- * @brief Format a new string using Mender memory allocation
- */
-int mender_utils_asprintf(char **result, const char *fmt, ...);
-int mender_utils_vasprintf(char **result, const char *fmt, va_list ap);
-
-/**
  * @brief Function used to check if string begins with wanted substring
  * @param s1 String to be checked
  * @param s2 Substring to look for at the beginning of the string

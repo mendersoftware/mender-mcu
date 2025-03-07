@@ -1,5 +1,6 @@
 build
 _deps
+mender-mcu-client.elf
 tests/smoke/mocks/cjson/cjson
 tests/smoke/mocks/mbedtls/mbedtls
 tests/smoke/mender-mcu-client.elf

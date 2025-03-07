@@ -170,3 +170,7 @@ set(MENDER_PRIV_INCLUDE ${MENDER_MCU_ROOT}/src/include)
 set(MENDER_MCU_VERSION_FILE ${MENDER_MCU_ROOT}/VERSION)
 
 message(STATUS "mender-mcu version file is ${MENDER_MCU_VERSION_FILE}")
+
+# Local Variables:
+# mode: cmake
+# End:

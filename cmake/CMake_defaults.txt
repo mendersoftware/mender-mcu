@@ -22,3 +22,7 @@ set(CONFIG_MENDER_COMMIT_REQUIRE_AUTH ON CACHE BOOL "Authentication required for
 set(CONFIG_MENDER_ALL_WARNINGS_AS_ERRORS ON CACHE BOOL "All warnings as errors")
 set(CONFIG_MENDER_ERRORS_THRESHOLD_NET 10 CACHE STRING "Network errors threshold")
 set(CONFIG_MENDER_ERRORS_THRESHOLD_REBOOT 5 CACHE STRING "Reboot errors threshold")
+
+# Local Variables:
+# mode: cmake
+# End:

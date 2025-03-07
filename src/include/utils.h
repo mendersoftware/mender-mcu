@@ -84,18 +84,6 @@ const char *mender_utils_http_status_to_string(int status);
 char *mender_utils_strrstr(const char *haystack, const char *needle);
 
 /**
- * @brief Duplicate string using Mender memory allocation
- */
-char *mender_utils_strdup(const char *str);
-char *mender_utils_strndup(const char *str, size_t n);
-
-/**
- * @brief Format a new string using Mender memory allocation
- */
-int mender_utils_asprintf(char **result, const char *fmt, ...);
-int mender_utils_vasprintf(char **result, const char *fmt, va_list ap);
-
-/**
  * @brief Function used to check if string begins with wanted substring
  * @param s1 String to be checked
  * @param s2 Substring to look for at the beginning of the string
@@ -122,37 +110,6 @@ bool mender_utils_strendswith(const char *s1, const char *s2);
 bool mender_utils_hexdump_to_bytes(const char *hexdump, unsigned char *bytes, size_t n_bytes);
 
 /**
- * @brief Function used to create a key-store
- * @param length Length of the key-store
- * @return Key-store if the function succeeds, NULL otherwise
- */
-mender_keystore_t *mender_utils_keystore_new(size_t length);
-
-/**
- * @brief Function used to copy key-store
- * @param dst_keystore Destination key-store to create
- * @param src_keystore Source key-store to copy
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_utils_keystore_copy(mender_keystore_t **dst_keystore, mender_keystore_t *src_keystore);
-
-/**
- * @brief Function used to set key-store from JSON string
- * @param keystore Key-store
- * @param object JSON object
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_utils_keystore_from_json(mender_keystore_t **keystore, cJSON *object);
-
-/**
- * @brief Function used to format key-store to JSON object
- * @param keystore Key-store
- * @param object JSON object
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_utils_keystore_to_json(mender_keystore_t *keystore, cJSON **object);
-
-/**
  * @brief Function used to format identity to JSON object
  * @param  identity Identity
  * @param object JSON object
@@ -161,28 +118,9 @@ mender_err_t mender_utils_keystore_to_json(mender_keystore_t *keystore, cJSON **
 mender_err_t mender_utils_identity_to_json(const mender_identity_t *identity, cJSON **object);
 
 /**
- * @brief Function used to set key-store item name and value
- * @param keystore Key-store to be updated
- * @param index Index of the item in the key-store
- * @param name Name of the item
- * @param value Value of the item
- * @return MENDER_OK if the function succeeds, error code otherwise
+ * @brief Delete the given keystore
  */
-mender_err_t mender_utils_keystore_set_item(mender_keystore_t *keystore, size_t index, char *name, char *value);
-
-/**
- * @brief Function used to get length of key-store
- * @param keystore Key-store
- * @return Length of the key-store
- */
-size_t mender_utils_keystore_length(mender_keystore_t *keystore);
-
-/**
- * @brief Function used to delete key-store
- * @param keystore Key-store to be deleted
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_utils_keystore_delete(mender_keystore_t *keystore);
+void mender_utils_keystore_delete(mender_keystore_t *keystore, uint8_t keystore_len);
 
 /**
  * @brief Free linked list list

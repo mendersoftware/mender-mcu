@@ -264,175 +264,6 @@ mender_utils_hexdump_to_bytes(const char *hexdump, unsigned char *bytes, size_t 
     return true;
 }
 
-mender_keystore_t *
-mender_utils_keystore_new(size_t length) {
-
-    /* Allocate memory */
-    mender_keystore_t *keystore = (mender_keystore_t *)mender_malloc((length + 1) * sizeof(mender_item_t));
-    if (NULL == keystore) {
-        mender_log_error("Unable to allocate memory");
-        return NULL;
-    }
-
-    /* Initialize keystore */
-    memset(keystore, 0, (length + 1) * sizeof(mender_item_t));
-
-    return keystore;
-}
-
-mender_err_t
-mender_utils_keystore_copy(mender_keystore_t **dst_keystore, mender_keystore_t *src_keystore) {
-
-    assert(NULL != dst_keystore);
-    mender_err_t ret = MENDER_OK;
-
-    /* Copy the new keystore */
-    size_t length = mender_utils_keystore_length(src_keystore);
-    if (NULL == (*dst_keystore = mender_utils_keystore_new(length))) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    for (size_t index = 0; index < length; index++) {
-        if (MENDER_OK != (ret = mender_utils_keystore_set_item(*dst_keystore, index, src_keystore[index].name, src_keystore[index].value))) {
-            mender_log_error("Unable to allocate memory");
-            goto END;
-        }
-    }
-
-END:
-
-    return ret;
-}
-
-mender_err_t
-mender_utils_keystore_from_json(mender_keystore_t **keystore, cJSON *object) {
-
-    assert(NULL != keystore);
-    mender_err_t ret;
-
-    /* Release previous keystore */
-    if (MENDER_OK != (ret = mender_utils_keystore_delete(*keystore))) {
-        mender_log_error("Unable to delete keystore");
-        return ret;
-    }
-    *keystore = NULL;
-
-    /* Set key-store */
-    if (NULL != object) {
-        size_t length       = 0;
-        cJSON *current_item = object->child;
-        while (NULL != current_item) {
-            if ((NULL != current_item->string) && (NULL != current_item->valuestring)) {
-                length++;
-            }
-            current_item = current_item->next;
-        }
-        if (NULL != (*keystore = mender_utils_keystore_new(length))) {
-            size_t index = 0;
-            current_item = object->child;
-            while (NULL != current_item) {
-                if ((NULL != current_item->string) && (NULL != current_item->valuestring)) {
-                    if (MENDER_OK != (ret = mender_utils_keystore_set_item(*keystore, index, current_item->string, current_item->valuestring))) {
-                        mender_log_error("Unable to allocate memory");
-                        return ret;
-                    }
-                    index++;
-                }
-                current_item = current_item->next;
-            }
-        } else {
-            mender_log_error("Unable to allocate memory");
-            ret = MENDER_FAIL;
-        }
-    }
-
-    return ret;
-}
-
-mender_err_t
-mender_utils_keystore_to_json(mender_keystore_t *keystore, cJSON **object) {
-
-    assert(NULL != object);
-
-    /* Format data */
-    *object = cJSON_CreateObject();
-    if (NULL == *object) {
-        mender_log_error("Unable to allocate memory");
-        return MENDER_FAIL;
-    }
-    if (NULL != keystore) {
-        size_t index = 0;
-        while ((NULL != keystore[index].name) && (NULL != keystore[index].value)) {
-            cJSON_AddStringToObject(*object, keystore[index].name, keystore[index].value);
-            index++;
-        }
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
-mender_utils_keystore_set_item(mender_keystore_t *keystore, size_t index, char *name, char *value) {
-
-    assert(NULL != keystore);
-
-    /* Release memory */
-    FREE_AND_NULL(keystore[index].name);
-    FREE_AND_NULL(keystore[index].value);
-
-    /* Copy name and value */
-    if (NULL != name) {
-        if (NULL == (keystore[index].name = mender_utils_strdup(name))) {
-            mender_log_error("Unable to allocate memory");
-            return MENDER_FAIL;
-        }
-    }
-    if (NULL != value) {
-        if (NULL == (keystore[index].value = mender_utils_strdup(value))) {
-            mender_log_error("Unable to allocate memory");
-            return MENDER_FAIL;
-        }
-    }
-
-    return MENDER_OK;
-}
-
-size_t
-mender_utils_keystore_length(mender_keystore_t *keystore) {
-
-    /* Compute key-store length */
-    size_t length = 0;
-    if (NULL != keystore) {
-        while ((NULL != keystore[length].name) && (NULL != keystore[length].value)) {
-            length++;
-        }
-    }
-
-    return length;
-}
-
-mender_err_t
-mender_utils_keystore_delete(mender_keystore_t *keystore) {
-
-    /* Release memory */
-    if (NULL != keystore) {
-        size_t index = 0;
-        while ((NULL != keystore[index].name) || (NULL != keystore[index].value)) {
-            if (NULL != keystore[index].name) {
-                mender_free(keystore[index].name);
-            }
-            if (NULL != keystore[index].value) {
-                mender_free(keystore[index].value);
-            }
-            index++;
-        }
-        mender_free(keystore);
-    }
-
-    return MENDER_OK;
-}
-
 mender_err_t
 mender_utils_identity_to_json(const mender_identity_t *identity, cJSON **object) {
 
@@ -449,6 +280,19 @@ mender_utils_identity_to_json(const mender_identity_t *identity, cJSON **object)
         return MENDER_FAIL;
     }
     return MENDER_OK;
+}
+
+void
+mender_utils_keystore_delete(mender_keystore_t *keystore, uint8_t keystore_len) {
+    if (NULL == keystore) {
+        return;
+    }
+
+    for (uint8_t idx = 0; idx < keystore_len; idx++) {
+        mender_free(keystore[idx].name);
+        mender_free(keystore[idx].value);
+    }
+    mender_free(keystore);
 }
 
 mender_err_t

@@ -130,6 +130,14 @@ get_identity_cb(const mender_identity_t **identity) {
     return MENDER_FAIL;
 }
 
+static mender_err_t
+persistent_inventory_cb(mender_keystore_t **keystore, uint8_t *keystore_len) {
+    static mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "var" } };
+    *keystore                            = inventory;
+    *keystore_len                        = 2;
+    return MENDER_OK;
+}
+
 /**
  * @brief Get user-provided keys callback
  * @return MENDER_OK if the function succeeds, error code otherwise
@@ -313,9 +321,8 @@ main(int argc, char **argv) {
 #endif /* CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE */
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
-    mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "var" }, { .name = NULL, .value = NULL } };
-    assert(MENDER_OK == mender_inventory_set(inventory));
-    mender_log_info("Mender inventory set");
+    assert(MENDER_OK == mender_inventory_add_callback(persistent_inventory_cb, true));
+    mender_log_info("Mender inventory callback added");
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
     /* Finally activate mender client */

@@ -26,14 +26,31 @@ extern "C" {
 
 #include <mender/utils.h>
 
+/**
+ * @brief Inventory callback type
+ * @param inventory     Output argument for the inventory items array pointer
+ * @param inventory_len Length of the array pointed to by #inventory (limited by the type to 255
+ *                      items which should be more than enough)
+ * @return %MENDER_OK in case of success, error otherwise
+ */
+typedef mender_err_t(MenderInventoryCallback)(mender_keystore_t **inventory, uint8_t *inventory_len);
+
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 /**
- * @brief Set mender inventory
- * @param inventory Mender inventory key/value pairs table, must end with a NULL/NULL element, NULL if not defined
+ * @brief Add mender inventory callback
+ * @param callback   A function to call to obtain inventory information
+ * @param persistent Whether the inventory information is persistent or dynamic (see notes below)
  * @return MENDER_OK if the function succeeds, error code otherwise
+ * @note Persistent inventory data is only obtained and sent to the server once in the run of the
+ *       client, i.e. during the first successful inventory submission. Dynamic inventory data is
+ *       obtained and sent to the server at every inventory submission (interval).
+ * @note Persistent inventory data is *considered static*, dynamic data is considered
+ *       heap-allocated, with ownership being transferred (IOW, the Mender client deallocates the
+ *       data when no longer needed). This applies to both the container (array) and the actual
+ *       data (key-value pairs).
  */
-mender_err_t mender_inventory_set(mender_keystore_t *inventory);
+mender_err_t mender_inventory_add_callback(MenderInventoryCallback callback, bool persistent);
 
 /**
  * @brief Function used to trigger execution of the inventory work

@@ -113,10 +113,12 @@ mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event,
 
 /**
  * @brief Publish inventory data of the device to the mender-server
- * @param inventory Mender inventory key/value pairs table, must end with a NULL/NULL element, NULL if not defined
+ * @param inventory Mender inventory data as a JSON array of key-value pairs (ownership transferred)
+ * @param patch Whether to patch inventory data (PATCH) or replace the old data with new (PUT)
  * @return MENDER_OK if the function succeeds, error code otherwise
+ * @note #inventory is consumed by the function (taken over and deallocated)
  */
-mender_err_t mender_api_publish_inventory_data(mender_keystore_t *inventory);
+mender_err_t mender_api_publish_inventory_data(cJSON *inventory, bool patch);
 
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 

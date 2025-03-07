@@ -109,6 +109,18 @@ typedef mender_item_t mender_identity_t;
  */
 const char *mender_utils_deployment_status_to_string(mender_deployment_status_t deployment_status);
 
+/**
+ * @brief Duplicate string using Mender memory allocation
+ */
+char *mender_utils_strdup(const char *str);
+char *mender_utils_strndup(const char *str, size_t n);
+
+/**
+ * @brief Format a new string using Mender memory allocation
+ */
+int mender_utils_asprintf(char **result, const char *fmt, ...);
+int mender_utils_vasprintf(char **result, const char *fmt, va_list ap);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

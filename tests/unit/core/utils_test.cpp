@@ -288,38 +288,18 @@ TEST(MenderUtilsTest, StringToKeyValueList) {
     EXPECT_EQ(ret, MENDER_OK);
 }
 
-TEST(MenderUtilsTest, KeystoreFromJson) {
-    const string json_str    = "{\"key1\": \"value1\", \"key2\": \"value2\"}";
-    cJSON       *json_object = cJSON_Parse(json_str.c_str());
+TEST(MenderUtilsTest, KeystoreDelete) {
+    mender_keystore_t *keystore = (mender_keystore_t *)mender_calloc(3, sizeof(mender_keystore_t));
+    ASSERT_NE(keystore, nullptr);
 
-    mender_keystore_t *keystore = nullptr;
-    mender_err_t       ret      = mender_utils_keystore_from_json(&keystore, json_object);
-    EXPECT_EQ(ret, MENDER_OK);
+    keystore[0].name  = mender_utils_strdup("foo");
+    keystore[0].value = mender_utils_strdup("foo-value");
+    keystore[1].name  = mender_utils_strdup("bar");
+    keystore[1].value = mender_utils_strdup("bar-value");
+    keystore[2].name  = mender_utils_strdup("baz");
+    keystore[2].value = mender_utils_strdup("baz-value");
 
-    EXPECT_EQ(mender_utils_keystore_length(keystore), 2);
-
-    EXPECT_STREQ(keystore[0].name, "key1");
-    EXPECT_STREQ(keystore[0].value, "value1");
-    EXPECT_STREQ(keystore[1].name, "key2");
-    EXPECT_STREQ(keystore[1].value, "value2");
-
-    cJSON_Delete(json_object);
-    mender_utils_keystore_delete(keystore);
-}
-
-TEST(MenderUtilsTest, KeystoreToJson) {
-    mender_keystore_t *keystore = mender_utils_keystore_new(2);
-
-    mender_utils_keystore_set_item(keystore, 0, (char *)"key1", (char *)"value1");
-    mender_utils_keystore_set_item(keystore, 1, (char *)"key2", (char *)"value2");
-
-    cJSON       *json_object = nullptr;
-    mender_err_t ret         = mender_utils_keystore_to_json(keystore, &json_object);
-
-    EXPECT_EQ(ret, MENDER_OK);
-    EXPECT_STREQ(cJSON_GetObjectItem(json_object, "key1")->valuestring, "value1");
-    EXPECT_STREQ(cJSON_GetObjectItem(json_object, "key2")->valuestring, "value2");
-
-    cJSON_Delete(json_object);
-    mender_utils_keystore_delete(keystore);
+    mender_utils_keystore_delete(keystore, 3);
+    // Nothing to check here, we just rely on ASAN detecting a potential leak or
+    // memory access violation (if any).
 }

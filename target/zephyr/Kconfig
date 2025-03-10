@@ -35,11 +35,39 @@ if MENDER_MCU_CLIENT
 
     menu "General configuration"
 
-        config MENDER_SERVER_HOST
-            string "Mender server host URL"
-            default "https://hosted.mender.io"
+        choice MENDER_SERVER_HOST
+            prompt "Select which Mender server to use (hosted US, hosted EU, on-premise)"
+            default MENDER_SERVER_HOST_US
             help
                 Set the Mender server host URL to be used on the device.
+
+            config MENDER_SERVER_HOST_US
+                bool "https://hosted.mender.io"
+                help
+                    hosted Mender US
+            config MENDER_SERVER_HOST_EU
+                bool "https://eu.hosted.mender.io"
+                help
+                    hosted Mender EU
+            config MENDER_SERVER_HOST_ON_PREM
+                bool "On-premise server"
+                help
+                    Set the Mender server host URL to be used on the device.
+            config MENDER_SERVER_HOST
+                string "Mender server URL" if MENDER_SERVER_HOST_ON_PREM
+                default "..."
+                help
+                    Specify a Mender server URL.
+        endchoice
+
+        if MENDER_SERVER_HOST_US
+            config MENDER_SERVER_HOST
+                default "https://hosted.mender.io"
+        endif
+        if MENDER_SERVER_HOST_EU
+            config MENDER_SERVER_HOST
+                default "https://eu.hosted.mender.io"
+        endif
 
         config MENDER_SERVER_TENANT_TOKEN
             string "Mender server Tenant Token"

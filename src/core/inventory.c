@@ -223,6 +223,27 @@ mender_inventory_exit(void) {
     return ret;
 }
 
+mender_err_t
+mender_inventory_reset_persistent(void) {
+    mender_err_t ret;
+
+    /* Take mutex used to protect access to the inventory key-store */
+    if (MENDER_OK != (ret = mender_os_mutex_take(mender_inventory_mutex, -1))) {
+        mender_log_error("Unable to take mutex");
+        return ret;
+    }
+    keystores_item_t *inv = persistent_inventory;
+    while (NULL != inv) {
+        keystores_item_t *aux = inv;
+        inv                   = inv->next;
+        mender_free(aux);
+    }
+    persistent_inventory = NULL;
+
+    mender_os_mutex_give(mender_inventory_mutex);
+    return MENDER_OK;
+}
+
 static mender_err_t
 collect_persistent_inventory(void) {
     for (uint8_t idx = 0; idx < n_callbacks; idx++) {

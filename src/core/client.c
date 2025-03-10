@@ -1133,6 +1133,19 @@ mender_client_update_work_function(void) {
                 if (!MENDER_IS_ERROR(ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+                /* If there was no reboot, we need to tell inventory to refresh
+                   the persistent data (because the deployment must have changed
+                   artifact name, at least) and we should trigger an inventory
+                   submission to refresh the data on the server. */
+                if (!mender_update_module->requires_reboot) {
+                    if (MENDER_OK != (ret = mender_inventory_reset_persistent())) {
+                        mender_log_error("Failed to reset persistent inventory after deployment commit with no reboot");
+                    } else if (MENDER_OK != (ret = mender_inventory_execute())) {
+                        mender_log_error("Failed to trigger inventory refresh after deployment commit with no reboot");
+                    }
+                }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
                 if (!MENDER_IS_ERROR(ret)) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
                 }

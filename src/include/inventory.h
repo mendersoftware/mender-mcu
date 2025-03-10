@@ -35,6 +35,14 @@ extern "C" {
 mender_err_t mender_inventory_init(uint32_t interval, const char *device_type);
 
 /**
+ * @brief Reset persistent inventory
+ * @return MENDER_OK in case of success, error code otherwise
+ * @note The persistent inventory callbacks are called to get fresh data the next time inventory data
+ *       is needed.
+ */
+mender_err_t mender_inventory_reset_persistent(void);
+
+/**
  * @brief Activate mender inventory
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
@@ -46,6 +54,12 @@ mender_err_t mender_inventory_activate(void);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_inventory_deactivate(void);
+
+/**
+ * @brief Trigger execution of the inventory work
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_inventory_execute(void);
 
 /**
  * @brief Release mender inventory

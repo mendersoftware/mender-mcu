@@ -15,7 +15,9 @@ variables:
     description: "mender-artifact version for tests"
     value: 4.0.0
   MENDER_MCU_INTEGRATION_REVISION:
-    description: "Revision of mender-mcu-integration to trigger."
+    description: |
+      Revision of mender-mcu-integration to trigger.
+      Should correspond to the gitlab branch: `pr_XXX`
     value: main
 
 default:

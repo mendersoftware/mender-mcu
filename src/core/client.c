@@ -330,7 +330,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     }
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
-    if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval))) {
+    if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval, mender_client_config.device_type))) {
         mender_log_error("Failed to initialize the inventory functionality");
         goto END;
     }

@@ -29,9 +29,10 @@ extern "C" {
 /**
  * @brief Initialize mender inventory
  * @param interval The interval to perform inventory updates at
+ * @param device_type Device type
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_init(uint32_t interval);
+mender_err_t mender_inventory_init(uint32_t interval, const char *device_type);
 
 /**
  * @brief Activate mender inventory

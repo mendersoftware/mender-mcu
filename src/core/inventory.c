@@ -23,6 +23,7 @@
 #include "inventory.h"
 #include "log.h"
 #include "os.h"
+#include "storage.h"
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
@@ -63,14 +64,18 @@ static void             *mender_inventory_mutex = NULL;
  */
 static mender_work_t *mender_inventory_work = NULL;
 
+static const char *device_type = NULL;
+
 /**
  * @brief Mender inventory work function
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 static mender_err_t mender_inventory_work_function(void);
 
+static mender_err_t artifact_name_device_type_cb(mender_keystore_t **inventory, uint8_t *inventory_len);
+
 mender_err_t
-mender_inventory_init(uint32_t interval) {
+mender_inventory_init(uint32_t interval, const char *dev_type) {
     mender_err_t ret;
 
     /* Create inventory mutex */
@@ -78,6 +83,8 @@ mender_inventory_init(uint32_t interval) {
         mender_log_error("Unable to create inventory mutex");
         return ret;
     }
+
+    device_type = dev_type;
 
     callbacks = mender_calloc(N_CALLBACKS_INIT, sizeof(callback_item_t));
     if (NULL == callbacks) {
@@ -94,6 +101,11 @@ mender_inventory_init(uint32_t interval) {
     inventory_work_params.name     = "mender_inventory";
     if (MENDER_OK != (ret = mender_os_scheduler_work_create(&inventory_work_params, &mender_inventory_work))) {
         mender_log_error("Unable to create inventory work");
+        return ret;
+    }
+
+    if (MENDER_OK != (ret = mender_inventory_add_callback(artifact_name_device_type_cb, true))) {
+        mender_log_error("Failed to add the required inventory callback for artifact name and device type");
         return ret;
     }
 
@@ -334,6 +346,23 @@ END:
     mender_os_mutex_give(mender_inventory_mutex);
 
     return ret;
+}
+
+static mender_err_t
+artifact_name_device_type_cb(mender_keystore_t **inventory, uint8_t *inventory_len) {
+    mender_err_t             ret;
+    static mender_keystore_t basic_device_info[] = {
+        { "artifact_name", NULL },
+        { "device_type", NULL },
+    };
+    if (MENDER_OK != (ret = mender_storage_get_artifact_name((const char **)&(basic_device_info[0].value)))) {
+        mender_log_error("Failed to get artifact name");
+        return ret;
+    }
+    basic_device_info[1].value = (char *)device_type;
+    *inventory                 = basic_device_info;
+    *inventory_len             = 2;
+    return MENDER_OK;
 }
 
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */

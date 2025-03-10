@@ -981,7 +981,6 @@ mender_client_update_work_function(void) {
         }                                                                      \
     } else {                                                                   \
         update_state = update_state_transitions[update_state].failure;         \
-        mender_log_debug("Entering state %s", update_state_str[update_state]); \
         if (NULL != mender_update_module) {                                    \
             if (MENDER_LOOP_DETECTED == set_and_store_state(update_state)) {   \
                 update_state = MENDER_UPDATE_STATE_FAILURE;                    \
@@ -992,11 +991,9 @@ mender_client_update_work_function(void) {
     }
 
     while (MENDER_UPDATE_STATE_END != update_state) {
+        mender_log_debug("Entering state %s", update_state_str[update_state]);
         switch (update_state) {
             case MENDER_UPDATE_STATE_DOWNLOAD:
-                /* This is usually logged in the NEXT_STATE macro, but since nothing
-                 * transitions to this state, we log it here */
-                mender_log_debug("Entering state %s", update_state_str[update_state]);
 
                 /* Check for deployment */
                 if (MENDER_OK != (ret = mender_client_check_deployment(&deployment))) {

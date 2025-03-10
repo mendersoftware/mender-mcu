@@ -55,7 +55,6 @@ if MENDER_MCU_CLIENT
                     Set the Mender server host URL to be used on the device.
             config MENDER_SERVER_HOST
                 string "Mender server URL" if MENDER_SERVER_HOST_ON_PREM
-                default "..."
                 help
                     Specify a Mender server URL.
         endchoice

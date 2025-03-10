@@ -334,6 +334,10 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         mender_log_error("Failed to initialize the inventory functionality");
         goto END;
     }
+    if (MENDER_OK != mender_inventory_add_default_callbacks()) {
+        mender_log_error("Failed to enable default inventory");
+        /* unlikely to happen and not a fatal issue, keep going */
+    }
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */
 
 END:

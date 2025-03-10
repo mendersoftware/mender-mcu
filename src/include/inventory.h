@@ -3,6 +3,7 @@
  * @brief     Mender MCU Inventory implementation (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +42,12 @@ mender_err_t mender_inventory_init(uint32_t interval, const char *device_type);
  *       is needed.
  */
 mender_err_t mender_inventory_reset_persistent(void);
+
+/**
+ * @brief Add default inventory callbacks
+ * @return MENDER_OK in case of success, error code otherwise
+ */
+mender_err_t mender_inventory_add_default_callbacks(void);
 
 /**
  * @brief Activate mender inventory

@@ -1,3 +1,4 @@
+test coverage
 # mender-mcu
 
 ## Overview

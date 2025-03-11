@@ -66,6 +66,9 @@ static mender_work_t *mender_inventory_work = NULL;
 
 static const char *device_type = NULL;
 
+static mender_keystore_t *provides_inventory     = NULL;
+static uint8_t            provides_inventory_len = 0;
+
 /**
  * @brief Mender inventory work function
  * @return MENDER_OK if the function succeeds, error code otherwise
@@ -73,6 +76,7 @@ static const char *device_type = NULL;
 static mender_err_t mender_inventory_work_function(void);
 
 static mender_err_t artifact_name_device_type_cb(mender_keystore_t **inventory, uint8_t *inventory_len);
+static mender_err_t provides_cb(mender_keystore_t **inventory, uint8_t *inventory_len);
 
 mender_err_t
 mender_inventory_init(uint32_t interval, const char *dev_type) {
@@ -106,6 +110,10 @@ mender_inventory_init(uint32_t interval, const char *dev_type) {
 
     if (MENDER_OK != (ret = mender_inventory_add_callback(artifact_name_device_type_cb, true))) {
         mender_log_error("Failed to add the required inventory callback for artifact name and device type");
+        return ret;
+    }
+    if (MENDER_OK != (ret = mender_inventory_add_callback(provides_cb, true))) {
+        mender_log_error("Failed to add the required inventory callback for provides");
         return ret;
     }
 
@@ -203,6 +211,10 @@ mender_inventory_exit(void) {
         return ret;
     }
 
+    mender_utils_keystore_delete(provides_inventory, provides_inventory_len);
+    provides_inventory     = NULL;
+    provides_inventory_len = 0;
+
     mender_free(callbacks);
     callbacks_len          = 0;
     n_callbacks            = 0;
@@ -232,6 +244,11 @@ mender_inventory_reset_persistent(void) {
         mender_log_error("Unable to take mutex");
         return ret;
     }
+
+    mender_utils_keystore_delete(provides_inventory, provides_inventory_len);
+    provides_inventory     = NULL;
+    provides_inventory_len = 0;
+
     keystores_item_t *inv = persistent_inventory;
     while (NULL != inv) {
         keystores_item_t *aux = inv;
@@ -384,6 +401,59 @@ artifact_name_device_type_cb(mender_keystore_t **inventory, uint8_t *inventory_l
     *inventory                 = basic_device_info;
     *inventory_len             = 2;
     return MENDER_OK;
+}
+
+static mender_err_t
+provides_cb(mender_keystore_t **inventory, uint8_t *inventory_len) {
+    mender_err_t             ret;
+    mender_key_value_list_t *provides = NULL;
+    size_t                   n_provides;
+    uint8_t                  idx;
+    mender_key_value_list_t *item;
+
+    /* mender_storage_get_provides() gives us a linked list (which is a good
+       structure for manipulation with provides data in other places), but we
+       need a key-value array so we need to do a transformation. */
+    if (MENDER_OK != (ret = mender_storage_get_provides(&provides))) {
+        mender_log_error("Failed to get provides from storage");
+        return ret;
+    }
+
+    n_provides = mender_utils_key_value_list_length(provides);
+    if (n_provides > UINT8_MAX) {
+        mender_log_warning("Too many provides values, cannot inventory them all");
+        n_provides = UINT8_MAX;
+    }
+
+    /* This should never be called when provides_inventory data is still
+       there. */
+    assert(NULL == provides_inventory);
+
+    provides_inventory = mender_calloc(n_provides, sizeof(mender_keystore_t));
+    if (NULL == provides_inventory) {
+        mender_log_error("Cannot allocate memory");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+    for (item = provides, idx = 0; (NULL != item) && (idx < n_provides); item = item->next, idx++) {
+        /* Move the data from the linked list into the inventory keystore, no
+           need to duplicate it. */
+        provides_inventory[idx].name  = item->key;
+        item->key                     = NULL;
+        provides_inventory[idx].value = item->value;
+        item->value                   = NULL;
+    }
+    provides_inventory_len = n_provides;
+
+    *inventory     = provides_inventory;
+    *inventory_len = provides_inventory_len;
+
+    ret = MENDER_OK;
+
+END:
+    mender_utils_key_value_list_free(provides);
+
+    return ret;
 }
 
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY */

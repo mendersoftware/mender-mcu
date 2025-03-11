@@ -307,6 +307,16 @@ mender_utils_key_value_list_free(mender_key_value_list_t *list) {
     }
     return MENDER_OK;
 }
+
+size_t
+mender_utils_key_value_list_length(const mender_key_value_list_t *list) {
+    size_t n_items = 0;
+    for (const mender_key_value_list_t *item = list; NULL != item; item = item->next) {
+        n_items++;
+    }
+    return n_items;
+}
+
 mender_err_t
 mender_utils_key_value_list_create_node(const char *type, const char *value, mender_key_value_list_t **list) {
 

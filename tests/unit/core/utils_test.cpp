@@ -212,12 +212,16 @@ TEST(MenderUtilsTest, KeyValueList) {
         i_node++;
     }
 
+    EXPECT_EQ(mender_utils_key_value_list_length(list), 3);
+
     /* Delete 'key1' */
     ret = mender_utils_key_value_list_delete_node(&list, "key1");
     EXPECT_EQ(ret, MENDER_OK);
     for (mender_key_value_list_t *item = list; item != nullptr; item = item->next) {
         EXPECT_STRNE(item->key, "key1");
     }
+
+    EXPECT_EQ(mender_utils_key_value_list_length(list), 2);
 
     /* Attempt to append key2 to the list with append unique -> assert only one key2 */
     mender_key_value_list_t *key_node = nullptr;

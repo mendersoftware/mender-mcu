@@ -633,39 +633,11 @@ mender_err_t
 mender_api_publish_inventory_data(cJSON *inventory, bool patch) {
 
     mender_err_t ret;
-    char        *payload       = NULL;
-    char        *response      = NULL;
-    int          status        = 0;
-    const char  *artifact_name = NULL;
-    cJSON       *item          = NULL;
-
-    if ((MENDER_OK != mender_storage_get_artifact_name(&artifact_name)) && (NULL != artifact_name)) {
-        mender_log_error("Unable to get artifact name");
-        ret = MENDER_FAIL;
-        goto END;
-    }
+    char        *payload  = NULL;
+    char        *response = NULL;
+    int          status   = 0;
 
     /* Format payload */
-    item = cJSON_CreateObject();
-    if (NULL == item) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    cJSON_AddStringToObject(item, "name", "artifact_name");
-    cJSON_AddStringToObject(item, "value", artifact_name);
-    cJSON_AddItemToArray(inventory, item);
-
-    item = cJSON_CreateObject();
-    if (NULL == item) {
-        mender_log_error("Unable to allocate memory");
-        ret = MENDER_FAIL;
-        goto END;
-    }
-    cJSON_AddStringToObject(item, "name", "device_type");
-    cJSON_AddStringToObject(item, "value", api_config.device_type);
-    cJSON_AddItemToArray(inventory, item);
-
     if (NULL == (payload = cJSON_PrintUnformatted(inventory))) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
@@ -692,7 +664,6 @@ mender_api_publish_inventory_data(cJSON *inventory, bool patch) {
 END:
 
     /* Release memory */
-    mender_free((void *)artifact_name);
     mender_free(response);
     mender_free(payload);
     cJSON_Delete(inventory);

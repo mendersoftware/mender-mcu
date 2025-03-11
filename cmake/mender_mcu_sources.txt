@@ -83,6 +83,14 @@ if (NOT CONFIG_MENDER_PLATFORM_FLASH_TYPE)
 else()
     message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_FLASH_TYPE}' platform flash implementation")
 endif()
+if (CONFIG_MENDER_CLIENT_INVENTORY)
+  if (NOT CONFIG_MENDER_PLATFORM_INVENTORY_TYPE)
+    message(STATUS "Using default 'generic/weak' platform inventory implementation")
+    set(CONFIG_MENDER_PLATFORM_INVENTORY_TYPE "generic/weak")
+  else()
+    message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_INVENTORY_TYPE}' platform inventory implementation")
+  endif()
+endif()
 if (NOT CONFIG_MENDER_PLATFORM_LOG_TYPE)
     message(STATUS "Using default 'generic/weak' platform log implementation")
     set(CONFIG_MENDER_PLATFORM_LOG_TYPE "generic/weak")
@@ -148,6 +156,7 @@ file(GLOB MENDER_MCU_SOURCES
 if (CONFIG_MENDER_CLIENT_INVENTORY)
     list(APPEND MENDER_MCU_SOURCES
         "${MENDER_MCU_ROOT}/src/core/inventory.c"
+        "${MENDER_MCU_ROOT}/src/platform/inventory/${CONFIG_MENDER_PLATFORM_INVENTORY_TYPE}/inventory.c"
     )
 endif()
 if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)

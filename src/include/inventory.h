@@ -3,6 +3,7 @@
  * @brief     Mender MCU Inventory implementation (private API)
  *
  * Copyright joelguittet and mender-mcu-client contributors
+ * Copyright Northern.tech AS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +30,24 @@ extern "C" {
 /**
  * @brief Initialize mender inventory
  * @param interval The interval to perform inventory updates at
+ * @param device_type Device type
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_inventory_init(uint32_t interval);
+mender_err_t mender_inventory_init(uint32_t interval, const char *device_type);
+
+/**
+ * @brief Reset persistent inventory
+ * @return MENDER_OK in case of success, error code otherwise
+ * @note The persistent inventory callbacks are called to get fresh data the next time inventory data
+ *       is needed.
+ */
+mender_err_t mender_inventory_reset_persistent(void);
+
+/**
+ * @brief Add default inventory callbacks
+ * @return MENDER_OK in case of success, error code otherwise
+ */
+mender_err_t mender_inventory_add_default_callbacks(void);
 
 /**
  * @brief Activate mender inventory
@@ -45,6 +61,12 @@ mender_err_t mender_inventory_activate(void);
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
 mender_err_t mender_inventory_deactivate(void);
+
+/**
+ * @brief Trigger execution of the inventory work
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_inventory_execute(void);
 
 /**
  * @brief Release mender inventory

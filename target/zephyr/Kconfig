@@ -112,6 +112,18 @@ if MENDER_MCU_CLIENT
                     Interval used to periodically send inventory to the Mender server.
                     Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
 
+            config MENDER_CLIENT_INVENTORY_BUILD_INFO
+              bool "Build info built-in inventory"
+              default y
+              help
+                  Enable built-in build info inventory
+
+            config MENDER_CLIENT_INVENTORY_NETWORK_INFO
+              bool "Network info built-in inventory"
+              default y
+              help
+                  Enable built-in network info inventory
+
         endif
 
     endmenu
@@ -149,6 +161,23 @@ if MENDER_MCU_CLIENT
             string
             default "zephyr" if MENDER_PLATFORM_FLASH_TYPE_DEFAULT
             default "generic/weak" if MENDER_PLATFORM_FLASH_TYPE_WEAK
+
+        choice MENDER_PLATFORM_INVENTORY_TYPE
+            prompt "Mender platform inventory implementation type"
+            default MENDER_PLATFORM_INVENTORY_TYPE_DEFAULT
+            help
+                Specify platform inventory implementation type, select 'weak' to use you own implementation.
+
+            config MENDER_PLATFORM_INVENTORY_TYPE_DEFAULT
+                bool "default"
+            config MENDER_PLATFORM_INVENTORY_TYPE_WEAK
+                bool "weak"
+        endchoice
+
+        config MENDER_PLATFORM_INVENTORY_TYPE
+            string
+            default "zephyr" if MENDER_PLATFORM_INVENTORY_TYPE_DEFAULT
+            default "generic/weak" if MENDER_PLATFORM_INVENTORY_TYPE_WEAK
 
         choice MENDER_PLATFORM_LOG_TYPE
             prompt "Mender platform log implementation type"

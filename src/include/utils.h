@@ -129,6 +129,12 @@ void mender_utils_keystore_delete(mender_keystore_t *keystore, uint8_t keystore_
 mender_err_t mender_utils_key_value_list_free(mender_key_value_list_t *list);
 
 /**
+ * @brief Get linked list length
+ * @param list List to get the length of
+ */
+size_t mender_utils_key_value_list_length(const mender_key_value_list_t *list);
+
+/**
  * @brief Create a new key-value node
  */
 mender_err_t mender_utils_key_value_list_create_node(const char *type, const char *value, mender_key_value_list_t **list);

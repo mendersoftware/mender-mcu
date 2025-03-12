@@ -311,8 +311,9 @@ mender_storage_set_provides(mender_key_value_list_t *provides) {
 
 mender_err_t
 mender_storage_get_provides(mender_key_value_list_t **provides) {
-
     assert(NULL != provides);
+    assert(NULL == *provides); /* otherwise we prepend to a bad list going nowhere */
+
     size_t provides_length = 0;
 
     char *provides_str = NULL;

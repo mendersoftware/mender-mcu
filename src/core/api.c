@@ -405,7 +405,6 @@ END:
     mender_utils_key_value_list_free(provides);
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 #endif /* CONFIG_MENDER_PROVIDES_DEPENDS */
-    mender_free((void *)artifact_name);
     cJSON_Delete(json_payload);
     mender_free(payload);
     return ret;

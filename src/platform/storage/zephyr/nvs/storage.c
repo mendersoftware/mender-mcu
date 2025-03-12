@@ -388,11 +388,14 @@ mender_storage_get_artifact_name(const char **artifact_name) {
                 mender_log_error("Unable to allocate memory");
                 return MENDER_FAIL;
             }
+            cached_artifact_name = (char *)*artifact_name;
             return MENDER_OK;
 
         } else {
             mender_log_error("Unable to read artifact_name");
         }
+    } else {
+        cached_artifact_name = (char *)*artifact_name;
     }
 
     return ret;

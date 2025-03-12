@@ -1,5 +1,5 @@
 /**
- * @file      zephyr-image-update-module.c
+ * @file      update-module.c
  * @brief     The basic Zephyr update module based on MCUboot
  *
  * Copyright joelguittet and mender-mcu-client contributors

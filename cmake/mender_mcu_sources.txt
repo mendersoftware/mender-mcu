@@ -161,7 +161,7 @@ if (CONFIG_MENDER_CLIENT_INVENTORY)
 endif()
 if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
     list(APPEND MENDER_MCU_SOURCES
-        "${MENDER_MCU_ROOT}/src/core/zephyr-image-update-module.c"
+        "${MENDER_MCU_ROOT}/src/platform/update_modules/zephyr/image/update-module.c"
         "${MENDER_MCU_ROOT}/src/platform/flash/${CONFIG_MENDER_PLATFORM_FLASH_TYPE}/flash.c"
     )
 endif()

@@ -8,6 +8,7 @@ stages:
   - test
   - trigger
   - publish
+  - .post
 
 variables:
   # mender-artifact version for tests
@@ -156,23 +157,25 @@ publish:tests:
   dependencies:
     - test:unit
   before_script:
-    # Install dependencies
-    - apt update && apt install -yyq lcov
-    - pip install cpp-coveralls pyyaml
-
-    # eddyxu/cpp-coveralls appears dead, but there doesn't seem to be an
-    # alternative. Use this patch from someone who attempted to fix it. An
-    # alternative to this is to use pyyaml<6, but it's better to use just one
-    # old component than two.
-    - curl -f https://github.com/eddyxu/cpp-coveralls/commit/067c837c04e039e8c70aa53bceda1cded6751408.patch | patch -f /usr/local/lib/python3.11/site-packages/cpp_coveralls/__init__.py
-
-    # Set "TRAVIS_*" variables based on GitLab ones
-    - export TRAVIS_BRANCH=$CI_COMMIT_BRANCH
-    - export TRAVIS_JOB_ID=$CI_PIPELINE_ID
-
+    # https://github.com/coverallsapp/coverage-reporter
+    - wget -qO- https://coveralls.io/coveralls-linux.tar.gz | tar xz -C /usr/local/bin
+  variables:
+    COVERALLS_PARALLEL: true
+    COVERALLS_FLAG_NAME: "unit-tests"
+    COVERALLS_SERVICE_NAME: "gitlab-ci"
+    COVERALLS_GIT_COMMIT: $CI_COMMIT_SHA
+    COVERALLS_REPO_TOKEN: $COVERALLS_TOKEN
   script:
-    - 'echo "service_name: gitlab-ci" > .coveralls.yml'
-    - cpp-coveralls
-      --repo-token ${COVERALLS_TOKEN}
-      --no-gcov
-      --lcov-file coverage.lcov
+    - coveralls report --build-number $CI_PIPELINE_ID
+
+
+coveralls:finish-build:
+  stage: .post
+  variables:
+    COVERALLS_WEBHOOK_URL: "https://coveralls.io/webhook"
+    COVERALLS_RERUN_BUILD_URL: "https://coveralls.io/rerun_build"
+    COVERALLS_GIT_COMMIT: $CI_COMMIT_SHA
+  image: curlimages/curl-base
+  script:
+    - 'curl -k ${COVERALLS_WEBHOOK_URL}?repo_token=${COVERALLS_TOKEN} -d "payload[build_num]=$CI_PIPELINE_ID&payload[status]=done"'
+    - 'curl -k "${COVERALLS_RERUN_BUILD_URL}?repo_token=${COVERALLS_TOKEN}&build_num=${CI_PIPELINE_ID}"'

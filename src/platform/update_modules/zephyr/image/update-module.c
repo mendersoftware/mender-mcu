@@ -30,12 +30,12 @@
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data
  */
-static void *mcu_boot_flash_handle = NULL;
+static struct flash_img_context *mcu_boot_flash_handle = NULL;
 
 static bool artifact_had_payload;
 
 static mender_err_t
-mender_flash_open(const char *name, size_t size, void **handle) {
+mender_flash_open(const char *name, size_t size, struct flash_img_context **handle) {
     assert(NULL != name);
     assert(NULL != handle);
 
@@ -51,7 +51,7 @@ mender_flash_open(const char *name, size_t size, void **handle) {
     }
 
     /* Begin deployment with sequential writes */
-    if (0 != (result = flash_img_init((struct flash_img_context *)*handle))) {
+    if (0 != (result = flash_img_init(*handle))) {
         mender_log_error("flash_img_init failed (%d)", -result);
         return MENDER_FAIL;
     }
@@ -60,7 +60,7 @@ mender_flash_open(const char *name, size_t size, void **handle) {
 }
 
 static mender_err_t
-mender_flash_write(void *handle, const void *data, size_t index, size_t length) {
+mender_flash_write(struct flash_img_context *handle, const void *data, size_t index, size_t length) {
     (void)index;
 
     int result;
@@ -72,7 +72,7 @@ mender_flash_write(void *handle, const void *data, size_t index, size_t length) 
     }
 
     /* Write data received to the update partition */
-    if (0 != (result = flash_img_buffered_write((struct flash_img_context *)handle, (const uint8_t *)data, length, false))) {
+    if (0 != (result = flash_img_buffered_write(handle, (const uint8_t *)data, length, false))) {
         mender_log_error("flash_img_buffered_write failed (%d)", -result);
         return MENDER_FAIL;
     }
@@ -81,7 +81,7 @@ mender_flash_write(void *handle, const void *data, size_t index, size_t length) 
 }
 
 static mender_err_t
-mender_flash_close(void *handle) {
+mender_flash_close(struct flash_img_context *handle) {
     int result;
 
     /* Check flash handle */
@@ -91,7 +91,7 @@ mender_flash_close(void *handle) {
     }
 
     /* Flush data received to the update partition */
-    if (0 != (result = flash_img_buffered_write((struct flash_img_context *)handle, NULL, 0, true))) {
+    if (0 != (result = flash_img_buffered_write(handle, NULL, 0, true))) {
         mender_log_error("flash_img_buffered_write failed (%d)", -result);
         return MENDER_FAIL;
     }
@@ -100,7 +100,7 @@ mender_flash_close(void *handle) {
 }
 
 static mender_err_t
-mender_flash_set_pending_image(void **handle) {
+mender_flash_set_pending_image(struct flash_img_context **handle) {
     int result;
 
     /* Check flash handle */
@@ -125,7 +125,7 @@ mender_flash_set_pending_image(void **handle) {
 }
 
 static mender_err_t
-mender_flash_abort_deployment(void **handle) {
+mender_flash_abort_deployment(struct flash_img_context **handle) {
     /* Release memory */
     FREE_AND_NULL(*handle);
 

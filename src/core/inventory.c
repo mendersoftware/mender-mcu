@@ -136,9 +136,13 @@ mender_inventory_activate(void) {
 
 mender_err_t
 mender_inventory_deactivate(void) {
+    mender_err_t ret;
 
     /* Deactivate mender inventory work */
-    mender_os_scheduler_work_deactivate(mender_inventory_work);
+    if (MENDER_OK != (ret = mender_os_scheduler_work_deactivate(mender_inventory_work))) {
+        mender_log_error("Failed to deactivate inventory work");
+        return ret;
+    }
 
     return MENDER_OK;
 }

@@ -419,16 +419,35 @@ mender_client_network_release(void) {
 }
 
 mender_err_t
+mender_client_deactivate(void) {
+    mender_err_t ret;
+
+    if (NULL != mender_client_work) {
+        if (MENDER_OK != (ret = mender_os_scheduler_work_deactivate(mender_client_work))) {
+            mender_log_error("Failed to deactivate main work");
+            return ret;
+        }
+    }
+#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+    if (MENDER_OK != (ret = mender_inventory_deactivate())) {
+        /* error already logged */
+        return ret;
+    }
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+
+    return MENDER_OK;
+}
+
+mender_err_t
 mender_client_exit(void) {
     bool some_error = false;
 
-    if (NULL != mender_client_work) {
-        if (MENDER_OK != mender_os_scheduler_work_deactivate(mender_client_work)) {
-            mender_log_error("Failed to deactivate main work");
-            /* keep going on, we want to do as much cleanup as possible */
-            some_error = true;
-        }
+    if (MENDER_OK != mender_client_deactivate()) {
+        /* error already logged; keep going on, we want to do as much cleanup as possible */
+        some_error = true;
+    }
 
+    if (NULL != mender_client_work) {
         if (MENDER_OK != mender_os_scheduler_work_delete(mender_client_work)) {
             mender_log_error("Failed to delete main work");
             /* keep going on, we want to do as much cleanup as possible */

@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(CONFIG_MENDER_PLATFORM_FLASH_TYPE "posix" CACHE STRING "Flash type")
 set(CONFIG_MENDER_PLATFORM_LOG_TYPE "posix" CACHE STRING "Log type")
 set(CONFIG_MENDER_PLATFORM_NET_TYPE "generic/curl" CACHE STRING "Network type")
 set(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE "posix" CACHE STRING "Scheduler type")

@@ -163,6 +163,7 @@ publish:tests:
     COVERALLS_PARALLEL: true
     COVERALLS_FLAG_NAME: "unit-tests"
     COVERALLS_SERVICE_NAME: "gitlab-ci"
+    COVERALLS_GIT_BRANCH: $CI_COMMIT_BRANCH
     COVERALLS_GIT_COMMIT: $CI_COMMIT_SHA
     COVERALLS_REPO_TOKEN: $COVERALLS_TOKEN
   script:
@@ -174,6 +175,7 @@ coveralls:finish-build:
   variables:
     COVERALLS_WEBHOOK_URL: "https://coveralls.io/webhook"
     COVERALLS_RERUN_BUILD_URL: "https://coveralls.io/rerun_build"
+    COVERALLS_GIT_BRANCH: $CI_COMMIT_BRANCH
     COVERALLS_GIT_COMMIT: $CI_COMMIT_SHA
   image: curlimages/curl-base
   script:

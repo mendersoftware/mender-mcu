@@ -1,5 +1,5 @@
 /**
- * @file      zephyr-image-update-module.c
+ * @file      update-module.c
  * @brief     The basic Zephyr update module based on MCUboot
  *
  * Copyright joelguittet and mender-mcu-client contributors
@@ -18,18 +18,149 @@
  * limitations under the License.
  */
 
+#include <zephyr/dfu/flash_img.h>
+#include <zephyr/dfu/mcuboot.h>
+
 #include "client.h"
-#include "flash.h"
 #include "log.h"
 #include "update-module.h"
+#include "utils.h"
 #include "zephyr-image-update-module.h"
 
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data
  */
-static void *mcu_boot_flash_handle = NULL;
+static struct flash_img_context *mcu_boot_flash_handle = NULL;
 
 static bool artifact_had_payload;
+
+static mender_err_t
+mender_flash_open(const char *name, size_t size, struct flash_img_context **handle) {
+    assert(NULL != name);
+    assert(NULL != handle);
+
+    int result;
+
+    /* Print current file name and size */
+    mender_log_info("Start flashing artifact '%s' with size %d", name, size);
+
+    /* Allocate memory to store the flash handle */
+    if (NULL == (*handle = mender_malloc(sizeof(struct flash_img_context)))) {
+        mender_log_error("Unable to allocate memory");
+        return MENDER_FAIL;
+    }
+
+    /* Begin deployment with sequential writes */
+    if (0 != (result = flash_img_init(*handle))) {
+        mender_log_error("flash_img_init failed (%d)", -result);
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_flash_write(struct flash_img_context *handle, const void *data, size_t index, size_t length) {
+    (void)index;
+
+    int result;
+
+    /* Check flash handle */
+    if (NULL == handle) {
+        mender_log_error("Invalid flash handle");
+        return MENDER_FAIL;
+    }
+
+    /* Write data received to the update partition */
+    if (0 != (result = flash_img_buffered_write(handle, (const uint8_t *)data, length, false))) {
+        mender_log_error("flash_img_buffered_write failed (%d)", -result);
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_flash_close(struct flash_img_context *handle) {
+    int result;
+
+    /* Check flash handle */
+    if (NULL == handle) {
+        mender_log_error("Invalid flash handle");
+        return MENDER_FAIL;
+    }
+
+    /* Flush data received to the update partition */
+    if (0 != (result = flash_img_buffered_write(handle, NULL, 0, true))) {
+        mender_log_error("flash_img_buffered_write failed (%d)", -result);
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_flash_set_pending_image(struct flash_img_context **handle) {
+    int result;
+
+    /* Check flash handle */
+    if (NULL != *handle) {
+
+        /* Set new boot partition */
+        if (0 != (result = boot_request_upgrade(BOOT_UPGRADE_TEST))) {
+            mender_log_error("boot_request_upgrade failed (%d)", -result);
+            return MENDER_FAIL;
+        }
+
+        /* Release memory */
+        FREE_AND_NULL(*handle);
+    } else {
+
+        /* This should not happen! */
+        mender_log_error("boot_request_upgrade not called, handle is NULL");
+        return MENDER_NOT_FOUND;
+    }
+
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_flash_abort_deployment(struct flash_img_context **handle) {
+    /* Release memory */
+    FREE_AND_NULL(*handle);
+
+    return MENDER_OK;
+}
+
+static bool
+mender_flash_is_image_confirmed(void) {
+    /* Check if the image is still pending */
+    return boot_is_img_confirmed();
+}
+
+static mender_err_t
+mender_flash_confirm_image(void) {
+    /* Validate the image if it is still pending */
+    if (!mender_flash_is_image_confirmed()) {
+        /* It's safe to call boot_write_img_confirmed() even though the current
+         * image has already been confirmed. The check above is primarily to
+         * control when the info message below is logged. */
+        int result;
+        if (0 != (result = boot_write_img_confirmed())) {
+            mender_log_error("Unable to mark application valid, application will rollback (%d)", -result);
+            return MENDER_FAIL;
+        }
+        mender_log_info("Application has been mark valid and rollback canceled");
+    } else {
+
+        /* This should not happen: if there is no pending image the deployment should
+           have been already aborted in Artifact Verify Reboot state. */
+        mender_log_error("Commit requested but there is no pending image con confirm");
+        return MENDER_NOT_FOUND;
+    }
+
+    return MENDER_OK;
+}
 
 /**
  * @brief Callback function to be invoked to perform the treatment of the data from the artifact type "zephyr-image"

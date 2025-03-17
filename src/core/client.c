@@ -561,10 +561,14 @@ mender_client_work_function(void) {
     return MENDER_FAIL;
 }
 
+/* Flag to indicate whether a deployment has had a spontaneous reboot */
+static bool spontaneous_reboot;
+
 static mender_err_t
 mender_client_initialization_work_function(void) {
 
-    mender_err_t ret = MENDER_DONE;
+    mender_err_t ret   = MENDER_DONE;
+    spontaneous_reboot = false;
 
     /* Retrieve or generate authentication keys */
     if (MENDER_OK != (ret = mender_tls_init_authentication_keys(mender_client_callbacks.get_user_provided_keys, mender_client_config.recommissioning))) {
@@ -577,6 +581,16 @@ mender_client_initialization_work_function(void) {
         if (MENDER_NOT_FOUND != ret) {
             mender_log_error("Unable to get deployment data");
             goto REBOOT;
+        }
+    }
+
+    /* Handle spontaneous reboots in  MENDER_UPDATE_STATE_INSTALL and MENDER_UPDATE_STATE_COMMIT
+     See https://docs.mender.io/artifact-creation/state-scripts#power-loss */
+    mender_update_state_t update_state;
+    if (MENDER_OK == (ret = mender_deployment_data_get_state(mender_client_deployment_data, &update_state))) {
+        if ((MENDER_UPDATE_STATE_INSTALL == update_state) || (MENDER_UPDATE_STATE_COMMIT == update_state)) {
+            mender_log_debug("Spontaneous reboot detected in state %s", update_state_str[update_state]);
+            spontaneous_reboot = true;
         }
     }
 
@@ -1014,6 +1028,12 @@ mender_client_update_work_function(void) {
         continue;                                                              \
     }
 
+    if (spontaneous_reboot) {
+        mender_log_error("Failing deployment, spontaneous reboot detected");
+        spontaneous_reboot = false;
+        update_state       = update_state_transitions[update_state].failure;
+        mender_log_debug("Entering state %s", update_state_str[update_state]);
+    }
     while (MENDER_UPDATE_STATE_END != update_state) {
         switch (update_state) {
             case MENDER_UPDATE_STATE_DOWNLOAD:

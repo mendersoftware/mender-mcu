@@ -159,6 +159,9 @@ mender_storage_init(void) {
         mender_log_error("Unable to mount NVS storage, result = %d", result);
         return MENDER_FAIL;
     }
+    mender_log_debug("Initialized Mender NVS with %u sectors (%zu bytes available)",
+                     mender_storage_nvs_handle.sector_count,
+                     (mender_storage_nvs_handle.sector_count - 1) * mender_storage_nvs_handle.sector_size);
 
     return MENDER_OK;
 }

@@ -26,12 +26,17 @@
 #include "log.h"
 #include "storage.h"
 
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+#include <zephyr/fs/fcb.h>
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
 /**
  * @brief NVS storage
  */
-#define MENDER_STORAGE_LABEL  storage_partition
-#define MENDER_STORAGE_DEVICE FIXED_PARTITION_DEVICE(MENDER_STORAGE_LABEL)
-#define MENDER_STORAGE_OFFSET FIXED_PARTITION_OFFSET(MENDER_STORAGE_LABEL)
+#define MENDER_STORAGE_LABEL      storage_partition
+#define MENDER_STORAGE_DEVICE     FIXED_PARTITION_DEVICE(MENDER_STORAGE_LABEL)
+#define MENDER_STORAGE_OFFSET     FIXED_PARTITION_OFFSET(MENDER_STORAGE_LABEL)
+#define MENDER_STORAGE_FLASH_AREA FIXED_PARTITION_ID(MENDER_STORAGE_LABEL)
 
 /**
  * @brief NVS keys
@@ -51,6 +56,28 @@ static char *cached_artifact_name = NULL;
  * @brief NVS storage handle
  */
 static struct nvs_fs mender_storage_nvs_handle;
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+/* just some fixed magic value the FCB implementation uses to mark
+   in-use/erased/... sectors */
+#define DEPLOYMENT_LOGS_MAGIC_VALUE 0x2AABEE35
+
+/**
+ * @brief A Flash Circular Buffer for storing deployment logs
+ */
+static struct fcb depl_logs_buffer;
+
+#define DEPL_LOGS_MAX_MSG_LEN 255
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
+/**
+ * @brief Flash sectors used by Mender
+ */
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+static struct flash_sector flash_sectors[CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT + CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS];
+#else
+static struct flash_sector flash_sectors[CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT];
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
 static mender_err_t
 nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
@@ -136,8 +163,8 @@ crc_check(const unsigned char *data, const size_t data_len) {
 
 mender_err_t
 mender_storage_init(void) {
-
-    int result;
+    int      result;
+    uint32_t n_sectors;
 
     /* Get flash info */
     mender_storage_nvs_handle.flash_device = MENDER_STORAGE_DEVICE;
@@ -145,13 +172,24 @@ mender_storage_init(void) {
         mender_log_error("Flash device not ready");
         return MENDER_FAIL;
     }
-    struct flash_pages_info info;
-    mender_storage_nvs_handle.offset = MENDER_STORAGE_OFFSET;
-    if (0 != flash_get_page_info_by_offs(mender_storage_nvs_handle.flash_device, mender_storage_nvs_handle.offset, &info)) {
-        mender_log_error("Unable to get storage page info");
+
+    n_sectors = sizeof(flash_sectors) / sizeof(flash_sectors[0]);
+    result    = flash_area_get_sectors(MENDER_STORAGE_FLASH_AREA, &n_sectors, flash_sectors);
+    if ((0 != result) && (-ENOMEM != result)) {
+        /* -ENOMEM means there were more sectors than the supplied size of the
+            sector array (flash_sectors), but we don't worry about that, we just
+            need the info about the first N sectors we want to use. */
+        mender_log_error("Failed to get info about flash sectors in the Mender flash area [%d]", -result);
         return MENDER_FAIL;
     }
-    mender_storage_nvs_handle.sector_size  = (uint16_t)info.size;
+    if (n_sectors != (sizeof(flash_sectors) / sizeof(flash_sectors[0]))) {
+        mender_log_error(
+            "Not enough sectors on the flash for Mender (required: %" PRIu32 "d, available: %zu)", sizeof(flash_sectors) / sizeof(flash_sectors[0]), n_sectors);
+        return MENDER_FAIL;
+    }
+
+    mender_storage_nvs_handle.offset       = MENDER_STORAGE_OFFSET;
+    mender_storage_nvs_handle.sector_size  = (uint16_t)flash_sectors[0].fs_size;
     mender_storage_nvs_handle.sector_count = CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT;
 
     /* Mount NVS */
@@ -161,10 +199,157 @@ mender_storage_init(void) {
     }
     mender_log_debug("Initialized Mender NVS with %u sectors (%zu bytes available)",
                      mender_storage_nvs_handle.sector_count,
-                     (mender_storage_nvs_handle.sector_count - 1) * mender_storage_nvs_handle.sector_size);
+                     (size_t)(mender_storage_nvs_handle.sector_count - 1) * mender_storage_nvs_handle.sector_size);
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+    /* Initialize the Flash Circular Buffer (FCB) for deployment logs. */
+
+    depl_logs_buffer.f_magic       = DEPLOYMENT_LOGS_MAGIC_VALUE;
+    depl_logs_buffer.f_version     = 0; /* we don't version the data so 0 always */
+    depl_logs_buffer.f_sector_cnt  = CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS;
+    depl_logs_buffer.f_scratch_cnt = 0; /* no scratch sector, we don't use it */
+    depl_logs_buffer.f_sectors     = flash_sectors + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT;
+
+    if (0 != (result = fcb_init(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &depl_logs_buffer))) {
+        mender_log_debug("Failed to initialize deployment logs FCB, erasing the particular flash area");
+
+        const struct flash_area *fap;
+        if (0 != (result = flash_area_open(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
+            mender_log_error("Unable to open the Mender storage flash area");
+            return MENDER_FAIL;
+        }
+
+        /* flatten means: Erase flash area or fill with erase-value. */
+        result = flash_area_flatten(
+            fap, depl_logs_buffer.f_sectors[0].fs_off, depl_logs_buffer.f_sectors[0].fs_off * CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS);
+        flash_area_close(fap);
+        if (0 != result) {
+            mender_log_error("Failed to erase the flash area for deployment logs");
+        }
+        /* Now, try again. */
+        if (0 != (result = fcb_init(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &depl_logs_buffer))) {
+            mender_log_error("Unable to initialize the Flash Circular Buffer for deployment logs [%d]", -result);
+            return MENDER_FAIL;
+        }
+    }
+    mender_log_debug("Initialized deployment logs FCB with %u sectors (%zu bytes available)",
+                     depl_logs_buffer.f_sector_cnt,
+                     (depl_logs_buffer.f_sector_cnt - 1) * mender_storage_nvs_handle.sector_size);
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
     return MENDER_OK;
 }
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+static mender_err_t
+get_next_fcb_entry(const struct flash_area *fap, struct fcb_entry *entry, size_t msg_size) {
+    int result = fcb_append(&depl_logs_buffer, msg_size, entry);
+    if (-ENOSPC == result) {
+        /* If no space, rotate the FCB (drop/erase one sector of data and start
+           writing to it from the start) */
+        if (0 != (result = fcb_rotate(&depl_logs_buffer))) {
+            mender_log_error("Failed to rotate the deployment logs FCB");
+            return MENDER_FAIL;
+        }
+        const char rotation_msg[] = "<wrn> ------- DEPLOYMENT LOGS ROTATED -------";
+        result                    = fcb_append(&depl_logs_buffer, sizeof(rotation_msg), entry);
+        if (0 != (result = flash_area_write(fap, entry->fe_sector->fs_off + entry->fe_data_off, rotation_msg, sizeof(rotation_msg)))) {
+            mender_log_error("Failed to write message to the FCB entry [%d]", -result);
+            return MENDER_FAIL;
+        }
+        result = fcb_append_finish(&depl_logs_buffer, entry);
+        if (0 != result) {
+            mender_log_error("Failed to finish append of a rotation entry to the deployment logs FCB");
+            return MENDER_FAIL;
+        }
+
+        result = fcb_append(&depl_logs_buffer, msg_size, entry);
+    }
+    return (0 == result) ? MENDER_OK : MENDER_FAIL;
+}
+
+mender_err_t
+mender_storage_deployment_log_append(const char *msg, size_t msg_size) {
+    int          result;
+    mender_err_t ret = MENDER_OK;
+
+    msg_size = MIN(DEPL_LOGS_MAX_MSG_LEN + 1, msg_size);
+
+    const struct flash_area *fap;
+    if (0 != (result = flash_area_open(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
+        mender_log_error("Unable to open the Mender storage flash area [%d]", -result);
+        return MENDER_FAIL;
+    }
+
+    struct fcb_entry entry = { 0 };
+    if (MENDER_OK != get_next_fcb_entry(fap, &entry, msg_size)) {
+        mender_log_error("Failed to append a new entry to the deployment logs FCB");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+    /* else success, proceed */
+    if (0 != (result = flash_area_write(fap, entry.fe_sector->fs_off + entry.fe_data_off, msg, msg_size))) {
+        mender_log_error("Failed to write message to the FCB entry [%d]", -result);
+        ret = MENDER_FAIL;
+        goto END;
+    }
+    result = fcb_append_finish(&depl_logs_buffer, &entry);
+    if (0 != result) {
+        mender_log_error("Failed to finish append of a new entry to the deployment logs FCB");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+
+END:
+    flash_area_close(fap);
+
+    return ret;
+}
+
+mender_err_t
+mender_storage_deployment_log_walk(MenderDeploymentLogVisitor visitor_fn, void *ctx) {
+    mender_err_t ret = MENDER_OK;
+    int          result;
+    char         msg[DEPL_LOGS_MAX_MSG_LEN + 1];
+
+    const struct flash_area *fap;
+    if (0 != (result = flash_area_open(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
+        mender_log_error("Unable to open the Mender storage flash area");
+        return MENDER_FAIL;
+    }
+
+    struct fcb_entry entry = { 0 };
+    result                 = fcb_getnext(&depl_logs_buffer, &entry);
+    while (0 == result) {
+        if (0 != (result = flash_area_read(fap, entry.fe_sector->fs_off + entry.fe_data_off, (void *)msg, MIN(DEPL_LOGS_MAX_MSG_LEN, entry.fe_data_len)))) {
+            mender_log_error("Failed to read FCB entry from flash [%d]", -result);
+            ret = MENDER_FAIL;
+            goto END;
+        }
+        msg[MIN(DEPL_LOGS_MAX_MSG_LEN, entry.fe_data_len)] = '\0';
+        visitor_fn(msg, ctx);
+        result = fcb_getnext(&depl_logs_buffer, &entry);
+    }
+    if (-ENOTSUP != result) {
+        /* -ENOTSUP seems to be the error returned when there's no more data in
+            an FCB (see zephyr/subsys/fs/fcb/fcb_getnext.c) */
+        mender_log_error("Failed to iterate over saved deployment logs [%d]", -result);
+        ret = MENDER_FAIL;
+        goto END;
+    }
+
+END:
+    flash_area_close(fap);
+
+    return ret;
+}
+
+mender_err_t
+mender_storage_deployment_log_clear(void) {
+    int result = fcb_clear(&depl_logs_buffer);
+    return (0 == result) ? MENDER_OK : MENDER_FAIL;
+}
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
 mender_err_t
 mender_storage_set_authentication_keys(unsigned char *private_key, size_t private_key_length, unsigned char *public_key, size_t public_key_length) {

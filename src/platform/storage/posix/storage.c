@@ -22,6 +22,10 @@
 #include "log.h"
 #include "storage.h"
 
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+#error Deployment logs not implemented on POSIX (MEN-8258)
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
 /**
  * @brief Default storage path (working directory)
  */

@@ -146,6 +146,11 @@ To use the `zephyr-image` Update Module, you need a board that supports
 MCUboot. The following link will filter the officially supported boards that also support MCUboot:
 * [Zephyr Project supported boards with MCU boot](https://docs.zephyrproject.org/latest/gsearch.html?q=MCUboot&check_keywords=yes&area=default#gsc.tab=0&gsc.q=MCUboot&gsc.ref=more%3Aboards&gsc.sort=)
 
+The Update Module requires a swap algorithm in order to allow rollbacks to revert to the previous image.
+The [MCUboot documentation](https://docs.mcuboot.com/readme-zephyr.html) recommends against using the
+`swap-using-scratch algorithm`, which also requires its own `scratch_partition`. We therefore require
+`MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` to be enabled in order to use the Update Module.
+
 #### Update Modules State Machine
 
 As stated above, an Update Module for Mender MCU is set of customizable C functions. Concretely,

@@ -146,11 +146,6 @@ mender_http_perform(char                *jwt,
     request.recv_buf_len = mender_http_recv_buf_length;
 
     /* Add headers */
-    host_header = header_alloc_and_add(header_fields, header_fields_size, "Host: %s\r\n", host);
-    if (NULL == host_header) {
-        mender_log_error("Unable to add 'Host' header");
-        goto END;
-    }
 
     if (MENDER_FAIL == header_add(header_fields, header_fields_size, MENDER_HEADER_HTTP_USER_AGENT)) {
         mender_log_error("Unable to add 'User-Agent' header");

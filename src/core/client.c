@@ -988,6 +988,16 @@ mender_client_update_work_function(void) {
             && MENDER_OK == mender_deployment_data_get_payload_type(mender_client_deployment_data, &artifact_type)) {
             update_state = update_state_resume;
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+            if (MENDER_UPDATE_STATE_DOWNLOAD != update_state) {
+                if (MENDER_OK != mender_deployment_logs_activate()) {
+                    mender_log_error("Failed to activate deployment logs saving");
+                    /* Not a fatal issue to abort the deployment, keep going. */
+                }
+            }
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
             mender_update_module = mender_update_module_get(artifact_type);
             if (NULL == mender_update_module) {
                 /* The artifact_type from the saved state does not match any update module */
@@ -1049,6 +1059,17 @@ mender_client_update_work_function(void) {
                     }
                     goto END;
                 }
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+                if (MENDER_OK != mender_storage_deployment_log_clear()) {
+                    mender_log_error("Failed to clean old deployment logs");
+                    /* Not a fatal issue to abort the deployment, keep going. */
+                }
+                if (MENDER_OK != mender_deployment_logs_activate()) {
+                    mender_log_error("Failed to activate deployment logs saving");
+                    /* Not a fatal issue to abort the deployment, keep going. */
+                }
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
                 if (strlen(deployment->id) > 10) {
@@ -1282,6 +1303,10 @@ END:
     deployment_destroy(deployment);
     DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
     mender_artifact_release_ctx(mender_artifact_ctx);
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+    mender_deployment_logs_deactivate();
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
     return ret;
 }

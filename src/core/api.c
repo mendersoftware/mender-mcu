@@ -127,12 +127,13 @@ mender_api_ensure_authenticated(void) {
         /* Error already logged. */
         return MENDER_FAIL;
     }
+    bool authenticated = ((MENDER_OK == ret) || (MENDER_DONE == ret));
 
     if (MENDER_OK != (ret = mender_os_mutex_give(auth_lock))) {
         mender_log_error("Unable to release the authentication lock");
     }
 
-    return ret;
+    return authenticated ? ret : MENDER_FAIL;
 }
 
 static mender_err_t

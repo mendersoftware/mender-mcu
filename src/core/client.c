@@ -1063,11 +1063,13 @@ mender_client_update_work_function(void) {
                 /* Check ret to see if the deployment is aborted */
                 ret = mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
                 if ((MENDER_ABORTED != ret)
-                    && (MENDER_OK == (ret = mender_download_artifact(deployment->uri, mender_client_deployment_data, &mender_update_module)))) {
+                    && (MENDER_OK
+                        == (ret = mender_download_artifact(deployment->uri, mender_client_deployment_data, &mender_update_module, &mender_artifact_ctx)))) {
                     assert(NULL != mender_update_module);
+                    assert(NULL != mender_artifact_ctx);
 
                     /* Get artifact context if artifact download succeeded */
-                    if ((NULL != mender_update_module) && (MENDER_OK == (ret = mender_artifact_get_ctx(&mender_artifact_ctx)))) {
+                    if ((NULL != mender_update_module) && (NULL != mender_artifact_ctx)) {
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
                         if (MENDER_OK == (ret = mender_check_artifact_requirements(mender_artifact_ctx, deployment))) {
 #ifdef CONFIG_MENDER_PROVIDES_DEPENDS

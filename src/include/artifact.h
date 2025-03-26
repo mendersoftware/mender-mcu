@@ -148,6 +148,11 @@ mender_err_t mender_artifact_check_integrity_and_remove_item(mender_artifact_ctx
 mender_err_t mender_artifact_check_integrity_remaining(mender_artifact_ctx_t *ctx);
 
 /**
+ * @brief Compact the artifact context by dropping its auxiliary buffers
+ */
+void mender_artifact_compact_ctx(mender_artifact_ctx_t *ctx);
+
+/**
  * @brief Function used to release artifact context
  * @param ctx Artifact context
  */

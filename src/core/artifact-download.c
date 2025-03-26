@@ -37,8 +37,9 @@ mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_d
     assert(NULL != deployment_data);
     assert(NULL != update_module);
 
-    mender_err_t ret;
-    int          status = 0;
+    mender_err_t           ret;
+    int                    status = 0;
+    mender_artifact_ctx_t *artifact_ctx;
 
     mender_artifact_download_data_t dl_data = {
         .deployment                 = deployment_data,
@@ -47,7 +48,15 @@ mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_d
     };
 
     /* Perform HTTP request */
-    if (MENDER_OK != (ret = mender_http_artifact_download(uri, &dl_data, &status))) {
+    ret = mender_http_artifact_download(uri, &dl_data, &status);
+    if (MENDER_OK == mender_artifact_get_ctx(&artifact_ctx)) {
+        /* Download done (one way or another), we can drop the auxiliary buffers
+           from the artifact context. */
+        assert(NULL != artifact_ctx);
+        mender_artifact_compact_ctx(artifact_ctx);
+    }
+
+    if (MENDER_OK != ret) {
         mender_log_error("Unable to perform HTTP request");
         mender_err_count_net_inc();
         return ret;

@@ -262,13 +262,24 @@ mender_zephyr_image_register_update_module());
 #### Enabling Inventory
 Inventory is enabled/disabled by setting the `MENDER_CLIENT_INVENTORY` option.
 
-To use inventory, you will need a `mender_keystore_t` struct, which is defined in [mender-client.h](include/mender-client.h).
-This struct contains the inventory of the client, and is enabled in the code by calling `mender_inventory_set`.
+Inventory is added through user-provided callbacks. The data provided by the callbacks
+can be marked as persistent, meaning static data that doesn't change is only set once, or dynamic,
+which means fresh data is always obtained and sent at the specified inventory refresh interval.
 
-Example:
+You can add an inventory callback by calling
+`mender_inventory_add_callback`, which is defined in the [inventory API](include/mender/inventory.h).
+
+Example of adding a persistent callback:
 ```c
-mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "bar" }, { .name = NULL, .value = NULL } };
-mender_inventory_set(inventory));
+static mender_err_t
+persistent_inventory_cb(mender_keystore_t **keystore, uint8_t *keystore_len) {
+    static mender_keystore_t inventory[] = { { .name = "Name", .value = "Example value" } };
+    *keystore = inventory;
+    *keystore_len = 1;
+    return MENDER_OK;
+}
+
+mender_inventory_add_callback(persistent_inventory_cb, true);
 ```
 
 #### Activating the Client

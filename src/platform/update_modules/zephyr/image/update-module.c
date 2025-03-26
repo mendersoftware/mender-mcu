@@ -18,14 +18,19 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <zephyr/dfu/flash_img.h>
 #include <zephyr/dfu/mcuboot.h>
+#include <zephyr/storage/flash_map.h>
 
 #include "client.h"
 #include "log.h"
 #include "update-module.h"
 #include "utils.h"
 #include "zephyr-image-update-module.h"
+
+#define MENDER_SLOT_PARTITION_0 FIXED_PARTITION_ID(slot0_partition)
+#define MENDER_SLOT_PARTITION_1 FIXED_PARTITION_ID(slot1_partition)
 
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data
@@ -298,6 +303,14 @@ mender_zephyr_image_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t 
         return ret;
     }
     artifact_had_payload = false;
+
+    int rc;
+    if (boot_is_img_confirmed()) {
+        if ((rc = boot_erase_img_bank(MENDER_SLOT_PARTITION_1)) < 0) {
+            mender_log_error("Failed to erase second slot (result = %d, errno = %s)", rc, strerror(errno));
+            return MENDER_FAIL;
+        }
+    }
     return MENDER_OK;
 }
 

@@ -24,6 +24,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#include "artifact.h"
 #include "deployment-data.h"
 #include "update-module.h"
 #include "utils.h"
@@ -33,8 +34,12 @@ extern "C" {
  * @param uri URI to download the artifact from
  * @param deployment_data Deployment data to extend with artifact metadata
  * @param update_module A place to store the update module selected for the artifact
+ * @param artifact_ctx A place to store the the artifact context representing the artifact
  */
-mender_err_t mender_download_artifact(const char *uri, mender_deployment_data_t *deployment_data, mender_update_module_t **update_module);
+mender_err_t mender_download_artifact(const char               *uri,
+                                      mender_deployment_data_t *deployment_data,
+                                      mender_update_module_t  **update_module,
+                                      mender_artifact_ctx_t   **artifact_ctx);
 
 #ifdef __cplusplus
 }

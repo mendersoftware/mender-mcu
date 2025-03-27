@@ -531,6 +531,17 @@ mender_artifact_process_data(mender_artifact_ctx_t *ctx, void *input_data, size_
 }
 
 void
+mender_artifact_compact_ctx(mender_artifact_ctx_t *ctx) {
+    if (NULL == ctx) {
+        return;
+    }
+    FREE_AND_NULL(ctx->input.data);
+    ctx->input.length = 0;
+    ctx->input.size   = 0;
+    FREE_AND_NULL(ctx->file.name);
+}
+
+void
 mender_artifact_release_ctx(mender_artifact_ctx_t *ctx) {
 
     /* Release memory */

@@ -29,4 +29,9 @@ if(CONFIG_MENDER_MCU_CLIENT)
     zephyr_library_compile_definitions(-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\")
     zephyr_library_compile_definitions(-D_POSIX_C_SOURCE=200809L)  # Required for strdup and strtok_r support
     zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
+
+    if(CONFIG_MENDER_ARTIFACT_GENERATE)
+        include(${CMAKE_CURRENT_LIST_DIR}/mender-artifact.cmake)
+    endif()
+
 endif()

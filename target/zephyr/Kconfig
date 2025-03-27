@@ -149,6 +149,78 @@ if MENDER_MCU_CLIENT
                 the bootloader configuration, e.g. `sysbuild.conf` if you're using sysbuild.
     endmenu
 
+    menuconfig MENDER_ARTIFACT_GENERATE
+        bool "Mender Artifact generation"
+        default y
+            help
+                Auto-generates a Mender Artifact from the Zephyr kernel image. It requires the mender-artifact CLI tool
+                installed in the workstation.
+
+        if MENDER_ARTIFACT_GENERATE
+
+            config MENDER_ARTIFACT_NAME
+                string "Name of the artifact"
+                help
+                    Name of the artifact. Mandatory.
+
+            config MENDER_ARTIFACT_TYPE
+                string "Type of payload"
+                default "zephyr-image" if MENDER_ZEPHYR_IMAGE_UPDATE_MODULE
+                help
+                    This is the same as the name of the update module. Mandatory.
+
+            config MENDER_DEVICE_TYPES_COMPATIBLE
+                string "Type of device(s) supported by the Artifact"
+                default MENDER_DEVICE_TYPE
+                help
+                    It can specify more than one device types separated by spaces. Mandatory.
+
+            config MENDER_ARTIFACT_PROVIDES
+                string "Generic KEY:VALUE which is added to the type-info -> artifact_provides section."
+                default ""
+                help
+                    It can specify more than one provides separated by spaces.
+
+            config MENDER_ARTIFACT_DEPENDS
+                string "Generic KEY:VALUE which is added to the type-info -> artifact_depends section.."
+                default ""
+                help
+                    It can specify more than one depends separated by spaces.
+
+            config MENDER_ARTIFACT_SOFTWARE_FILESYSTEM
+                string "Base identifier for the device software"
+                default "firmware"
+                help
+                    See also MENDER_ARTIFACT_SOFTWARE_NAME. The default Artifact provides will be composed
+                    as MENDER_ARTIFACT_SOFTWARE_FILESYSTEM.MENDER_ARTIFACT_SOFTWARE_NAME.version=...
+
+            config MENDER_ARTIFACT_SOFTWARE_NAME
+                string "Update type identifier for the device software"
+                default MENDER_ARTIFACT_TYPE
+                help
+                    See also MENDER_ARTIFACT_SOFTWARE_FILESYSTEM. The default Artifact provides will be composed
+                    as MENDER_ARTIFACT_SOFTWARE_FILESYSTEM.MENDER_ARTIFACT_SOFTWARE_NAME.version=...
+
+            config MENDER_ARTIFACT_EXTRA_ARGS
+                string "Extra arguments for the Mender Artifact"
+                default ""
+                help
+                    Passed verbatim to the mender-artifact CLI
+
+            config MENDER_ARTIFACT_PAYLOAD_FILE
+                string "User defined payload file for the Mender Artifact"
+                default ""
+                help
+                    When not defined, the payload is the MCUBoot signed binary at ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.signed.bin
+
+            config MENDER_ARTIFACT_OUTPUT_FILE
+                string "User defined output Mender Artifact file"
+                default ""
+                help
+                    When not defined, the ouput file is ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender
+
+        endif
+
     menu "Platform configuration (ADVANCED)"
 
         choice MENDER_PLATFORM_INVENTORY_TYPE

@@ -106,7 +106,7 @@ See descriptions of the options in the menuconfig for more information.
 
 ### The Mender client API
 
-The main API is exposed in [`mender-client.h`](include/mender-client.h). The most notable parts are:
+The main API is exposed in [`client.h`](include/mender/client.h). The most notable parts are:
 
 * Identity callback. The user needs to provide a callback that will return the identity. In most
 cases, this would be reading a unique device number like a MAC address. Read more about
@@ -128,7 +128,7 @@ inventory of the client and sent to the Mender Server in the next inventory repo
 
 ### Update Modules API
 
-The Update Module API is exposed in [mender-update-module.h](include/mender-update-module.h).
+The Update Module API is exposed in [update-module.h](include/mender/update-module.h).
 
 Mender MCU models the Update Modules API which we have been using in the regular Mender client for
 years. Refer to the [Update Modules chapter in Mender
@@ -139,7 +139,7 @@ integrated with the client to handle each type of update.
 #### `zephyr-image` Update Module
 
 We provide the `zephyr-image` Update Module, which implements the update process for a Zephyr OS
-update integrated with MCUboot. Its [source code](core/src/mender-zephyr-image-update-module.c)
+update integrated with MCUboot. Its [source code](src/platform/update_modules/zephyr/image/update-module.c)
 can be inspected for inspiration and a better understanding of the expected behavior of each state.
 
 To use the `zephyr-image` Update Module, you need a board that supports
@@ -163,7 +163,8 @@ to learn about the flow between each state. An Update Module does not need to im
 only the ones that are relevant for a particular type of update.
 
 After writing the code, you need to register the Update Module into the Mender MCU. See the register
-update module function in [`mender-client.h`](include/mender-client.h).
+update module function in [`update-module.h`](include/mender/update-module.h).
+
 
 
 ### Network
@@ -231,18 +232,18 @@ Before intializing the client, you must set up the network connection, certifica
 
 You must also define two structs:
 
-`mender_client_config_t` with the fields defined in [mender-client.h](include/mender-client.h).
+`mender_client_config_t` with the fields defined in [client.h](include/mender/client.h).
 * The `device_type` can be set to `NULL`, as it is defined at build time
 
 and
 
-`mender_client_callbacks_t` with the callbacks defined in [mender-client.h](include/mender-client.h).
+`mender_client_callbacks_t` with the callbacks defined in [client.h](include/mender/client.h).
 
 See [The Mender client API ](#the-mender-client-api).
 
 After implementing the necessary callbacks and creating the structs,
 the client can be initialized by calling `mender_client_init`, which
-is defined in [mender-client.h](include/mender-client.h):
+is defined in [client.h](include/mender/client.h):
 
 Example:
 ```c
@@ -262,13 +263,24 @@ mender_zephyr_image_register_update_module());
 #### Enabling Inventory
 Inventory is enabled/disabled by setting the `MENDER_CLIENT_INVENTORY` option.
 
-To use inventory, you will need a `mender_keystore_t` struct, which is defined in [mender-client.h](include/mender-client.h).
-This struct contains the inventory of the client, and is enabled in the code by calling `mender_inventory_set`.
+Inventory is added through user-provided callbacks. The data provided by the callbacks
+can be marked as persistent, meaning static data that doesn't change is only set once, or dynamic,
+which means fresh data is always obtained and sent at the specified inventory refresh interval.
 
-Example:
+You can add an inventory callback by calling
+`mender_inventory_add_callback`, which is defined in the [inventory API](include/mender/inventory.h).
+
+Example of adding a persistent callback:
 ```c
-mender_keystore_t inventory[] = { { .name = "demo", .value = "demo" }, { .name = "foo", .value = "bar" }, { .name = NULL, .value = NULL } };
-mender_inventory_set(inventory));
+static mender_err_t
+persistent_inventory_cb(mender_keystore_t **keystore, uint8_t *keystore_len) {
+    static mender_keystore_t inventory[] = { { .name = "Name", .value = "Example value" } };
+    *keystore = inventory;
+    *keystore_len = 1;
+    return MENDER_OK;
+}
+
+mender_inventory_add_callback(persistent_inventory_cb, true);
 ```
 
 #### Activating the Client

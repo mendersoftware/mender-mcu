@@ -26,6 +26,8 @@ extern "C" {
 
 #include <mender/utils.h>
 
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
+
 /**
  * @brief Inventory callback type
  * @param inventory     Output argument for the inventory items array pointer
@@ -34,8 +36,6 @@ extern "C" {
  * @return %MENDER_OK in case of success, error otherwise
  */
 typedef mender_err_t(MenderInventoryCallback)(mender_keystore_t **inventory, uint8_t *inventory_len);
-
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
 
 /**
  * @brief Add mender inventory callback
@@ -60,7 +60,7 @@ mender_err_t mender_inventory_add_callback(MenderInventoryCallback callback, boo
  */
 mender_err_t mender_inventory_execute(void);
 
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
 #ifdef __cplusplus
 }

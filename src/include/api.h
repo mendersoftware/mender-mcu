@@ -109,7 +109,7 @@ mender_err_t mender_api_download_artifact(char *uri);
  */
 mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event, void *data, size_t data_length);
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
 
 /**
  * @brief Publish inventory data of the device to the mender-server
@@ -120,7 +120,7 @@ mender_err_t mender_api_http_artifact_callback(mender_http_client_event_t event,
  */
 mender_err_t mender_api_publish_inventory_data(cJSON *inventory, bool patch);
 
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
 /**
  * @brief Release mender API

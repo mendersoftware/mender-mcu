@@ -25,7 +25,7 @@
 #include "os.h"
 #include "storage.h"
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
 
 typedef struct {
     MenderInventoryCallback *callback;
@@ -460,4 +460,4 @@ END:
     return ret;
 }
 
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */

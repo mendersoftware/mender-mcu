@@ -25,6 +25,8 @@
 #include "log.h"
 #include "utils.h"
 
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
+
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY_BUILD_INFO
 static mender_err_t
 build_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
@@ -138,3 +140,5 @@ mender_inventory_add_default_callbacks(void) {
 
     return some_error ? MENDER_FAIL : MENDER_OK;
 }
+
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */

@@ -32,9 +32,9 @@
 #include "deployment-data.h"
 #include "error-counters.h"
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
 #include "inventory.h"
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
 /**
  * @brief Default host
@@ -329,7 +329,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval, mender_client_config.device_type))) {
         mender_log_error("Failed to initialize the inventory functionality");
         goto END;
@@ -338,7 +338,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         mender_log_error("Failed to enable default inventory");
         /* unlikely to happen and not a fatal issue, keep going */
     }
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
 END:
 
@@ -361,13 +361,13 @@ mender_client_activate(void) {
         return ret;
     }
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     /* Activate inventory work */
     if (MENDER_OK != (ret = mender_inventory_activate())) {
         mender_log_error("Unable to activate the inventory functionality");
         return ret;
     }
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
     return ret;
 }
@@ -428,12 +428,12 @@ mender_client_deactivate(void) {
             return ret;
         }
     }
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     if (MENDER_OK != (ret = mender_inventory_deactivate())) {
         /* error already logged */
         return ret;
     }
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
     return MENDER_OK;
 }
@@ -457,13 +457,13 @@ mender_client_exit(void) {
         }
     }
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     if (MENDER_OK != mender_inventory_exit()) {
         mender_log_error("Unable to cleanup after the inventory functionality");
         /* keep going on, we want to do as much cleanup as possible */
         some_error = true;
     }
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
     /* Stop scheduling new work */
     mender_os_scheduler_exit();
@@ -1182,7 +1182,7 @@ mender_client_update_work_function(void) {
                 if (!MENDER_IS_ERROR(ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
                 /* If there was no reboot, we need to tell inventory to refresh
                    the persistent data (because the deployment must have changed
                    artifact name, at least) and we should trigger an inventory
@@ -1194,7 +1194,7 @@ mender_client_update_work_function(void) {
                         mender_log_error("Failed to trigger inventory refresh after deployment commit with no reboot");
                     }
                 }
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
                 if (!MENDER_IS_ERROR(ret)) {
                     mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_SUCCESS);
                 }

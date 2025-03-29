@@ -120,6 +120,26 @@ mender_storage_get_artifact_name(const char **artifact_name) {
     return MENDER_NOT_IMPLEMENTED;
 }
 
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+MENDER_FUNC_WEAK mender_err_t
+mender_storage_deployment_log_append(MENDER_ARG_UNUSED const char *msg, MENDER_ARG_UNUSED size_t msg_size) {
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+MENDER_FUNC_WEAK mender_err_t
+mender_storage_deployment_log_walk(MENDER_ARG_UNUSED MenderDeploymentLogVisitor visitor_fn, MENDER_ARG_UNUSED void *ctx) {
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+
+MENDER_FUNC_WEAK mender_err_t
+mender_storage_deployment_log_clear(void) {
+    /* Nothing to do */
+    return MENDER_NOT_IMPLEMENTED;
+}
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
 MENDER_FUNC_WEAK mender_err_t
 mender_storage_exit(void) {
 

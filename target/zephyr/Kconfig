@@ -86,6 +86,13 @@ if MENDER_MCU_CLIENT
             help
                 Interval used to periodically check for new deployments on the Mender server.
 
+        config MENDER_DEPLOYMENT_LOGS
+            bool "Deployment logs"
+            default y
+            select FCB
+            help
+                Enable the deployment logs feature.
+
         module = MENDER
         module-str = Log Level for mender
         module-help = Enables logging for mender code.
@@ -397,6 +404,14 @@ if MENDER_MCU_CLIENT
                 range 2 8
                 help
                     Number of sectors of the mender_storage partition, must match the configuration of the partition.
+
+           config MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS
+                int "Number of sectors available for deployment logs"
+                default 2
+                range 1 4
+                depends on MENDER_DEPLOYMENT_LOGS
+                help
+                    Number of sectors for the Flash Circular Buffer storing deployment logs.
 
            config MENDER_STORAGE_DEPLOYMENT_DATA_CRC
                 bool "Enable CRC check for deployment data"

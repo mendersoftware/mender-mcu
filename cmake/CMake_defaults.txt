@@ -16,6 +16,7 @@
 # limitations under the License.
 
 set(CONFIG_MENDER_CLIENT_INVENTORY OFF CACHE BOOL "Inventory")
+set(CONFIG_MENDER_DEPLOYMENT_LOGS OFF CACHE BOOL "Deployment logs")
 set(CONFIG_MENDER_FULL_PARSE_ARTIFACT ON CACHE BOOL "Full parse artifact")
 set(CONFIG_MENDER_PROVIDES_DEPENDS ON CACHE BOOL "Provides depends")
 set(CONFIG_MENDER_COMMIT_REQUIRE_AUTH ON CACHE BOOL "Authentication required for update commit")

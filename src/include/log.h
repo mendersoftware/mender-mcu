@@ -38,6 +38,20 @@ mender_err_t mender_log_init(void);
  */
 mender_err_t mender_log_exit(void);
 
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+/**
+ * @brief Activate deployment logs gathering
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_deployment_logs_activate(void);
+
+/**
+ * @brief Deactivate deployment logs gathering
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_deployment_logs_deactivate(void);
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

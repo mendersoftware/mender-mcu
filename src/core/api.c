@@ -36,6 +36,7 @@
 #define MENDER_API_PATH_GET_NEXT_DEPLOYMENT          "/api/devices/v1/deployments/device/deployments/next"
 #define MENDER_API_PATH_POST_NEXT_DEPLOYMENT_V2      "/api/devices/v2/deployments/device/deployments/next"
 #define MENDER_API_PATH_PUT_DEPLOYMENT_STATUS        "/api/devices/v1/deployments/device/deployments/%s/status"
+#define MENDER_API_PATH_PUT_DEPLOYMENT_LOGS          "/api/devices/v1/deployments/device/deployments/%s/log"
 #define MENDER_API_PATH_GET_DEVICE_CONFIGURATION     "/api/devices/v1/deviceconfig/configuration"
 #define MENDER_API_PATH_PUT_DEVICE_CONFIGURATION     "/api/devices/v1/deviceconfig/configuration"
 #define MENDER_API_PATH_GET_DEVICE_CONNECT           "/api/devices/v1/deviceconnect/connect"
@@ -556,6 +557,10 @@ END:
     return ret;
 }
 
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+static mender_err_t mender_api_publish_deployment_logs(const char *id);
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
 mender_err_t
 mender_api_publish_deployment_status(const char *id, mender_deployment_status_t deployment_status) {
     assert(NULL != id);
@@ -624,8 +629,214 @@ END:
     mender_free(payload);
     cJSON_Delete(json_payload);
 
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+    /* Do this after we have released memory above, potentially giving us some
+       extra room we may need. */
+    if ((MENDER_OK == ret) && (MENDER_DEPLOYMENT_STATUS_FAILURE == deployment_status)) {
+        /* Successfully reported a deployment failure, upload deployment
+           logs.  */
+        if (MENDER_OK != mender_api_publish_deployment_logs(id)) {
+            mender_log_error("Failed to publish deployment logs");
+        }
+    }
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
     return ret;
 }
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+static void
+append_depl_log_msg(char *msg, void *ctx) {
+    assert(NULL != ctx);
+
+    char  *tstamp   = NULL;
+    char  *level    = NULL;
+    char  *log_msg  = NULL;
+    cJSON *json_msg = NULL;
+    cJSON *messages = ctx;
+
+    /* Example log message we expect:
+     *   "[00:39:06.746,000] <err> mender: Unable to perform HTTP request"
+     * The code below goes through the string, searches for the expected parts and breaks the string
+     * down accordingly.
+     */
+
+    /* Start by setting log_msg to the whole message. In case all of the
+       break-down below fails, we send the whole message as the log message with
+       no extra metadata. */
+    log_msg = msg;
+
+    char *c = msg;
+    if ('[' == *c) {
+        /* if it does start with a timestamp, like above, store the pointer and find its end */
+        c++;
+        tstamp = c;
+        while (('\0' != *c) && (']' != *c)) {
+            c++;
+        }
+        if ('\0' == *c) {
+            goto DONE_PARSING;
+        }
+        *c = '\0';
+        c++;
+    }
+
+    if (' ' == *c) {
+        /* skip the space */
+        c++;
+    }
+
+    if ('<' == *c) {
+        /* if the log level follow, like above, store the pointer and find its end */
+        c++;
+        level = c;
+        while (('\0' != *c) && ('>' != *c)) {
+            c++;
+        }
+        if ('\0' == *c) {
+            goto DONE_PARSING;
+        }
+        *c = '\0';
+        c++;
+    }
+
+    if (' ' == *c) {
+        /* skip the space */
+        c++;
+    }
+
+    if ('\0' != *c) {
+        log_msg = c;
+        if (mender_utils_strbeginswith(log_msg, "mender: ")) {
+            log_msg += strlen("mender: ");
+        }
+    }
+
+DONE_PARSING:
+    if (NULL == (json_msg = cJSON_CreateObject())) {
+        mender_log_error("Unable to allocate memory");
+        return;
+    }
+
+    if (NULL != tstamp) {
+        if (NULL == cJSON_AddStringToObject(json_msg, "timestamp", tstamp)) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+    } else {
+        if (NULL == cJSON_AddNullToObject(json_msg, "timestamp")) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+    }
+
+    if (NULL != level) {
+        if (NULL == cJSON_AddStringToObject(json_msg, "level", level)) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+    } else {
+        if (NULL == cJSON_AddNullToObject(json_msg, "level")) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+    }
+
+    if (NULL == cJSON_AddStringToObject(json_msg, "message", log_msg)) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    if (!cJSON_AddItemToArray(messages, json_msg)) {
+        mender_log_error("Unable to allocate memory");
+    }
+    json_msg = NULL;
+
+END:
+    cJSON_Delete(json_msg);
+}
+
+static mender_err_t
+mender_api_publish_deployment_logs(const char *id) {
+    assert(NULL != id);
+
+    mender_err_t ret;
+    cJSON       *json_payload  = NULL;
+    cJSON       *json_messages = NULL;
+    char        *payload       = NULL;
+    char        *path          = NULL;
+    char        *response      = NULL;
+    int          status        = 0;
+
+    /* Format payload */
+    if (NULL == (json_payload = cJSON_CreateObject())) {
+        mender_log_error("Unable to allocate memory");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+    if (NULL == (json_messages = cJSON_AddArrayToObject(json_payload, "messages"))) {
+        mender_log_error("Unable to allocate memory");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+
+    if (MENDER_OK != (ret = mender_storage_deployment_log_walk(append_depl_log_msg, json_messages))) {
+        mender_log_error("Failed to add deployment log messages to payload");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+
+    if (0 == cJSON_GetArraySize(json_messages)) {
+        /* Nothing to do, no logs to submit. */
+        ret = MENDER_OK;
+        goto END;
+    }
+
+    if (NULL == (payload = cJSON_PrintUnformatted(json_payload))) {
+        mender_log_error("Unable to allocate memory");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+    /* We no longer need the JSON now that we have the string representation so
+       reclaim that (potentially big) chunk of memory). */
+    DESTROY_AND_NULL(cJSON_Delete, json_payload);
+
+    /* Perform HTTP request */
+    if (mender_utils_asprintf(&path, MENDER_API_PATH_PUT_DEPLOYMENT_LOGS, id) <= 0) {
+        mender_log_error("Unable to allocate memory");
+        goto END;
+    }
+
+    mender_log_info("Publishing deployment logs");
+    if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_PUT, payload, NULL, &response, &status))) {
+        mender_log_error("Unable to perform HTTP request");
+        goto END;
+    }
+
+    /* Treatment depending of the status */
+    if (204 == status) {
+        /* No response expected */
+        ret = MENDER_OK;
+    } else if (409 == status) {
+        /* Deployment aborted */
+        mender_api_print_response_error(response, status);
+        ret = MENDER_ABORTED;
+    } else {
+        mender_api_print_response_error(response, status);
+        ret = MENDER_FAIL;
+    }
+
+END:
+
+    /* Release memory */
+    mender_free(response);
+    mender_free(path);
+    mender_free(payload);
+    cJSON_Delete(json_payload);
+
+    return ret;
+}
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY
 

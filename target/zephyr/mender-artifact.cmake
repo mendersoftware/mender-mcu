@@ -21,6 +21,11 @@ if(NOT mender_artifact_found)
     message(FATAL_ERROR "mender-artifact not found in PATH. Visit https://docs.mender.io/downloads#mender-artifact to download the tool or disable Artifact generation with MENDER_ARTIFACT_GENERATE")
 endif()
 
+# Print a warning on empty Artifact name
+if(CONFIG_MENDER_ARTIFACT_NAME STREQUAL "")
+    message(WARNING "MENDER_ARTIFACT_NAME cannot be empty; Artifact generation will fail. Set the variable in your build or alternatively disable the feature with CONFIG_MENDER_ARTIFACT_GENERATE=n")
+endif()
+
 # Assemble the mender-artifact arguments
 set(mender_artifact_cmd mender-artifact write module-image)
 # No compression

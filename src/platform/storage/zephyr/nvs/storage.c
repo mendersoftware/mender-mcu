@@ -384,10 +384,23 @@ mender_storage_get_artifact_name(const char **artifact_name) {
     mender_err_t ret = nvs_read_alloc(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_ARTICACT_NAME, (void **)artifact_name, &artifact_name_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            if (NULL == (*artifact_name = mender_utils_strdup("unknown"))) {
+            const char *artifact_name_literal;
+
+            /* Get the Artifact Name from the build, if set */
+#ifdef CONFIG_MENDER_ARTIFACT_NAME
+            if (strlen(CONFIG_MENDER_ARTIFACT_NAME) > 0) {
+                artifact_name_literal = CONFIG_MENDER_ARTIFACT_NAME;
+            } else {
+                artifact_name_literal = "unknown";
+            }
+#else
+            artifact_name_literal = "unknown";
+#endif
+            if (NULL == (*artifact_name = mender_utils_strdup(artifact_name_literal))) {
                 mender_log_error("Unable to allocate memory");
                 return MENDER_FAIL;
             }
+
             cached_artifact_name = (char *)*artifact_name;
             return MENDER_OK;
 

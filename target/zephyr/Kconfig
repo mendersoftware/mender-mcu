@@ -473,11 +473,11 @@ if MENDER_MCU_CLIENT
         menu "Storage options"
 
             config MENDER_STORAGE_NVS_SECTOR_COUNT
-                int "Number of sectors of the mender_storage partition"
+                int "Number of sectors used for non-volatile data"
                 default 2
                 range 2 8
                 help
-                    Number of sectors of the mender_storage partition, must match the configuration of the partition.
+                    Number of flash sectors used by Mender for necessary non-volatile data.
 
            config MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS
                 int "Number of sectors available for deployment logs"
@@ -485,7 +485,7 @@ if MENDER_MCU_CLIENT
                 range 1 4
                 depends on MENDER_DEPLOYMENT_LOGS
                 help
-                    Number of sectors for the Flash Circular Buffer storing deployment logs.
+                    Number of flash sectors for the Flash Circular Buffer storing deployment logs.
 
            config MENDER_STORAGE_DEPLOYMENT_DATA_CRC
                 bool "Enable CRC check for deployment data"

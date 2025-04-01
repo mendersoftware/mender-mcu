@@ -234,7 +234,7 @@ mender_storage_init(void) {
     }
     mender_log_debug("Initialized deployment logs FCB with %u sectors (%zu bytes available)",
                      depl_logs_buffer.f_sector_cnt,
-                     (depl_logs_buffer.f_sector_cnt - 1) * mender_storage_nvs_handle.sector_size);
+                     depl_logs_buffer.f_sector_cnt * mender_storage_nvs_handle.sector_size);
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
     return MENDER_OK;

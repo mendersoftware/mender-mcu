@@ -43,6 +43,7 @@ if($CACHE{COVERAGE})
 endif()
 
 # POSIX definitions, mimicking what KConfig defines for Zephyr OS builds
+target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_ARTIFACT_NAME=\"${CONFIG_MENDER_ARTIFACT_NAME}\")
 if (CONFIG_MENDER_SERVER_HOST)
     target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_SERVER_HOST=\"${CONFIG_MENDER_SERVER_HOST}\")
 endif()

@@ -96,6 +96,8 @@ the configuration menu.
 
 The following option **must** be set in any configuration:
 * `MENDER_SERVER_TENANT_TOKEN` which is a token that identifies which tenant a device belongs to.
+* `MENDER_ARTIFACT_NAME` which is used to generate the Mender Artifact out of the built binary
+  * Alternatively, disable auto-generation of the Mender Artifact with `MENDER_ARTIFACT_GENERATE`
 
 The most common options to modify are:
 * `MENDER_SERVER_HOST`
@@ -298,7 +300,7 @@ See the [building section](https://github.com/mendersoftware/mender-mcu-integrat
 in mender-mcu-integration for a list of the boards that we have tested, and for examples
 on how to build for them.
 
-### Creating a Mender Artifact
+### Manually creating a Mender Artifact
 
 NOTE: Compression of artifacts is **not** supported, which is why we use `--compression none`
 

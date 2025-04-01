@@ -262,7 +262,13 @@ mender_storage_get_artifact_name(const char **artifact_name) {
     mender_err_t ret = mender_storage_read_file(MENDER_STORAGE_NVS_ARTICACT_NAME, (void **)artifact_name, &artifact_name_length);
     if (MENDER_OK != ret) {
         if (MENDER_NOT_FOUND == ret) {
-            *artifact_name = "unknown";
+
+            /* Get the Artifact Name from the build, if set */
+            if (strlen(CONFIG_MENDER_ARTIFACT_NAME) > 0) {
+                *artifact_name = CONFIG_MENDER_ARTIFACT_NAME;
+            } else {
+                *artifact_name = "unknown";
+            }
             return MENDER_OK;
         } else {
             mender_log_error("Unable to read artifact_name");

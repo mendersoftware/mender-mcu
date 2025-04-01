@@ -95,36 +95,36 @@ if MENDER_MCU_CLIENT
 
     menu "Inventory configuration"
 
-        config MENDER_CLIENT_INVENTORY
-            bool "Mender client Inventory"
+        config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
+            int "Mender client Inventory refresh interval (seconds)"
+            depends on MENDER_CLIENT_INVENTORY_DISABLE=n
+            range 0 86400
+            default 28800
+            help
+                Interval used to periodically send inventory to the Mender server.
+                Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
+
+        config MENDER_CLIENT_INVENTORY_BUILD_INFO
+            bool "Build info built-in inventory"
+            depends on MENDER_CLIENT_INVENTORY_DISABLE=n
             default y
             help
-                Inventory permits to send inventory key-value pairs to the Mender server.
-                It is particularly used to send artifact name and device type, and it permits to see the last check-in time of the device.
+                Enable built-in build info inventory
 
-        if MENDER_CLIENT_INVENTORY
+        config MENDER_CLIENT_INVENTORY_NETWORK_INFO
+            bool "Network info built-in inventory"
+            depends on MENDER_CLIENT_INVENTORY_DISABLE=n
+            default y
+            help
+                Enable built-in network info inventory
 
-            config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
-                int "Mender client Inventory refresh interval (seconds)"
-                range 0 86400
-                default 28800
-                help
-                    Interval used to periodically send inventory to the Mender server.
-                    Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-
-            config MENDER_CLIENT_INVENTORY_BUILD_INFO
-              bool "Build info built-in inventory"
-              default y
-              help
-                  Enable built-in build info inventory
-
-            config MENDER_CLIENT_INVENTORY_NETWORK_INFO
-              bool "Network info built-in inventory"
-              default y
-              help
-                  Enable built-in network info inventory
-
-        endif
+        config MENDER_CLIENT_INVENTORY_DISABLE
+            bool "Disable Mender client Inventory (EXPERIMENTAL)"
+            default n
+            help
+                Compile out Mender Inventory. This is an experimental option not tested by
+                the Mender Team. While it is possible to update a device with no inventory
+                the features exposed through the Mender UI will be limited.
 
     endmenu
 

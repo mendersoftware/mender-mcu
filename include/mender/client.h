@@ -37,9 +37,9 @@ typedef struct {
     char    *host;                 /**< URL of the mender server */
     char    *tenant_token;         /**< Tenant token used to authenticate on the mender server (optional) */
     uint32_t update_poll_interval; /**< Update poll interval, default is 1800 seconds, must be > 0 */
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
-#endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
     bool recommissioning;               /**< Used to force creation of new authentication keys */
     struct {
         MenderAllocator   malloc_func;

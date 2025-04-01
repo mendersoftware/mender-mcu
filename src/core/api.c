@@ -627,7 +627,7 @@ END:
     return ret;
 }
 
-#ifdef CONFIG_MENDER_CLIENT_INVENTORY
+#ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
 
 mender_err_t
 mender_api_publish_inventory_data(cJSON *inventory, bool patch) {
@@ -671,7 +671,7 @@ END:
     return ret;
 }
 
-#endif /* CONFIG_MENDER_CLIENT_INVENTORY */
+#endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
 
 mender_err_t
 mender_api_exit(void) {

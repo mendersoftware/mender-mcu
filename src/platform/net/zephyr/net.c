@@ -134,7 +134,7 @@ header_alloc_and_add(const char **header_list, size_t header_list_size, const ch
     int ret = mender_utils_vasprintf(&header, format, args);
     va_end(args);
     if (ret < 0) {
-        mender_log_error("Unable to create header");
+        mender_log_error("Unable to allocate memory, failed to create header");
         return NULL;
     }
 

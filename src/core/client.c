@@ -1133,14 +1133,27 @@ mender_client_update_work_function(void) {
                 /* Check ret to see if the deployment is aborted */
                 ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_INSTALLING);
                 if ((MENDER_ABORTED != ret) && (NULL != mender_update_module->callbacks[update_state])) {
+                    if (mender_update_module->requires_reboot) {
+                        /* Save the next state before running the install callback.
+                         * If there is a spontaneous reboot right after the callback
+                         * we assure that we don't get stuck in a potential pending image in slot 1 */
+                        set_and_store_state(MENDER_UPDATE_STATE_REBOOT);
+                    }
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
-                if ((MENDER_OK == ret) && !mender_update_module->requires_reboot) {
-                    /* skip reboot */
-                    update_state = MENDER_UPDATE_STATE_COMMIT;
-                    mender_log_debug("Entering state %s", update_state_str[update_state]);
-                    set_and_store_state(update_state);
-                    continue;
+                if (MENDER_OK == ret) {
+                    if (mender_update_module->requires_reboot) {
+                        update_state = MENDER_UPDATE_STATE_REBOOT;
+                        mender_log_debug("Entering state %s", update_state_str[update_state]);
+                        /* State already stored */
+                        continue;
+                    } else {
+                        /* skip reboot */
+                        update_state = MENDER_UPDATE_STATE_COMMIT;
+                        mender_log_debug("Entering state %s", update_state_str[update_state]);
+                        set_and_store_state(update_state);
+                        continue;
+                    }
                 }
                 /* else continue to the next successful/failure state */
                 NEXT_STATE;

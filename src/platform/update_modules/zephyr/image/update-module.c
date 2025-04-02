@@ -18,14 +18,19 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <zephyr/dfu/flash_img.h>
 #include <zephyr/dfu/mcuboot.h>
+#include <zephyr/storage/flash_map.h>
 
 #include "client.h"
 #include "log.h"
 #include "update-module.h"
 #include "utils.h"
 #include "zephyr-image-update-module.h"
+
+#define MENDER_SLOT_PARTITION_0 FIXED_PARTITION_ID(slot0_partition)
+#define MENDER_SLOT_PARTITION_1 FIXED_PARTITION_ID(slot1_partition)
 
 /**
  * @brief Flash handle used to store temporary reference to write rootfs-image data
@@ -184,6 +189,11 @@ static mender_err_t mender_zephyr_image_abort_deployment(mender_update_state_t s
 static mender_err_t mender_zephyr_image_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
 
 /**
+ * @brief Rollback callback
+ */
+static mender_err_t mender_zephyr_image_rollback_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
  * @brief New image verification callback
  */
 static mender_err_t mender_zephyr_image_verify_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
@@ -203,13 +213,13 @@ mender_zephyr_image_register_update_module(void) {
         mender_log_error("Unable to allocate memory for the 'zephyr-image' update module");
         return MENDER_FAIL;
     }
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD]      = &mender_zephyr_image_download_artifact_flash_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]       = &mender_zephyr_image_set_pending_image;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]        = &mender_zephyr_image_reboot_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_VERIFY_REBOOT] = &mender_zephyr_image_verify_reboot_callback;
-    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_COMMIT]        = &mender_zephyr_image_confirm_image;
-    /* no need for a rollback callback because a reboot without image confirmation is a rollback */
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_DOWNLOAD]        = &mender_zephyr_image_download_artifact_flash_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_INSTALL]         = &mender_zephyr_image_set_pending_image;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_REBOOT]          = &mender_zephyr_image_reboot_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_VERIFY_REBOOT]   = &mender_zephyr_image_verify_reboot_callback;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_COMMIT]          = &mender_zephyr_image_confirm_image;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]         = &mender_zephyr_image_abort_deployment;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_ROLLBACK]        = &mender_zephyr_image_rollback_callback;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_ROLLBACK_REBOOT] = &mender_zephyr_image_reboot_callback;
     zephyr_image_umod->artifact_type                                  = "zephyr-image";
     zephyr_image_umod->requires_reboot                                = true;
@@ -298,6 +308,14 @@ mender_zephyr_image_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t 
         return ret;
     }
     artifact_had_payload = false;
+
+    int rc;
+    if (boot_is_img_confirmed()) {
+        if ((rc = boot_erase_img_bank(MENDER_SLOT_PARTITION_1)) < 0) {
+            mender_log_error("Failed to erase second slot (result = %d, errno = %s)", rc, strerror(errno));
+            return MENDER_FAIL;
+        }
+    }
     return MENDER_OK;
 }
 
@@ -312,6 +330,17 @@ mender_zephyr_image_reboot_callback(MENDER_NDEBUG_UNUSED mender_update_state_t s
         mender_log_error("Reboot requested, but no reboot support");
         return MENDER_FAIL;
     }
+}
+
+static mender_err_t
+mender_zephyr_image_rollback_callback(mender_update_state_t state, mender_update_state_data_t callback_data) {
+    assert(MENDER_UPDATE_STATE_ROLLBACK == state);
+    // Don't attempt to rollback if we're in a confirmed image - e.g. if an aborted deployment is detected in `MENDER_UPDATE_STATE_REBOOT`
+    if (mender_flash_is_image_confirmed()) {
+        mender_log_debug("Current image is confirmed, nothing to rollback");
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
 }
 
 static mender_err_t

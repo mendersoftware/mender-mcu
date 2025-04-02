@@ -25,7 +25,7 @@
 #include "os.h"
 #include "utils.h"
 
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
 /**
  * @brief Default work queue stack size (kB)
  */
@@ -50,7 +50,7 @@ K_THREAD_STACK_DEFINE(work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK
  */
 static struct k_work_q            work_queue;
 static struct k_work_queue_config work_queue_config;
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
 /**
  * @brief Work context
@@ -65,7 +65,7 @@ static void mender_os_scheduler_work_handler(struct k_work *work_item);
 
 mender_err_t
 mender_os_scheduler_init(void) {
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     /* Create and start work queue */
     work_queue_config.name      = "mender_work_queue";
     work_queue_config.no_yield  = false;
@@ -75,7 +75,7 @@ mender_os_scheduler_init(void) {
     k_work_queue_start(
         &work_queue, work_queue_stack, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE * 1024, CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY, &work_queue_config);
     k_thread_name_set(k_work_queue_thread_get(&work_queue), "mender_work_queue");
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     return MENDER_OK;
 }
@@ -127,11 +127,11 @@ mender_os_scheduler_work_activate(mender_work_t *work) {
 
     mender_log_debug("Activating %s every %ju seconds", work->params.name, (uintmax_t)work->params.period);
 
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_NO_WAIT);
 #else
     k_work_reschedule(&(work->delayable), K_SECONDS(1));
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     /* Indicate the work has been activated */
     work->activated = true;
@@ -143,11 +143,11 @@ mender_err_t
 mender_os_scheduler_work_execute(mender_work_t *work) {
     assert(NULL != work);
 
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_NO_WAIT);
 #else
     k_work_reschedule(&(work->delayable), K_NO_WAIT);
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 
     return MENDER_OK;
 }
@@ -159,11 +159,11 @@ mender_os_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
     /* Set timer period */
     work->params.period = period;
     if (work->params.period > 0) {
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
         k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_SECONDS(period));
 #else
         k_work_reschedule(&(work->delayable), K_SECONDS(period));
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
     } else {
         k_work_cancel_delayable(&(work->delayable));
         work->activated = false;
@@ -201,9 +201,9 @@ mender_os_scheduler_work_delete(mender_work_t *work) {
 
 mender_err_t
 mender_os_scheduler_exit(void) {
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_queue_drain(&work_queue, true);
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
     return MENDER_OK;
 }
 
@@ -233,11 +233,11 @@ mender_os_scheduler_work_handler(struct k_work *work_item) {
     }
 
     /* Reschedule self for the next period */
-#ifdef CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE
+#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
     k_work_reschedule_for_queue(&work_queue, delayable_item, K_SECONDS(work->params.period));
 #else
     k_work_reschedule(delayable_item, K_SECONDS(work->params.period));
-#endif /* CONFIG_MENDER_OS_SEPARATE_WORK_QUEUE */
+#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
 }
 
 mender_err_t

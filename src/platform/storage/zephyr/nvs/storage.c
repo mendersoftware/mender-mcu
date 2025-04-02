@@ -31,12 +31,69 @@
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
 /**
- * @brief NVS storage
+ * @brief Non-volatile storage
+ *
+ * Either the storage_partition or mender_partition can be easily selected. A
+ * custom partition can be used by providing a non-weak implementation of the
+ * function below, specifying the storage parameters.
+ *
+ * In case of the two easy-to-select partitions, a sector offset can be
+ * specified to leave room for application code in front of the Mender data.
  */
-#define MENDER_STORAGE_LABEL      storage_partition
-#define MENDER_STORAGE_DEVICE     FIXED_PARTITION_DEVICE(MENDER_STORAGE_LABEL)
-#define MENDER_STORAGE_OFFSET     FIXED_PARTITION_OFFSET(MENDER_STORAGE_LABEL)
-#define MENDER_STORAGE_FLASH_AREA FIXED_PARTITION_ID(MENDER_STORAGE_LABEL)
+#ifdef CONFIG_MENDER_STORAGE_PARTITION_STORAGE_PARTITION
+#define MENDER_STORAGE_LABEL storage_partition
+#endif /* CONFIG_MENDER_STORAGE_PARTITION_STORAGE_PARTITION */
+#ifdef CONFIG_MENDER_STORAGE_PARTITION_MENDER_PARTITION
+#define MENDER_STORAGE_LABEL mender_partition
+#endif /* CONFIG_MENDER_STORAGE_PARTITION_MENDER_PARTITION */
+
+#ifndef CONFIG_MENDER_STORAGE_SECTOR_OFFSET
+#define CONFIG_MENDER_STORAGE_SECTOR_OFFSET 0
+#endif /* CONFIG_MENDER_STORAGE_SECTOR_OFFSET */
+
+/**
+ * @brief A weak implementation of the mender_get_storage_spec() function
+ * @note Implementations using a custom partition have to provide a non-weak implementation of this
+ *       function providing the respective data.
+ */
+MENDER_FUNC_WEAK mender_err_t
+mender_get_storage_spec(const struct device **dev, int *part_id, uint16_t *sector_offset) {
+#ifndef MENDER_STORAGE_LABEL
+    /* If the above macros don't define MENDER_STORAGE_LABEL, it means that a
+       custom label is being used and this weak function should be hidden by
+       another implementation and thus never called. */
+    return MENDER_NOT_IMPLEMENTED;
+#else
+    /* Otherwise we set the parameters based on the values defined above. */
+    *dev     = FIXED_PARTITION_DEVICE(MENDER_STORAGE_LABEL);
+    *part_id = FIXED_PARTITION_ID(MENDER_STORAGE_LABEL);
+
+    *sector_offset = CONFIG_MENDER_STORAGE_SECTOR_OFFSET;
+
+    return MENDER_OK;
+#endif /* MENDER_STORAGE_LABEL */
+}
+
+/**
+ * @brief Flash sectors used by Mender
+ */
+#ifdef CONFIG_MENDER_STORAGE_PARTITION_CUSTOM
+
+/* We need to allocate this dynamically based on the storage spec in case of
+   custom partitioning. Not as nice as a static array, but it's a penalty for
+   not using mender_partition (or storage_partition). */
+static struct flash_sector *flash_sectors = NULL;
+
+#else /* CONFIG_MENDER_STORAGE_PARTITION_CUSTOM */
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+static struct flash_sector
+    flash_sectors[CONFIG_MENDER_STORAGE_SECTOR_OFFSET + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT + CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS];
+#else  /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+static struct flash_sector flash_sectors[CONFIG_MENDER_STORAGE_SECTOR_OFFSET + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT];
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
+#endif /* CONFIG_MENDER_STORAGE_PARTITION_CUSTOM */
 
 /**
  * @brief NVS keys
@@ -68,15 +125,6 @@ static struct nvs_fs mender_storage_nvs_handle;
 static struct fcb depl_logs_buffer;
 
 #define DEPL_LOGS_MAX_MSG_LEN 255
-#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
-
-/**
- * @brief Flash sectors used by Mender
- */
-#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
-static struct flash_sector flash_sectors[CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT + CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS];
-#else
-static struct flash_sector flash_sectors[CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT];
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
 static mender_err_t
@@ -163,18 +211,63 @@ crc_check(const unsigned char *data, const size_t data_len) {
 
 mender_err_t
 mender_storage_init(void) {
-    int      result;
-    uint32_t n_sectors;
+    int                      result;
+    int                      part_id;
+    uint16_t                 sector_offset;
+    uint32_t                 n_sectors;
+    const struct flash_area *fap;
+    off_t                    part_offset;
+    mender_err_t             ret;
+
+    ret = mender_get_storage_spec(&(mender_storage_nvs_handle.flash_device), &part_id, &sector_offset);
+
+#ifndef CONFIG_MENDER_STORAGE_PARTITION_CUSTOM
+    if (MENDER_OK != ret) {
+        /* This should never happen with a non-custom partition spec and
+           tests/debug builds should fail hard. */
+        assert(false);
+
+        mender_log_error("Failed to get storage spec");
+        return MENDER_FAIL;
+    }
+    /* With non-custom storage, we already know the number of sectors we need to
+       work with. */
+    n_sectors = sizeof(flash_sectors) / sizeof(flash_sectors[0]);
+#else
+    if (MENDER_OK != ret) {
+        mender_log_error("Failed to get custom storage spec");
+        return MENDER_FAIL;
+    }
+    /* With custom storage, we need to use the sector offset from
+       mender_get_storage_spec() to find out how many offsets we need to work
+       with. */
+    n_sectors = sector_offset + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT + CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS;
+    if (NULL == (flash_sectors = mender_calloc(sizeof(struct flash_sector), n_sectors))) {
+        mender_log_error("Cannot allocate memory");
+        return MENDER_FAIL;
+    }
+#endif /* CONFIG_MENDER_STORAGE_PARTITION_CUSTOM */
 
     /* Get flash info */
-    mender_storage_nvs_handle.flash_device = MENDER_STORAGE_DEVICE;
+    /** First check if the device is ready. */
     if (!device_is_ready(mender_storage_nvs_handle.flash_device)) {
         mender_log_error("Flash device not ready");
         return MENDER_FAIL;
     }
 
-    n_sectors = sizeof(flash_sectors) / sizeof(flash_sectors[0]);
-    result    = flash_area_get_sectors(MENDER_STORAGE_FLASH_AREA, &n_sectors, flash_sectors);
+    /** Then get the information about the partition offset on the device
+        (flash_sectors[0].fs_off below is an offset relative to the partition
+        start). */
+    if (0 != (result = flash_area_open(part_id, &fap))) {
+        mender_log_error("Unable to open the Mender storage flash area");
+        return MENDER_FAIL;
+    }
+    part_offset = fap->fa_off;
+    flash_area_close(fap);
+
+    /** Then get information about the individual sectors. */
+    const uint32_t n_sectors_required = n_sectors; /* optimized out for sure */
+    result                            = flash_area_get_sectors(part_id, &n_sectors, flash_sectors);
     if ((0 != result) && (-ENOMEM != result)) {
         /* -ENOMEM means there were more sectors than the supplied size of the
             sector array (flash_sectors), but we don't worry about that, we just
@@ -182,14 +275,14 @@ mender_storage_init(void) {
         mender_log_error("Failed to get info about flash sectors in the Mender flash area [%d]", -result);
         return MENDER_FAIL;
     }
-    if (n_sectors != (sizeof(flash_sectors) / sizeof(flash_sectors[0]))) {
-        mender_log_error(
-            "Not enough sectors on the flash for Mender (required: %" PRIu32 "d, available: %zu)", sizeof(flash_sectors) / sizeof(flash_sectors[0]), n_sectors);
+    if (n_sectors != n_sectors_required) {
+        mender_log_error("Not enough sectors on the flash for Mender (required: %" PRIu32 ", available: %" PRIu32 ")", n_sectors_required, n_sectors);
         return MENDER_FAIL;
     }
 
-    mender_storage_nvs_handle.offset       = MENDER_STORAGE_OFFSET;
-    mender_storage_nvs_handle.sector_size  = (uint16_t)flash_sectors[0].fs_size;
+    /** Take sector size from the first sector. */
+    mender_storage_nvs_handle.offset       = part_offset + flash_sectors[sector_offset].fs_off;
+    mender_storage_nvs_handle.sector_size  = (uint16_t)flash_sectors[sector_offset].fs_size;
     mender_storage_nvs_handle.sector_count = CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT;
 
     /* Mount NVS */
@@ -197,7 +290,8 @@ mender_storage_init(void) {
         mender_log_error("Unable to mount NVS storage, result = %d", result);
         return MENDER_FAIL;
     }
-    mender_log_debug("Initialized Mender NVS with %u sectors (%zu bytes available)",
+    mender_log_debug("Initialized Mender NVS at 0x%jx with %u sectors (%zu bytes available)",
+                     (uintmax_t)mender_storage_nvs_handle.offset,
                      mender_storage_nvs_handle.sector_count,
                      (size_t)(mender_storage_nvs_handle.sector_count - 1) * mender_storage_nvs_handle.sector_size);
 
@@ -208,13 +302,12 @@ mender_storage_init(void) {
     depl_logs_buffer.f_version     = 0; /* we don't version the data so 0 always */
     depl_logs_buffer.f_sector_cnt  = CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS;
     depl_logs_buffer.f_scratch_cnt = 0; /* no scratch sector, we don't use it */
-    depl_logs_buffer.f_sectors     = flash_sectors + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT;
+    depl_logs_buffer.f_sectors     = flash_sectors + sector_offset + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT;
 
-    if (0 != (result = fcb_init(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &depl_logs_buffer))) {
+    if (0 != (result = fcb_init(part_id, &depl_logs_buffer))) {
         mender_log_debug("Failed to initialize deployment logs FCB, erasing the particular flash area");
 
-        const struct flash_area *fap;
-        if (0 != (result = flash_area_open(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
+        if (0 != (result = flash_area_open(part_id, &fap))) {
             mender_log_error("Unable to open the Mender storage flash area");
             return MENDER_FAIL;
         }
@@ -227,12 +320,13 @@ mender_storage_init(void) {
             mender_log_error("Failed to erase the flash area for deployment logs");
         }
         /* Now, try again. */
-        if (0 != (result = fcb_init(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &depl_logs_buffer))) {
+        if (0 != (result = fcb_init(part_id, &depl_logs_buffer))) {
             mender_log_error("Unable to initialize the Flash Circular Buffer for deployment logs [%d]", -result);
             return MENDER_FAIL;
         }
     }
-    mender_log_debug("Initialized deployment logs FCB with %u sectors (%zu bytes available)",
+    mender_log_debug("Initialized deployment logs FCB at 0x%jx with %u sectors (%zu bytes available)",
+                     (uintmax_t)part_offset + flash_sectors[sector_offset + CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT].fs_off,
                      depl_logs_buffer.f_sector_cnt,
                      depl_logs_buffer.f_sector_cnt * mender_storage_nvs_handle.sector_size);
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
@@ -606,6 +700,11 @@ mender_err_t
 mender_storage_exit(void) {
 
     FREE_AND_NULL(cached_artifact_name);
+
+#ifdef CONFIG_MENDER_STORAGE_PARTITION_CUSTOM
+    /* Only allocated dynamically in case of custom partition. */
+    FREE_AND_NULL(flash_sectors);
+#endif /* CONFIG_MENDER_STORAGE_PARTITION_CUSTOM */
 
     return MENDER_OK;
 }

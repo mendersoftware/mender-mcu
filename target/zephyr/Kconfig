@@ -444,7 +444,7 @@ if MENDER_MCU_CLIENT
 
             config MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
                 bool "Use a separate work queue"
-                default n
+                default y
                 help
                     Makes Mender start and use its own work queue instead of the system one
 

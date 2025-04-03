@@ -3,9 +3,12 @@ include:
     file:
       - '.gitlab-ci-check-commits.yml'
       - '.gitlab-ci-github-status-updates.yml'
+  - local: "/.gitlab/release.yaml"
 
 stages:
   - test
+  - changelog
+  - release
   - trigger
   - publish
   - .post

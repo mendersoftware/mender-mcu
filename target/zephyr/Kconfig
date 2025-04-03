@@ -472,12 +472,40 @@ if MENDER_MCU_CLIENT
 
         menu "Storage options"
 
+            choice MENDER_STORAGE_PARTITION
+                prompt "Storage partition to use for Mender non-volatile data"
+                default MENDER_STORAGE_PARTITION_MENDER_PARTITION
+                help
+                    "Which storage partition (defined in the Devicetree) Mender should use for storing non-volatile data"
+
+                config MENDER_STORAGE_PARTITION_MENDER_PARTITION
+                    bool "mender_partition"
+                config MENDER_STORAGE_PARTITION_STORAGE_PARTITION
+                    bool "storage_partition"
+                config MENDER_STORAGE_PARTITION_CUSTOM
+                    bool "a custom partition"
+                    help
+                        The `mender_err_t mender_get_storage_spec(const struct device **dev, int *part_id, uint16_t *sector_offset)` function has to
+                        be implemented by the application and set the desired device (see FIXED_PARTITION_DEVICE() in Zephyr docs), partition ID
+                        (FIXED_PARTITION_ID()) and sector offset, i.e. at which sector Mender data should start.
+            endchoice
+
+            config MENDER_STORAGE_SECTOR_OFFSET
+                int "Mender data sector offset"
+                default 0
+                range 0 16
+                depends on MENDER_STORAGE_PARTITION_STORAGE_PARTITION || MENDER_STORAGE_PARTITION_MENDER_PARTITION
+                help
+                    Which sector in the chosen partition should Mender data start at. This can be used to leave the first couple sectors in the chosen
+                    partition reserved for other use. However, IT IS HIGHLY RECOMMENDED TO USE A WHOLE SEPARATE PARTITION for Mender data. If more
+                    than 16 sectors are to be reserved for other use, custom partition specification has to be used.
+
             config MENDER_STORAGE_NVS_SECTOR_COUNT
-                int "Number of sectors of the mender_storage partition"
+                int "Number of sectors used for non-volatile data"
                 default 2
                 range 2 8
                 help
-                    Number of sectors of the mender_storage partition, must match the configuration of the partition.
+                    Number of flash sectors used by Mender for necessary non-volatile data.
 
            config MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS
                 int "Number of sectors available for deployment logs"
@@ -485,7 +513,7 @@ if MENDER_MCU_CLIENT
                 range 1 4
                 depends on MENDER_DEPLOYMENT_LOGS
                 help
-                    Number of sectors for the Flash Circular Buffer storing deployment logs.
+                    Number of flash sectors for the Flash Circular Buffer storing deployment logs.
 
            config MENDER_STORAGE_DEPLOYMENT_DATA_CRC
                 bool "Enable CRC check for deployment data"

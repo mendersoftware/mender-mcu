@@ -189,7 +189,7 @@ mender_net_connect(const char *host, const char *port) {
 #else
     if ((sock = zsock_socket(addr->ai_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 #endif /* CONFIG_NET_SOCKETS_SOCKOPT_TLS */
-        mender_log_error("Unable to create socket, result = %d, errno= %d", sock, errno);
+        mender_log_error("Unable to create socket, result = %d, error: %s", sock, strerror(errno));
         goto END;
     }
 
@@ -208,20 +208,20 @@ mender_net_connect(const char *host, const char *port) {
 #endif
 
     if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_SEC_TAG_LIST, sec_tag, sizeof(sec_tag))) < 0) {
-        mender_log_error("Unable to set TLS_SEC_TAG_LIST option, result = %d, errno = %d", result, errno);
+        mender_log_error("Unable to set TLS_SEC_TAG_LIST option, result = %d, error: %s", result, strerror(errno));
         goto END;
     }
 
     /* Set TLS_HOSTNAME option */
     if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_HOSTNAME, host, strlen(host))) < 0) {
-        mender_log_error("Unable to set TLS_HOSTNAME option, result = %d, errno = %d", result, errno);
+        mender_log_error("Unable to set TLS_HOSTNAME option, result = %d, error: %s", result, strerror(errno));
         goto END;
     }
 
     /* Set TLS_PEER_VERIFY option */
     int verify = CONFIG_MENDER_NET_TLS_PEER_VERIFY;
     if ((result = zsock_setsockopt(sock, SOL_TLS, TLS_PEER_VERIFY, &verify, sizeof(int))) < 0) {
-        mender_log_error("Unable to set TLS_PEER_VERIFY option, result = %d, errno = %d", result, errno);
+        mender_log_error("Unable to set TLS_PEER_VERIFY option, result = %d, error: %s", result, strerror(errno));
         goto END;
     }
 
@@ -229,7 +229,7 @@ mender_net_connect(const char *host, const char *port) {
 
     /* Connect to the host */
     if (0 != (result = zsock_connect(sock, addr->ai_addr, addr->ai_addrlen))) {
-        mender_log_error("Unable to connect to the host '%s:%s', result = %d, errno = %d", host, port, result, errno);
+        mender_log_error("Unable to connect to the host '%s:%s', result = %d, error: %s", host, port, result, strerror(errno));
         goto END;
     }
 

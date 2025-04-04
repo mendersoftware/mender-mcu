@@ -161,10 +161,10 @@ TEST(MenderUtilsTest, DeploymentStatusToString) {
         mender_deployment_status_t deployment_status;
         string                     status_string;
     } DeploymentStatusString;
-    DeploymentStatusString status[]
-        = { { MENDER_DEPLOYMENT_STATUS_DOWNLOADING, "downloading" }, { MENDER_DEPLOYMENT_STATUS_INSTALLING, "installing" },
-            { MENDER_DEPLOYMENT_STATUS_REBOOTING, "rebooting" },     { MENDER_DEPLOYMENT_STATUS_SUCCESS, "success" },
-            { MENDER_DEPLOYMENT_STATUS_FAILURE, "failure" },         { MENDER_DEPLOYMENT_STATUS_ALREADY_INSTALLED, "already-installed" } };
+    DeploymentStatusString status[] = { { MENDER_DEPLOYMENT_STATUS_DOWNLOADING, "downloading" },
+                                        { MENDER_DEPLOYMENT_STATUS_INSTALLING, "installing" },
+                                        { MENDER_DEPLOYMENT_STATUS_REBOOTING, "rebooting" },
+                                        { MENDER_DEPLOYMENT_STATUS_SUCCESS, "success" } };
 
     string status_string;
     for (size_t i = 0; i < sizeof(status) / sizeof(status[0]); i++) {

@@ -11,15 +11,12 @@ For Zephyr OS, we use
 to analyze RAM and ROM usage in generated images.
 
 The following measurements:
-* Use Zephyr OS v4.0.0
 * Use board ESP32S3 DevkitC
 * Use default feature set of Mender MCU Zephyr module
 * Set the log level for Mender MCU to Warning
 
-| section     | usage    |
-| ----------- | -------- |
-| Code in ROM | 33 KiB   |
-| Static RAM  | 15 KiB   |
-| Dynamic RAM | 8~12 KiB |
+| Mender MCU | Zephyr OS   | Code in ROM | Static RAM | Dynamic RAM |
+| -------    | ----------- | ----------- | ---------- | ----------- |
+| preview    | v4.0.0      | 33 KiB      | 15 KiB     | 8~12 KiB    |
 
 Dynamic RAM is user configurable through Kconfig parameter `MENDER_HEAP_SIZE`. On our reference board, 8 to 12 KiB is recommended.

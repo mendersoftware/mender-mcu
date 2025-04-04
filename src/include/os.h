@@ -28,12 +28,21 @@ extern "C" {
 #include <mender/utils.h>
 
 /**
+ * @brief Backoff intervals
+ */
+typedef struct {
+    uint16_t interval;     /**< Backoff interval for retries on retry errors (seconds) */
+    uint16_t max_interval; /**< Max backoff interval for retries on retry errors (seconds) */
+} mender_os_scheduler_backoff_t;
+
+/**
  * @brief Work parameters
  */
 typedef struct {
-    mender_err_t (*function)(void); /**< Work function */
-    uint32_t period;                /**< Work period (seconds), 0 to disable periodic execution */
-    char    *name;                  /**< Work name */
+    mender_err_t (*function)(void);        /**< Work function */
+    uint32_t                      period;  /**< Work period (seconds), 0 to disable periodic execution */
+    char                         *name;    /**< Work name */
+    mender_os_scheduler_backoff_t backoff; /**< Backoff intervals */
 } mender_os_scheduler_work_params_t;
 
 /**

@@ -68,6 +68,7 @@ typedef enum {
     MENDER_LOOP_DETECTED   = -4, /**< Loop detected */
     MENDER_LOCK_FAILED     = -5, /**< Locking failed */
     MENDER_ABORTED         = -6, /**< Aborted */
+    MENDER_RETRY_ERROR     = -7, /**< Retry error */
 } mender_err_t;
 
 #define MENDER_IS_ERROR(err_t_ret) ((err_t_ret) < 0)

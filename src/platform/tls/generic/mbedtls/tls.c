@@ -202,6 +202,9 @@ mender_tls_init_authentication_keys(mender_err_t (*get_user_provided_keys)(char 
         case MENDER_ABORTED:
             assert(false && "Unexpected return value");
             /* fallthrough */
+        case MENDER_RETRY_ERROR:
+            assert(false && "Unexpected return value");
+            /* fallthrough */
         case MENDER_FAIL:
             mender_log_error("Unable to get authentication keys from store");
             return MENDER_FAIL;

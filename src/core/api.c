@@ -153,7 +153,7 @@ ensure_authenticated_and_locked(void) {
     /* Perform authentication with the mender server */
     if (MENDER_OK != (ret = perform_authentication())) {
         mender_log_error("Authentication failed");
-        return MENDER_FAIL;
+        return ret;
     } else {
         mender_log_debug("Authenticated successfully");
     }
@@ -256,7 +256,7 @@ perform_authentication(void) {
         mender_api_print_response_error(response, status);
         /* Maybe the identity is wrong? Let's make sure we get fresh data for the next attempt. */
         FREE_AND_NULL(identity_info);
-        ret = MENDER_FAIL;
+        ret = MENDER_RETRY_ERROR;
     }
 
 END:
@@ -546,7 +546,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
         ret = MENDER_NOT_FOUND;
     } else {
         mender_api_print_response_error(response, status);
-        ret = MENDER_FAIL;
+        ret = MENDER_RETRY_ERROR;
     }
 
 END:
@@ -618,7 +618,7 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
         ret = MENDER_ABORTED;
     } else {
         mender_api_print_response_error(response, status);
-        ret = MENDER_FAIL;
+        ret = MENDER_RETRY_ERROR;
     }
 
 END:
@@ -869,7 +869,7 @@ mender_api_publish_inventory_data(cJSON *inventory, bool patch) {
         ret = MENDER_OK;
     } else {
         mender_api_print_response_error(response, status);
-        ret = MENDER_FAIL;
+        ret = MENDER_RETRY_ERROR;
     }
 
 END:

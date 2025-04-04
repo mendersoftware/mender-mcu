@@ -231,7 +231,7 @@ END:
 
     mender_free(request.recv_buf);
 
-    return ret;
+    return (MENDER_FAIL != ret) ? ret : MENDER_RETRY_ERROR;
 }
 
 mender_err_t
@@ -340,7 +340,7 @@ END:
 
     mender_free(request.recv_buf);
 
-    return ret;
+    return (MENDER_FAIL != ret) ? ret : MENDER_RETRY_ERROR;
 }
 
 mender_err_t

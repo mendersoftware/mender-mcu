@@ -79,7 +79,7 @@ static mender_err_t artifact_name_device_type_cb(mender_keystore_t **inventory, 
 static mender_err_t provides_cb(mender_keystore_t **inventory, uint8_t *inventory_len);
 
 mender_err_t
-mender_inventory_init(uint32_t interval, const char *dev_type) {
+mender_inventory_init(uint32_t interval, const char *dev_type, uint16_t backoff_interval, uint16_t max_backoff_interval) {
     mender_err_t ret;
 
     /* Create inventory mutex */
@@ -100,9 +100,12 @@ mender_inventory_init(uint32_t interval, const char *dev_type) {
 
     /* Create mender inventory work */
     mender_os_scheduler_work_params_t inventory_work_params;
-    inventory_work_params.function = mender_inventory_work_function;
-    inventory_work_params.period   = (0 != interval ? interval : CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL);
-    inventory_work_params.name     = "mender_inventory";
+    inventory_work_params.function             = mender_inventory_work_function;
+    inventory_work_params.period               = (0 != interval ? interval : CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL);
+    inventory_work_params.backoff.interval     = backoff_interval;
+    inventory_work_params.backoff.max_interval = max_backoff_interval;
+    inventory_work_params.name                 = "mender_inventory";
+
     if (MENDER_OK != (ret = mender_os_scheduler_work_create(&inventory_work_params, &mender_inventory_work))) {
         mender_log_error("Unable to create inventory work");
         return ret;

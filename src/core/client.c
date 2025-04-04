@@ -65,6 +65,20 @@
 #endif /* CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL */
 
 /**
+ * @brief Default backoff interval (seconds)
+ */
+#ifndef CONFIG_MENDER_RETRY_ERROR_BACKOFF
+#define CONFIG_MENDER_RETRY_ERROR_BACKOFF (60)
+#endif /* CONFIG_MENDER_RETRY_ERROR_BACKOFF */
+
+/**
+ * @brief Default max backoff interval interval (seconds)
+ */
+#ifndef CONFIG_MENDER_RETRY_ERROR_MAX_BACKOFF
+#define CONFIG_MENDER_RETRY_ERROR_MAX_BACKOFF (540)
+#endif /* CONFIG_MENDER_RETRY_ERROR_MAX_BACKOFF */
+
+/**
  * @brief Mender client configuration
  */
 static mender_client_config_t mender_client_config;
@@ -295,6 +309,16 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     } else {
         mender_client_config.update_poll_interval = CONFIG_MENDER_CLIENT_UPDATE_POLL_INTERVAL;
     }
+    if (0 != config->backoff_interval) {
+        mender_client_config.backoff_interval = config->backoff_interval;
+    } else {
+        mender_client_config.backoff_interval = CONFIG_MENDER_RETRY_ERROR_BACKOFF;
+    }
+    if (0 != config->max_backoff_interval) {
+        mender_client_config.max_backoff_interval = config->max_backoff_interval;
+    } else {
+        mender_client_config.max_backoff_interval = CONFIG_MENDER_RETRY_ERROR_MAX_BACKOFF;
+    }
     mender_client_config.recommissioning = config->recommissioning;
 
     /* Save callbacks */
@@ -330,7 +354,11 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     }
 
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
-    if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval, mender_client_config.device_type))) {
+    if (MENDER_OK
+        != (ret = mender_inventory_init(mender_client_config.inventory_update_interval,
+                                        mender_client_config.device_type,
+                                        mender_client_config.backoff_interval,
+                                        mender_client_config.max_backoff_interval))) {
         mender_log_error("Failed to initialize the inventory functionality");
         goto END;
     }
@@ -349,10 +377,16 @@ mender_err_t
 mender_client_activate(void) {
     mender_err_t ret;
 
+    mender_os_scheduler_backoff_t backoff = {
+        .interval     = mender_client_config.backoff_interval,
+        .max_interval = mender_client_config.max_backoff_interval,
+    };
+
     mender_os_scheduler_work_params_t work_params = {
         .function = mender_client_work_function,
         .period   = mender_client_config.update_poll_interval,
         .name     = "mender_client_main",
+        .backoff  = backoff,
     };
 
     if ((MENDER_OK != (ret = mender_os_scheduler_work_create(&work_params, &mender_client_work)))
@@ -917,7 +951,7 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
         return MENDER_DONE;
     } else if (MENDER_OK != ret) {
         mender_log_error("Unable to check for deployment");
-        return MENDER_FAIL;
+        return ret;
     }
 
     /* Check if deployment is valid */

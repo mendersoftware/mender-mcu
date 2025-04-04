@@ -43,3 +43,17 @@ if(CONFIG_MENDER_MCU_CLIENT)
     endif()
 
 endif()
+
+# Install the dormant certificate
+if (CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE)
+    set(DORMANT_CERTIFICATE_LINK "https://letsencrypt.org/certs/isrg-root-x2.der")
+    set(DORMANT_CERTIFICATE_SHA256 69729b8e15a86efc177a57afb7171dfc64add28c2fca8cf1507e34453ccb1470)
+    set(DORMANT_CERTIFICATE "${CMAKE_CURRENT_BINARY_DIR}/dormant.cer")
+    file(DOWNLOAD ${DORMANT_CERTIFICATE_LINK} ${DORMANT_CERTIFICATE} EXPECTED_HASH SHA256=${DORMANT_CERTIFICATE_SHA256})
+
+    generate_inc_file_for_target(app
+        ${DORMANT_CERTIFICATE}
+        "${ZEPHYR_BINARY_DIR}/include/generated/dormant.cer.inc"
+    )
+
+endif()

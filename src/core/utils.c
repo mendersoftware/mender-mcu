@@ -229,8 +229,6 @@ mender_utils_deployment_status_to_string(mender_deployment_status_t deployment_s
         return "success";
     } else if (MENDER_DEPLOYMENT_STATUS_FAILURE == deployment_status) {
         return "failure";
-    } else if (MENDER_DEPLOYMENT_STATUS_ALREADY_INSTALLED == deployment_status) {
-        return "already-installed";
     }
 
     return NULL;

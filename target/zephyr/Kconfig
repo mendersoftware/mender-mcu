@@ -152,7 +152,7 @@ if MENDER_MCU_CLIENT
             select MENDER_COMMIT_REQUIRE_AUTH
             help
                 The default zephyr-image update module handles full Zephyr images on MCUboot-based devices.
-                The MCUboot options selected here do not actually modify the behaviour of the bootloader
+                The MCUboot options selected here do not actually modify the behavior of the bootloader
                 since it's built separately from the Mender MCU client. `BOOTLOADER_MCUBOOT`
                 and `MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` (or another swap algorithm) must be enabled in
                 the bootloader configuration, e.g. `sysbuild.conf` if you're using sysbuild.
@@ -226,7 +226,7 @@ if MENDER_MCU_CLIENT
                 string "User defined output Mender Artifact file"
                 default ""
                 help
-                    When not defined, the ouput file is ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender
+                    When not defined, the output file is ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender
 
         endif
 
@@ -413,7 +413,7 @@ if MENDER_MCU_CLIENT
                 int "Primary CA certificate tag for Server"
                 default 1
                 help
-                    A primary security tag that ROOT CA server credential will be referenced with, typically used to authenicate the Mender Server. See tls_credential_add.
+                    A primary security tag that ROOT CA server credential will be referenced with, typically used to authenticate the Mender Server. See tls_credential_add.
 
             config MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY
                 int "Secondary CA certificate tag for Artifacts"

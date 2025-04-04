@@ -32,6 +32,10 @@
 #include "deployment-data.h"
 #include "error-counters.h"
 
+#ifdef CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE
+#include "certs.h"
+#endif /* CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE */
+
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
 #include "inventory.h"
 #endif /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
@@ -328,6 +332,14 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         mender_log_error("Unable to initialize API");
         goto END;
     }
+
+#ifdef CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE
+    if (MENDER_OK == mender_add_dormant_cert()) {
+        mender_log_debug("Added dormant certificate");
+    } else {
+        /* error logged in function */
+    }
+#endif
 
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     if (MENDER_OK != (ret = mender_inventory_init(mender_client_config.inventory_update_interval, mender_client_config.device_type))) {

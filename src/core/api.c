@@ -594,13 +594,11 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     }
 
     /* Compute path */
-    size_t str_length = strlen(MENDER_API_PATH_PUT_DEPLOYMENT_STATUS) - strlen("%s") + strlen(id) + 1;
-    if (NULL == (path = (char *)mender_malloc(str_length))) {
+    if (mender_utils_asprintf(&path, MENDER_API_PATH_PUT_DEPLOYMENT_STATUS, id) <= 0) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto END;
     }
-    snprintf(path, str_length, MENDER_API_PATH_PUT_DEPLOYMENT_STATUS, id);
 
     /* Perform HTTP request */
     if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_PUT, payload, NULL, &response, &status))) {

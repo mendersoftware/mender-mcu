@@ -111,3 +111,8 @@ MENDER_FUNC_WEAK void
 mender_os_reboot(void) {
     return;
 }
+
+MENDER_FUNC_WEAK void
+mender_os_sleep(MENDER_ARG_UNUSED uint32_t period_ms) {
+    return;
+}

@@ -141,6 +141,12 @@ mender_err_t mender_os_mutex_delete(void *handle);
  */
 void mender_os_reboot(void);
 
+/**
+ * @brief Sleep for a given period
+ * @retry period A period to sleep for (in milliseconds)
+ */
+void mender_os_sleep(uint32_t period_ms);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

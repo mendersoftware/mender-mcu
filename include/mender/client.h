@@ -40,7 +40,9 @@ typedef struct {
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
 #endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */
-    bool recommissioning;               /**< Used to force creation of new authentication keys */
+    uint16_t backoff_interval;          /**< Backoff interval for retries on retry errors, 0 means use compile-time defined option */
+    uint16_t max_backoff_interval;      /**< Max backoff interval for retries on retry errors, 0 means use compile-time defined option */
+    bool     recommissioning;           /**< Used to force creation of new authentication keys */
     struct {
         MenderAllocator   malloc_func;
         MenderReallocator realloc_func;

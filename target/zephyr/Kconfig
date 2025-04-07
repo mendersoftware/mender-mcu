@@ -586,6 +586,22 @@ if MENDER_MCU_CLIENT
                 help
                     The number of iterations to wait for a reboot.
 
+            config MENDER_RETRY_ERROR_BACKOFF
+                int "Backoff interval on retry errors (seconds)"
+                range 0 3600
+                default 60
+                help
+                    Starting interval for backoff on retry errors. The backoff algorithm will start at this
+                    interval and double it for each retry.
+
+            config MENDER_RETRY_ERROR_MAX_BACKOFF
+                int "Maximum backoff on retry errors (seconds)"
+                range 0 21600
+                default 540
+                help
+                    Maxmium backoff interval on retry errors. The backoff algorithm will increase until it reaches this
+                    interval and continue retrying with the max interval.
+
         endmenu
 
     endmenu

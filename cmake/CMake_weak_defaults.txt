@@ -21,6 +21,7 @@ set(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE "generic/weak" CACHE STRING "Scheduler
 set(CONFIG_MENDER_PLATFORM_STORAGE_TYPE "generic/weak" CACHE STRING "Storage type")
 set(CONFIG_MENDER_PLATFORM_TLS_TYPE "generic/weak" CACHE STRING "TLS type")
 set(CONFIG_MENDER_PLATFORM_SHA_TYPE "generic/weak" CACHE STRING "SHA type")
+set(CONFIG_MENDER_PLATFORM_CERT_TYPE "generic/weak" CACHE STRING "Certificate type")
 
 include(${CMAKE_CURRENT_LIST_DIR}/CMake_defaults.txt)
 

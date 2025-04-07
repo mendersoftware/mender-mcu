@@ -137,6 +137,12 @@ if (NOT CONFIG_MENDER_PLATFORM_SHA_TYPE)
 else()
     message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_SHA_TYPE}' platform SHA implementation")
 endif()
+if (NOT CONFIG_MENDER_PLATFORM_CERT_TYPE)
+    message(STATUS "Using default 'generic/weak' platform certificate implementation")
+    set(CONFIG_MENDER_PLATFORM_CERT_TYPE "generic/weak")
+else()
+    message(STATUS "Using custom '${CONFIG_MENDER_PLATFORM_CERT_TYPE}' platform certificate implementation")
+endif()
 
 # Set MENDER_MCU_SOURCES
 file(GLOB MENDER_MCU_SOURCES
@@ -172,6 +178,11 @@ if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     list(APPEND MENDER_MCU_SOURCES
         "${MENDER_MCU_ROOT}/src/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/net.c"
     )
+endif()
+if (CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE)
+    list(APPEND MENDER_MCU_SOURCES
+            "${MENDER_MCU_ROOT}/src/platform/certs/${CONFIG_MENDER_PLATFORM_CERT_TYPE}/certs.c"
+        )
 endif()
 
 # Set MENDER_MCU_INCLUDE

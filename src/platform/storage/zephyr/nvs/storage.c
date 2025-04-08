@@ -21,10 +21,13 @@
 #include <errno.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/fs/nvs.h>
-#include <zephyr/sys/crc.h>
 #include <zephyr/storage/flash_map.h>
 #include "log.h"
 #include "storage.h"
+
+#ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
+#include <zephyr/sys/crc.h>
+#endif /* CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC */
 
 #ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
 #include <zephyr/fs/fcb.h>
@@ -165,6 +168,7 @@ checked_nvs_write(struct nvs_fs *fs, uint16_t id, const void *data, size_t len) 
     return (len == ret) || (0 == ret);
 }
 
+#ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
 static mender_err_t
 crc_add(char **data, size_t *data_len) {
 
@@ -208,6 +212,7 @@ crc_check(const unsigned char *data, const size_t data_len) {
 
     return MENDER_OK;
 }
+#endif /* CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC */
 
 mender_err_t
 mender_storage_init(void) {

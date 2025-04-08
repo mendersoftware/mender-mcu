@@ -135,5 +135,6 @@ if (CONFIG_MENDER_PLATFORM_TLS_TYPE STREQUAL "mbedtls")
 endif()
 
 # Define version
-file(STRINGS ${MENDER_MCU_VERSION_FILE} MENDER_CLIENT_VERSION)
-add_definitions("-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\"")
+include("${MENDER_MCU_ROOT}/cmake/git_helper.cmake")
+git_describe(${MENDER_MCU_ROOT} BUILD_VERSION_NAME)
+add_definitions("-DMENDER_CLIENT_VERSION=\"${BUILD_VERSION_NAME}\"")

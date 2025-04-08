@@ -25,8 +25,11 @@ if(CONFIG_MENDER_MCU_CLIENT)
     zephyr_library_include_directories(${MENDER_PRIV_INCLUDE})
     zephyr_include_directories(${MENDER_MCU_INCLUDE})
 
-    file (STRINGS ${MENDER_MCU_VERSION_FILE} MENDER_CLIENT_VERSION)
-    zephyr_library_compile_definitions(-DMENDER_CLIENT_VERSION=\"${MENDER_CLIENT_VERSION}\")
+    # Define version
+    include("${MENDER_MCU_ROOT}/cmake/git_helper.cmake")
+    git_describe(${MENDER_MCU_ROOT} BUILD_VERSION_NAME)
+    zephyr_library_compile_definitions(-DMENDER_CLIENT_VERSION=\"${BUILD_VERSION_NAME}\")
+
     zephyr_library_compile_definitions(-D_POSIX_C_SOURCE=200809L)  # Required for strdup and strtok_r support
     zephyr_library_link_libraries_ifdef(CONFIG_MBEDTLS mbedTLS)
 

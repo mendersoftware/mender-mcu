@@ -1255,6 +1255,18 @@ mender_client_update_work_function(void) {
                 if (MENDER_IS_ERROR(ret = mender_api_ensure_authenticated())) {
                     mender_log_error("Failed to authenticate before commit, rejecting the update");
                 }
+
+                /* Try to update the deployment status one last time before
+                   commit so that we have a chance to detect an aborted
+                   deployment before it's too late. */
+                if (!MENDER_IS_ERROR(ret)
+                    && (MENDER_OK != (ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_INSTALLING)))) {
+                    if (MENDER_ABORTED == ret) {
+                        mender_log_info("Aborted deployment, not committing");
+                    } else {
+                        mender_log_error("Failed to check deployment status before commit, rejecting the update");
+                    }
+                }
 #endif /* CONFIG_MENDER_COMMIT_REQUIRE_AUTH */
                 if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
                     mender_log_error("Unable to commit artifact data");

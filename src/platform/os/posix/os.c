@@ -428,3 +428,8 @@ void
 mender_os_reboot(void) {
     reboot(RB_AUTOBOOT);
 }
+
+void
+mender_os_sleep(uint32_t period_ms) {
+    usleep((useconds_t)period_ms * 1000);
+}

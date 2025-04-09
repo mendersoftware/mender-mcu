@@ -314,3 +314,8 @@ void
 mender_os_reboot(void) {
     sys_reboot(SYS_REBOOT_WARM);
 }
+
+void
+mender_os_sleep(uint32_t period_ms) {
+    k_sleep(K_MSEC(period_ms));
+}

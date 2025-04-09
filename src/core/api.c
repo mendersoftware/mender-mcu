@@ -30,6 +30,25 @@
 #include "utils.h"
 
 /**
+ * @brief HTTP retry mechanism parameters
+ *
+ * On unreliable networks, an HTTP request can easily fail due to some short
+ * network issue. Thus there needs to be a retry mechanism to prevent every
+ * single such temporary failure to cause an error.
+ *
+ * 5 attempts (so 4 retries, to be precise) with 100ms as the first pause
+ * interval doubled with every attempt gives a total of 1500ms period of retries
+ * with nice progressive pauses in between (100, 200, 400, 800ms).
+ *
+ * @note: RETRY_ATTEMPTS is uint8_t,
+ *        INTERVAL_BASE * INTERVAL_FACTOR**(ATTEMPTS - 1) has to fit in uint16_t
+ *        Or the code below has to be adjusted, but such a long sleep doesn't make sense here!
+ */
+#define HTTP_RETRY_ATTEMPTS        5
+#define HTTP_RETRY_INTERVAL_BASE   100 /* milliseconds */
+#define HTTP_RETRY_INTERVAL_FACTOR 2
+
+/**
  * @brief Paths of the mender-server APIs
  */
 #define MENDER_API_PATH_POST_AUTHENTICATION_REQUESTS "/api/devices/v1/authentication/auth_requests"
@@ -174,6 +193,8 @@ perform_authentication(void) {
     char                    *signature        = NULL;
     size_t                   signature_length = 0;
     int                      status           = 0;
+    uint8_t                  remaining_attempts;
+    uint16_t                 retry_interval;
 
     /* Get public key in PEM format */
     if (MENDER_OK != (ret = mender_tls_get_public_key_pem(&public_key_pem))) {
@@ -222,15 +243,28 @@ perform_authentication(void) {
     }
 
     /* Perform HTTP request */
-    if (MENDER_OK
-        != (ret = mender_http_perform(NULL,
-                                      MENDER_API_PATH_POST_AUTHENTICATION_REQUESTS,
-                                      MENDER_HTTP_POST,
-                                      payload,
-                                      signature,
-                                      &mender_api_http_text_callback,
-                                      (void *)&response,
-                                      &status))) {
+    remaining_attempts = HTTP_RETRY_ATTEMPTS;
+    retry_interval     = HTTP_RETRY_INTERVAL_BASE;
+    do {
+        ret = mender_http_perform(NULL,
+                                  MENDER_API_PATH_POST_AUTHENTICATION_REQUESTS,
+                                  MENDER_HTTP_POST,
+                                  payload,
+                                  signature,
+                                  &mender_api_http_text_callback,
+                                  (void *)&response,
+                                  &status);
+        if (MENDER_RETRY_ERROR == ret) {
+            mender_os_sleep(retry_interval);
+            retry_interval = retry_interval * HTTP_RETRY_INTERVAL_FACTOR;
+            remaining_attempts--;
+
+            /* Just in case something was already gathered as response. */
+            FREE_AND_NULL(response);
+        }
+    } while ((MENDER_RETRY_ERROR == ret) && (remaining_attempts > 0));
+
+    if (MENDER_OK != ret) {
         mender_log_error("Unable to perform HTTP request");
         mender_err_count_net_inc();
         goto END;
@@ -279,6 +313,8 @@ END:
 static mender_err_t
 authenticated_http_perform(char *path, mender_http_method_t method, char *payload, char *signature, char **response, int *status) {
     mender_err_t ret;
+    uint8_t      remaining_attempts;
+    uint16_t     retry_interval;
 
     if (MENDER_IS_ERROR(ret = ensure_authenticated_and_locked())) {
         /* Errors already logged. */
@@ -291,7 +327,20 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
         return ret;
     }
 
-    ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
+    remaining_attempts = HTTP_RETRY_ATTEMPTS;
+    retry_interval     = HTTP_RETRY_INTERVAL_BASE;
+    do {
+        ret = mender_http_perform(api_jwt, path, method, payload, signature, &mender_api_http_text_callback, response, status);
+        if (MENDER_RETRY_ERROR == ret) {
+            mender_os_sleep(retry_interval);
+            retry_interval = retry_interval * HTTP_RETRY_INTERVAL_FACTOR;
+            remaining_attempts--;
+
+            /* Just in case something was already gathered as response. */
+            FREE_AND_NULL(*response);
+        }
+    } while ((MENDER_RETRY_ERROR == ret) && (remaining_attempts > 0));
+
     if (MENDER_OK != mender_os_mutex_give(auth_lock)) {
         mender_log_error("Unable to release the authentication lock");
         return MENDER_FAIL;
@@ -594,13 +643,11 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     }
 
     /* Compute path */
-    size_t str_length = strlen(MENDER_API_PATH_PUT_DEPLOYMENT_STATUS) - strlen("%s") + strlen(id) + 1;
-    if (NULL == (path = (char *)mender_malloc(str_length))) {
+    if (mender_utils_asprintf(&path, MENDER_API_PATH_PUT_DEPLOYMENT_STATUS, id) <= 0) {
         mender_log_error("Unable to allocate memory");
         ret = MENDER_FAIL;
         goto END;
     }
-    snprintf(path, str_length, MENDER_API_PATH_PUT_DEPLOYMENT_STATUS, id);
 
     /* Perform HTTP request */
     if (MENDER_OK != (ret = authenticated_http_perform(path, MENDER_HTTP_PUT, payload, NULL, &response, &status))) {

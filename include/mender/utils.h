@@ -77,12 +77,11 @@ typedef enum {
  * @brief Deployment status
  */
 typedef enum {
-    MENDER_DEPLOYMENT_STATUS_DOWNLOADING,      /**< Status is "downloading" */
-    MENDER_DEPLOYMENT_STATUS_INSTALLING,       /**< Status is "installing" */
-    MENDER_DEPLOYMENT_STATUS_REBOOTING,        /**< Status is "rebooting" */
-    MENDER_DEPLOYMENT_STATUS_SUCCESS,          /**< Status is "success" */
-    MENDER_DEPLOYMENT_STATUS_FAILURE,          /**< Status is "failure" */
-    MENDER_DEPLOYMENT_STATUS_ALREADY_INSTALLED /**< Status is "already installed" */
+    MENDER_DEPLOYMENT_STATUS_DOWNLOADING, /**< Status is "downloading" */
+    MENDER_DEPLOYMENT_STATUS_INSTALLING,  /**< Status is "installing" */
+    MENDER_DEPLOYMENT_STATUS_REBOOTING,   /**< Status is "rebooting" */
+    MENDER_DEPLOYMENT_STATUS_SUCCESS,     /**< Status is "success" */
+    MENDER_DEPLOYMENT_STATUS_FAILURE,     /**< Status is "failure" */
 } mender_deployment_status_t;
 
 /**

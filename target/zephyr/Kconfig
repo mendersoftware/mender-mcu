@@ -85,7 +85,7 @@ if MENDER_MCU_CLIENT
 
         config MENDER_DEVICE_TYPE
             string "Mender Device Type"
-            default BOARD_TARGET
+            default BOARD
             help
                 The type of device, used to ensure compatibility between the hardware and software.
 

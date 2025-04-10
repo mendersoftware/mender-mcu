@@ -270,6 +270,7 @@ mender_inventory_reset_persistent(void) {
 
 static mender_err_t
 collect_persistent_inventory(void) {
+    mender_err_t ret;
     for (uint8_t idx = 0; idx < n_callbacks; idx++) {
         if (callbacks[idx].persistent) {
             keystores_item_t *item = mender_calloc(1, sizeof(keystores_item_t));
@@ -277,8 +278,12 @@ collect_persistent_inventory(void) {
                 mender_log_error("Unable to allocate memory");
                 return MENDER_FAIL;
             }
-            if (MENDER_OK != callbacks[idx].callback(&(item->keystore), &(item->keystore_len))) {
-                mender_log_error("Failed to get persistent inventory data");
+            if (MENDER_OK != (ret = callbacks[idx].callback(&(item->keystore), &(item->keystore_len)))) {
+                if (MENDER_NOT_FOUND == ret) {
+                    mender_log_debug("No persistent inventory data to collect");
+                } else {
+                    mender_log_error("Failed to get persistent inventory data");
+                }
                 /* keep going and collect as much as we can */
                 mender_free(item);
                 continue;

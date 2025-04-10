@@ -422,7 +422,7 @@ provides_cb(mender_keystore_t **inventory, uint8_t *inventory_len) {
        structure for manipulation with provides data in other places), but we
        need a key-value array so we need to do a transformation. */
     if (MENDER_OK != (ret = mender_storage_get_provides(&provides))) {
-        mender_log_error("Failed to get provides from storage");
+        /* error logged in function */
         return ret;
     }
 

@@ -26,8 +26,7 @@ variables:
 
 default:
   tags:
-    # Don't run gitlab hosted runners by default
-    - hetzner-amd-beefy
+    - hetzner-podman
 
 .test:static:
   stage: test
@@ -35,9 +34,6 @@ default:
   needs: []
   before_script:
     - apt-get update && apt-get install -y git clang-format pcregrep
-  tags:
-    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
-    - mender-qa-worker-generic-light
 
 test:static:license:
   extends: .test:static
@@ -56,9 +52,6 @@ test:smoke-build:posix:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   needs: []
-  tags:
-    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
-    - mender-qa-worker-generic-light
   before_script:
     - apt-get update && apt-get install -yqq
       cmake git make pkg-config python3
@@ -72,9 +65,6 @@ test:smoke-build:weak:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   needs: []
-  tags:
-    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
-    - mender-qa-worker-generic-light
   before_script:
     - apt-get update && apt-get install -yqq
       cmake git make pkg-config python3
@@ -87,9 +77,6 @@ test:smoke-build:weak:
 test:unit:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
-  tags:
-    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
-    - mender-qa-worker-generic-light
   before_script:
     - apt update && apt install -yyq
       cmake git make pkg-config python3
@@ -126,9 +113,6 @@ test:unit:
   script:
     - cmake -D CMAKE_BUILD_TYPE=${BUILD_TYPE} tests/unit
     - make --jobs=$(nproc --all) --keep-going check
-  tags:
-    # QA-866: Ubuntu 24.04 image cannot properly run on our private runners.
-    - mender-qa-worker-generic-light 
 
 test:static:asan:
   extends: .test:static:template
@@ -137,6 +121,10 @@ test:static:asan:
 
 test:static:threadsan:
   extends: .test:static:template
+  tags:
+    # Hetzner Podman fails with Result: Segmentation fault
+    # Falling back to GCP runners
+    - mender-qa-worker-generic-light
   variables:
     BUILD_TYPE: ThreadSan
 

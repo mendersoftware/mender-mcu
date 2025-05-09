@@ -43,10 +43,12 @@ if MENDER_MCU_CLIENT
 
             config MENDER_SERVER_HOST_US
                 bool "https://hosted.mender.io"
+                select MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY_ENABLED
                 help
                     hosted Mender US
             config MENDER_SERVER_HOST_EU
                 bool "https://eu.hosted.mender.io"
+                select MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY_ENABLED
                 help
                     hosted Mender EU
             config MENDER_SERVER_HOST_ON_PREM
@@ -460,7 +462,7 @@ if MENDER_MCU_CLIENT
 
             config MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY_ENABLED
                 bool "Enable MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY"
-                default y
+                default n
                 help
                     Enables the secondary CA tag. If this option is enabled, the user must add the two certificates with tls_credential_add
 

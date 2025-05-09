@@ -469,7 +469,7 @@ if MENDER_MCU_CLIENT
                 range 0 2
                 default 2
                 help
-                    Peer verification level for TLS connection.
+                    Peer verification level for TLS connection - see mbedtls/ssl.h, in particular mbedtls_ssl_conf_authmode(), for details. 2 (default) requires SSL peer verification, 1 makes verification optional (not implemented) and 0 skips verification.
 
         endmenu
 

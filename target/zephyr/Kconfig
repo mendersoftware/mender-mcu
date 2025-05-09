@@ -452,7 +452,7 @@ if MENDER_MCU_CLIENT
 
             config MENDER_NET_CA_CERTIFICATE_TAG_DORMANT
                 int "Dormant CA certificate tag for Server rescue"
-                # the tag is arbirtrarily set to 9
+                # the tag is arbitrarily set to 9
                 default 9
                 depends on MENDER_SERVER_DORMANT_CERTIFICATE
                 help

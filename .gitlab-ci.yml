@@ -1,7 +1,9 @@
 include:
+  - component: gitlab.com/Northern.tech/Mender/mendertesting/commit-lint@master
   - project: 'Northern.tech/Mender/mendertesting'
     file:
-      - '.gitlab-ci-check-commits.yml'
+      # QA-1046 Remove after hardening sign-off checks in the modern commit linter
+      - '.gitlab-ci-check-commits-signoffs.yml'
       - '.gitlab-ci-github-status-updates.yml'
   - local: "/.gitlab/release.yaml"
 

@@ -32,9 +32,9 @@
 #include "deployment-data.h"
 #include "error-counters.h"
 
-#ifdef CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE
+#ifdef CONFIG_MENDER_SERVER_DORMANT_CERTIFICATES
 #include "certs.h"
-#endif /* CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE */
+#endif /* CONFIG_MENDER_SERVER_DORMANT_CERTIFICATES */
 
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
 #include "inventory.h"
@@ -357,8 +357,8 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
 
-#ifdef CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE
-    if (MENDER_OK != (ret = mender_add_dormant_cert())) {
+#ifdef CONFIG_MENDER_SERVER_DORMANT_CERTIFICATES
+    if (MENDER_OK != (ret = mender_add_dormant_certs())) {
         /* error logged in function */
         goto END;
     }

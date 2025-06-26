@@ -47,16 +47,25 @@ if(CONFIG_MENDER_MCU_CLIENT)
 
 endif()
 
-# Install the dormant certificate
-if (CONFIG_MENDER_SERVER_DORMANT_CERTIFICATE)
-    set(DORMANT_CERTIFICATE_LINK "https://letsencrypt.org/certs/isrg-root-x2.der")
-    set(DORMANT_CERTIFICATE_SHA256 69729b8e15a86efc177a57afb7171dfc64add28c2fca8cf1507e34453ccb1470)
-    set(DORMANT_CERTIFICATE "${CMAKE_CURRENT_BINARY_DIR}/dormant.cer")
-    file(DOWNLOAD ${DORMANT_CERTIFICATE_LINK} ${DORMANT_CERTIFICATE} EXPECTED_HASH SHA256=${DORMANT_CERTIFICATE_SHA256})
+# Install the dormant certificates
+if (CONFIG_MENDER_SERVER_DORMANT_CERTIFICATES)
+    set(DORMANT_CERTIFICATE_A_LINK "https://docs.mender.io/releases/certs/isrgrootx1.der")
+    set(DORMANT_CERTIFICATE_A_SHA256 96bcec06264976f37460779acf28c5a7cfe8a3c0aae11a8ffcee05c0bddf08c6)
+    set(DORMANT_CERTIFICATE_A "${CMAKE_CURRENT_BINARY_DIR}/dormant.cer")
+    file(DOWNLOAD ${DORMANT_CERTIFICATE_A_LINK} ${DORMANT_CERTIFICATE_A} EXPECTED_HASH SHA256=${DORMANT_CERTIFICATE_A_SHA256})
 
     generate_inc_file_for_target(app
-        ${DORMANT_CERTIFICATE}
-        "${ZEPHYR_BINARY_DIR}/include/generated/dormant.cer.inc"
+        ${DORMANT_CERTIFICATE_A}
+        "${ZEPHYR_BINARY_DIR}/include/generated/dormant_a.cer.inc"
     )
 
+    set(DORMANT_CERTIFICATE_B_LINK "https://docs.mender.io/releases/certs/isrg-root-x2.der")
+    set(DORMANT_CERTIFICATE_B_SHA256 69729b8e15a86efc177a57afb7171dfc64add28c2fca8cf1507e34453ccb1470)
+    set(DORMANT_CERTIFICATE_B "${CMAKE_CURRENT_BINARY_DIR}/dormant_b.cer")
+    file(DOWNLOAD ${DORMANT_CERTIFICATE_B_LINK} ${DORMANT_CERTIFICATE_B} EXPECTED_HASH SHA256=${DORMANT_CERTIFICATE_B_SHA256})
+
+    generate_inc_file_for_target(app
+        ${DORMANT_CERTIFICATE_B}
+        "${ZEPHYR_BINARY_DIR}/include/generated/dormant_b.cer.inc"
+    )
 endif()

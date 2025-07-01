@@ -20,7 +20,7 @@
 #include "certs.h"
 
 mender_err_t
-mender_add_dormant_cert(void) {
+mender_add_dormant_certs(void) {
     /* Nothing to do */
     return MENDER_OK;
 }

@@ -27,10 +27,10 @@ extern "C" {
 #include "utils.h"
 
 /**
- * @brief Add dormant certificate for potential disaster recovery scenarios
+ * @brief Add dormant certificates for potential disaster recovery scenarios
  * @return MENDER_OK if the function succeeds, error code otherwise
  */
-mender_err_t mender_add_dormant_cert(void);
+mender_err_t mender_add_dormant_certs(void);
 
 #ifdef __cplusplus
 }

@@ -70,7 +70,7 @@ if MENDER_MCU_CLIENT
                 default "https://eu.hosted.mender.io"
         endif
 
-        config MENDER_SERVER_DORMANT_CERTIFICATE
+        config MENDER_SERVER_DORMANT_CERTIFICATES
             bool "Enable dormant certificate for potential server recovery"
             default y
             help
@@ -452,13 +452,21 @@ if MENDER_MCU_CLIENT
                 help
                     A secondary security tag that ROOT CA server credential will be referenced with, typically used to authenticate the server from where to download Mender Artifacts. See tls_credential_add.
 
-            config MENDER_NET_CA_CERTIFICATE_TAG_DORMANT
-                int "Dormant CA certificate tag for Server rescue"
+            config MENDER_NET_CA_CERTIFICATE_TAG_DORMANT_A
+                int "Dormant CA certificate A tag for Server rescue"
                 # the tag is arbitrarily set to 9
                 default 9
-                depends on MENDER_SERVER_DORMANT_CERTIFICATE
+                depends on MENDER_SERVER_DORMANT_CERTIFICATES
                 help
                     A security tag that the dormant certificate will be referenced with, typically used for backup in disaster recovery scenarios. See tls_credential_add.
+
+            config MENDER_NET_CA_CERTIFICATE_TAG_DORMANT_B
+                int "Dormant CA certificate B tag for Server rescue"
+                # the tag is arbitrarily set to 10
+                default 10
+                depends on MENDER_SERVER_DORMANT_CERTIFICATES
+                help
+                    A security tag that the backup dormant certificate will be referenced with. See tls_credential_add.
 
             config MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY_ENABLED
                 bool "Enable MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY"

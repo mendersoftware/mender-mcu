@@ -59,7 +59,7 @@ static mender_http_config_t http_config;
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
  */
-static void http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
+static int http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
 /**
  * @brief HTTP artifact response callback, invoked to handle data received
@@ -67,7 +67,7 @@ static void http_response_cb(struct http_response *response, enum http_final_cal
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
  */
-static void artifact_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
+static int artifact_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
 /**
  * @brief Convert mender HTTP method to Zephyr HTTP client method
@@ -352,7 +352,7 @@ mender_http_exit(void) {
     return MENDER_OK;
 }
 
-static void
+static int
 http_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_final_call final_call, void *user_data) {
     assert(NULL != response);
     assert(NULL != user_data);
@@ -369,10 +369,14 @@ http_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_fin
                     MENDER_HTTP_EVENT_DATA_RECEIVED, (void *)response->body_frag_start, response->body_frag_len, request_context->params))) {
             mender_log_error("An error occurred, stop reading data");
         }
+
+        return 0;
     }
+
+    return -1;
 }
 
-static void
+static int
 artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_final_call final_call, void *user_data) {
 
     assert(NULL != response);
@@ -389,7 +393,11 @@ artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http
         if (MENDER_OK != (dl_data->ret)) {
             mender_log_error("An error occurred, stop reading data");
         }
+
+        return 0;
     }
+
+    return -1;
 }
 
 static enum http_method

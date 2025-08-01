@@ -58,6 +58,8 @@ static mender_http_config_t http_config;
  * @param response HTTP response structure
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
+ * @return 0  if http_client_req() should proceed with the download,
+ *         <0 if http_client_req() should abort the download
  */
 static int http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
@@ -66,6 +68,8 @@ static int http_response_cb(struct http_response *response, enum http_final_call
  * @param response HTTP response structure
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
+ * @return 0  if http_client_req() should proceed with the download,
+ *         <0 if http_client_req() should abort the download
  */
 static int artifact_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 

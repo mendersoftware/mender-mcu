@@ -19,7 +19,7 @@ variables:
   # mender-artifact version for tests
   MENDER_ARTIFACT_VERSION:
     description: "mender-artifact version for tests"
-    value: 4.0.0
+    value: 4.1.0
   MENDER_MCU_INTEGRATION_REVISION:
     description: |
       Revision of mender-mcu-integration to trigger.
@@ -85,7 +85,7 @@ test:unit:
       libcurl4-openssl-dev libcjson-dev
       g++ lcov wget
     # Fetch and install mender-artifact
-    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+bookworm_amd64.deb"
+    - wget "https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+bookworm_amd64.deb"
       -O mender-artifact.deb &&
       dpkg --install mender-artifact.deb
   script:
@@ -107,7 +107,7 @@ test:unit:
       libcurl4-openssl-dev libcjson-dev
       clang wget
     # Fetch and install mender-artifact
-    - wget "https://downloads.mender.io/repos/debian/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+ubuntu+noble_amd64.deb"
+    - wget "https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+ubuntu+noble_amd64.deb"
       -O mender-artifact.deb &&
       dpkg --install mender-artifact.deb
     - export CC=$(which clang)

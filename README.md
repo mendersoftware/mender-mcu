@@ -51,7 +51,7 @@ here for more in-depth information.
 ### Compatibility
 | Zephyr OS version |
 |-------------------|
-| v4.0.0            |
+| v4.2.0            |
 
 ### Boards
 The reference board for `mender-mcu` is the [ESP32-S3-DevKitC](https://docs.zephyrproject.org/latest/boards/espressif/esp32s3_devkitc/doc/index.html).
@@ -151,7 +151,8 @@ MCUboot. The following link will filter the officially supported boards that als
 The Update Module requires a swap algorithm in order to allow rollbacks to revert to the previous image.
 The [MCUboot documentation](https://docs.mcuboot.com/readme-zephyr.html) recommends against using the
 `swap-using-scratch algorithm`, which also requires its own `scratch_partition`. We therefore require
-`MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` to be enabled in order to use the Update Module.
+`MCUBOOT_MODE_SWAP_USING_MOVE` (`MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` for Zephyr versions below 4.1) to be
+enabled in order to use the Update Module.
 
 #### Update Modules State Machine
 

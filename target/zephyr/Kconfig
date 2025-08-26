@@ -159,7 +159,7 @@ if MENDER_MCU_CLIENT
             # The MCUboot options here do not
             # affect the MCUboot configuration
             select BOOTLOADER_MCUBOOT
-            select MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH
+            select MCUBOOT_MODE_SWAP_USING_MOVE
             select IMG_ENABLE_IMAGE_CHECK
             select IMG_ERASE_PROGRESSIVELY
             select IMG_MANAGER
@@ -168,8 +168,9 @@ if MENDER_MCU_CLIENT
                 The default zephyr-image update module handles full Zephyr images on MCUboot-based devices.
                 The MCUboot options selected here do not actually modify the behavior of the bootloader
                 since it's built separately from the Mender MCU client. `BOOTLOADER_MCUBOOT`
-                and `MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` (or another swap algorithm) must be enabled in
-                the bootloader configuration, e.g. `sysbuild.conf` if you're using sysbuild.
+                and `MCUBOOT_MODE_SWAP_USING_MOVE (`MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` for Zephyr versions below 4.1)`
+                (or another swap algorithm) must be enabled in the bootloader configuration, e.g. `sysbuild.conf`
+                if you're using sysbuild.
     endmenu
 
     menuconfig MENDER_ARTIFACT_GENERATE

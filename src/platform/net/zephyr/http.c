@@ -27,6 +27,15 @@
 
 #include "net.h"
 
+/* Zephyr versions 4.2.0 and above return int, versions below 4.2.0 return void */
+#if (ZEPHYR_VERSION_CODE < ZEPHYR_VERSION(4, 2, 0))
+#define HTTP_CALLBACK_RETURN_VALUE
+#define HTTP_CALLBACK_RETURN_TYPE void
+#else
+#define HTTP_CALLBACK_RETURN_VALUE 0
+#define HTTP_CALLBACK_RETURN_TYPE  int
+#endif
+
 /**
  * @brief HTTP User-Agent
  */
@@ -58,16 +67,18 @@ static mender_http_config_t http_config;
  * @param response HTTP response structure
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
+ * @return HTTP_CALLBACK_RETURN_VALUE, 0 if Zephyr >= 4.2.0, void otherwise
  */
-static void http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
+static HTTP_CALLBACK_RETURN_TYPE http_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
 /**
  * @brief HTTP artifact response callback, invoked to handle data received
  * @param response HTTP response structure
  * @param final_call Indicate final call
  * @param user_data User data, used to retrieve request context data
+ * @return HTTP_CALLBACK_RETURN_VALUE, 0 if Zephyr >= 4.2.0, void otherwise
  */
-static void artifact_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
+static HTTP_CALLBACK_RETURN_TYPE artifact_response_cb(struct http_response *response, enum http_final_call final_call, void *user_data);
 
 /**
  * @brief Convert mender HTTP method to Zephyr HTTP client method
@@ -352,7 +363,7 @@ mender_http_exit(void) {
     return MENDER_OK;
 }
 
-static void
+static HTTP_CALLBACK_RETURN_TYPE
 http_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_final_call final_call, void *user_data) {
     assert(NULL != response);
     assert(NULL != user_data);
@@ -370,9 +381,10 @@ http_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_fin
             mender_log_error("An error occurred, stop reading data");
         }
     }
+    return HTTP_CALLBACK_RETURN_VALUE;
 }
 
-static void
+static HTTP_CALLBACK_RETURN_TYPE
 artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http_final_call final_call, void *user_data) {
 
     assert(NULL != response);
@@ -390,6 +402,7 @@ artifact_response_cb(struct http_response *response, MENDER_ARG_UNUSED enum http
             mender_log_error("An error occurred, stop reading data");
         }
     }
+    return HTTP_CALLBACK_RETURN_VALUE;
 }
 
 static enum http_method

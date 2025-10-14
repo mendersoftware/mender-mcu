@@ -36,6 +36,7 @@ typedef struct {
     const char *device_type;                                         /**< Device type */
     const char *host;                                                /**< URL of the mender server */
     const char *tenant_token;                                        /**< Tenant token used to authenticate on the mender server (optional) */
+    const char *device_tier;                                         /**< Device tier: "standard" or "micro" */
     mender_err_t (*identity_cb)(const mender_identity_t **identity); /**< Invoked to retrieve identity */
 } mender_api_config_t;
 

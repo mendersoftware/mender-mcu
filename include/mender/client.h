@@ -30,12 +30,26 @@ extern "C" {
 #include <mender/update-module.h>
 
 /**
+ * @brief Device tier constants
+ */
+#define MENDER_DEVICE_TIER_STANDARD "standard"
+#define MENDER_DEVICE_TIER_MICRO    "micro"
+
+/**
+ * @brief Validate device tier value
+ * @param device_tier Device tier string
+ * @return MENDER_OK if valid, MENDER_FAIL otherwise
+ */
+mender_err_t mender_client_validate_device_tier(const char *device_tier);
+
+/**
  * @brief Mender client configuration
  */
 typedef struct {
     const char *device_type;          /**< Device type, must be string literal or outlive config */
     const char *host;                 /**< URL of the mender server, must be string literal or outlive config */
     const char *tenant_token;         /**< Tenant token used to authenticate on the mender server (optional), must be string literal or outlive config */
+    const char *device_tier;          /**< Device tier: "standard" or "micro" (optional), must be string literal or a string that outlives the config */
     uint32_t    update_poll_interval; /**< Update poll interval, default is 1800 seconds, must be > 0 */
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */

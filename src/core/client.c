@@ -55,6 +55,13 @@
 #endif /* CONFIG_MENDER_SERVER_TENANT_TOKEN */
 
 /**
+ * @brief Default device tier
+ */
+#ifndef CONFIG_MENDER_DEVICE_TIER
+#define CONFIG_MENDER_DEVICE_TIER MENDER_DEVICE_TIER_STANDARD
+#endif /* CONFIG_MENDER_DEVICE_TIER */
+
+/**
  * @brief Default device type
  */
 #ifndef CONFIG_MENDER_DEVICE_TYPE
@@ -245,6 +252,21 @@ static mender_err_t mender_client_publish_deployment_status(const char *id, mend
  */
 static mender_err_t set_and_store_state(const mender_update_state_t state);
 
+mender_err_t
+mender_client_validate_device_tier(const char *device_tier) {
+    if (NULL == device_tier) {
+        mender_log_error("Device tier cannot be NULL");
+        return MENDER_FAIL;
+    }
+
+    if (StringEqual(device_tier, MENDER_DEVICE_TIER_STANDARD) || StringEqual(device_tier, MENDER_DEVICE_TIER_MICRO)) {
+        return MENDER_OK;
+    }
+
+    mender_log_error("Invalid device tier '%s'. Valid tiers are '%s' and '%s'", device_tier, MENDER_DEVICE_TIER_STANDARD, MENDER_DEVICE_TIER_MICRO);
+    return MENDER_FAIL;
+}
+
 const char *
 mender_client_version(void) {
 
@@ -305,6 +327,19 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     } else {
         mender_client_config.tenant_token = CONFIG_MENDER_SERVER_TENANT_TOKEN;
     }
+    if (!IS_NULL_OR_EMPTY(config->device_tier)) {
+        if (MENDER_OK != (ret = mender_client_validate_device_tier(config->device_tier))) {
+            /* Error logged in mender_client_validate_device_tier */
+            goto END;
+        }
+        mender_client_config.device_tier = config->device_tier;
+    } else {
+        if (MENDER_OK != (ret = mender_client_validate_device_tier(CONFIG_MENDER_DEVICE_TIER))) {
+            /* Error logged in mender_client_validate_device_tier */
+            goto END;
+        }
+        mender_client_config.device_tier = CONFIG_MENDER_DEVICE_TIER;
+    }
     if ((NULL != mender_client_config.tenant_token) && (0 == strlen(mender_client_config.tenant_token))) {
         mender_client_config.tenant_token = NULL;
     }
@@ -350,6 +385,7 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         .device_type  = mender_client_config.device_type,
         .host         = mender_client_config.host,
         .tenant_token = mender_client_config.tenant_token,
+        .device_tier  = mender_client_config.device_tier,
         .identity_cb  = callbacks->get_identity,
     };
     if (MENDER_OK != (ret = mender_api_init(&mender_api_config))) {

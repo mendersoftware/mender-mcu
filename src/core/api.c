@@ -104,6 +104,7 @@ mender_api_init(mender_api_config_t *config) {
     assert(NULL != config->device_type);
     assert(NULL != config->host);
     assert(NULL != config->identity_cb);
+    assert(NULL != config->device_tier);
 
     mender_err_t ret;
 
@@ -229,6 +230,9 @@ perform_authentication(void) {
     cJSON_AddStringToObject(json_payload, "pubkey", public_key_pem);
     if (NULL != api_config.tenant_token) {
         cJSON_AddStringToObject(json_payload, "tenant_token", api_config.tenant_token);
+    }
+    if (NULL != api_config.device_tier) {
+        cJSON_AddStringToObject(json_payload, "tier", api_config.device_tier);
     }
     if (NULL == (payload = cJSON_PrintUnformatted(json_payload))) {
         mender_log_error("Unable to allocate memory");

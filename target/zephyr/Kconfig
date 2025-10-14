@@ -85,6 +85,28 @@ if MENDER_MCU_CLIENT
             help
                 Set the Mender server Tenant Token, to be used with https://hosted.mender.io. Retrieve it from the "Organization and billing" settings of your account.
 
+        choice MENDER_DEVICE_TIER
+            prompt "Mender Device Tier"
+            default MENDER_DEVICE_TIER_STANDARD
+            help
+                Set the Device Tier to be used on the device (defaults to "standard"). Note that
+                client configuration takes precedence.
+
+            config MENDER_DEVICE_TIER_STANDARD
+                bool "standard"
+                help
+                    Standard device tier
+            config MENDER_DEVICE_TIER_MICRO
+                bool "micro"
+                help
+                    Micro device tier
+        endchoice
+
+        config MENDER_DEVICE_TIER
+            string
+            default "standard" if MENDER_DEVICE_TIER_STANDARD
+            default "micro" if MENDER_DEVICE_TIER_MICRO
+
         config MENDER_DEVICE_TYPE
             string "Mender Device Type"
             default BOARD

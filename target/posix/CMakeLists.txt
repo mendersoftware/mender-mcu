@@ -50,6 +50,9 @@ endif()
 if (CONFIG_MENDER_SERVER_TENANT_TOKEN)
     target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_SERVER_TENANT_TOKEN=\"${CONFIG_MENDER_SERVER_TENANT_TOKEN}\")
 endif()
+if (CONFIG_MENDER_DEVICE_TIER)
+    target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_DEVICE_TIER=\"${CONFIG_MENDER_DEVICE_TIER}\")
+endif()
 if (CONFIG_MENDER_DEVICE_TYPE)
     target_compile_definitions(mender-mcu-client PRIVATE CONFIG_MENDER_DEVICE_TYPE=\"${CONFIG_MENDER_DEVICE_TYPE}\")
 endif()
@@ -132,6 +135,11 @@ if (CONFIG_MENDER_PLATFORM_TLS_TYPE STREQUAL "mbedtls")
   if (MENDER_MBEDTLS_ERROR_STR)
     target_compile_definitions(mender-mcu-client PRIVATE MBEDTLS_ERROR_C)
   endif()
+endif()
+
+# generic/curl network implementation
+if(CONFIG_MENDER_PLATFORM_NET_TYPE MATCHES "generic/curl")
+    target_link_libraries(mender-mcu-client PRIVATE curl)
 endif()
 
 # Define version

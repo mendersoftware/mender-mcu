@@ -38,7 +38,7 @@ extern const size_t mender_http_recv_buf_length;
  * @brief Mender HTTP configuration
  */
 typedef struct {
-    char *host; /**< URL of the mender server */
+    const char *host; /**< URL of the mender server */
 } mender_http_config_t;
 
 /**

@@ -37,7 +37,7 @@
 #define RESOLVE_ATTEMPTS (10)
 
 mender_err_t
-mender_net_get_host_port_url(const char *path, char *config_host, char **host, char **port, char **url) {
+mender_net_get_host_port_url(const char *path, const char *config_host, char **host, char **port, char **url) {
 
     assert(NULL != path);
     assert(NULL != host);

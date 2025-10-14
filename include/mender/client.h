@@ -33,10 +33,10 @@ extern "C" {
  * @brief Mender client configuration
  */
 typedef struct {
-    char    *device_type;          /**< Device type */
-    char    *host;                 /**< URL of the mender server */
-    char    *tenant_token;         /**< Tenant token used to authenticate on the mender server (optional) */
-    uint32_t update_poll_interval; /**< Update poll interval, default is 1800 seconds, must be > 0 */
+    const char *device_type;          /**< Device type, must be string literal or outlive config */
+    const char *host;                 /**< URL of the mender server, must be string literal or outlive config */
+    const char *tenant_token;         /**< Tenant token used to authenticate on the mender server (optional), must be string literal or outlive config */
+    uint32_t    update_poll_interval; /**< Update poll interval, default is 1800 seconds, must be > 0 */
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
     uint32_t inventory_update_interval; /**< Inventory update interval, default is compile-time defined */
 #endif                                  /* CONFIG_MENDER_CLIENT_INVENTORY_DISABLE */

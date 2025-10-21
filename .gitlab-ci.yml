@@ -19,7 +19,7 @@ variables:
   # mender-artifact version for tests
   MENDER_ARTIFACT_VERSION:
     description: "mender-artifact version for tests"
-    value: 4.1.0
+    value: 4.2.0
   MENDER_MCU_INTEGRATION_REVISION:
     description: |
       Revision of mender-mcu-integration to trigger.

@@ -21,6 +21,15 @@ if(NOT mender_artifact_found)
     message(FATAL_ERROR "mender-artifact not found in PATH. Visit https://docs.mender.io/downloads#mender-artifact to download the tool or disable Artifact generation with MENDER_ARTIFACT_GENERATE")
 endif()
 
+# Fail if version mender-artifact version doesn't have the Artifact size functionality
+if (CONFIG_MENDER_ARTIFACT_SIZE_LIMITS)
+    execute_process(COMMAND mender-artifact write module-image --help OUTPUT_VARIABLE HELP_OUTPUT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(FIND "${HELP_OUTPUT}" "--warn-artifact-size" FOUND_ARTIFACT_SIZE)
+    if (FOUND_ARTIFACT_SIZE LESS 0)
+        message(FATAL_ERROR "Setting Artifact size limits require mender-artifact >= 4.2.0")
+    endif()
+endif()
+
 # Print a warning on empty Artifact name
 if(CONFIG_MENDER_ARTIFACT_NAME STREQUAL "")
     message(WARNING "MENDER_ARTIFACT_NAME cannot be empty; Artifact generation will fail. Set the variable in your build or alternatively disable the feature with CONFIG_MENDER_ARTIFACT_GENERATE=n")
@@ -56,6 +65,13 @@ endif()
 # Prefix for the default provides
 set(mender_artifact_cmd ${mender_artifact_cmd} --software-filesystem ${CONFIG_MENDER_ARTIFACT_SOFTWARE_FILESYSTEM})
 set(mender_artifact_cmd ${mender_artifact_cmd} --software-name ${CONFIG_MENDER_ARTIFACT_SOFTWARE_NAME})
+# Set fail/warn limits on Artifact size
+if (CONFIG_MENDER_ARTIFACT_WARN_SIZE)
+    set(mender_artifact_cmd ${mender_artifact_cmd} --warn-artifact-size ${CONFIG_MENDER_ARTIFACT_WARN_SIZE})
+endif()
+if (CONFIG_MENDER_ARTIFACT_MAX_SIZE)
+    set(mender_artifact_cmd ${mender_artifact_cmd} --max-artifact-size ${CONFIG_MENDER_ARTIFACT_MAX_SIZE})
+endif()
 # Extra arguments
 if(NOT CONFIG_MENDER_ARTIFACT_EXTRA_ARGS STREQUAL "")
     separate_arguments(extra_args UNIX_COMMAND ${CONFIG_MENDER_ARTIFACT_EXTRA_ARGS})

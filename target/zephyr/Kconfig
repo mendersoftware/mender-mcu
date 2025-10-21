@@ -2,6 +2,7 @@
 # @brief     mender-mcu-client module Kconfig file
 #
 # Copyright joelguittet and mender-mcu-client contributors
+# Copyright Northern.tech AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -265,6 +266,34 @@ if MENDER_MCU_CLIENT
                 help
                     When not defined, the output file is ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender
 
+        menuconfig MENDER_ARTIFACT_SIZE_LIMITS
+            bool "Artifact size limits"
+            default y
+                help
+                    Enable size limits for Artifacts.
+                        When enabled, you can configure limits to:
+                        - Warn when Artifact size exceeds a given limit
+                        - Fail the build and prevent artifact creation if size exceeds a maximum limit
+
+                    Requires mender-artifact >= 4.2.0
+
+            config MENDER_ARTIFACT_WARN_SIZE
+                string "Warning limit for Artifact size"
+                default "5MB"
+                depends on MENDER_ARTIFACT_SIZE_LIMITS
+                help
+                    Warn if size of the Artifact exceeds the given limit.
+                    Defaults to 5MB.
+                    Leave empty to disable.
+                    You can specify units: "123B", "1MB", etc. Supported units: B, KB, MB, GB, TB
+
+            config MENDER_ARTIFACT_MAX_SIZE
+                string "Maximum size"
+                depends on MENDER_ARTIFACT_SIZE_LIMITS
+                help
+                    Fail build if size of the Artifact exceeds the given limit.
+                    Leave empty to disable.
+                    You can specify units: "123B", "1MB", etc. Supported units: B, KB, MB, GB, TB
         endif
 
     menu "Platform configuration (ADVANCED)"

@@ -19,7 +19,7 @@ variables:
   # mender-artifact version for tests
   MENDER_ARTIFACT_VERSION:
     description: "mender-artifact version for tests"
-    value: 4.1.0
+    value: 4.2.0
   MENDER_MCU_INTEGRATION_REVISION:
     description: |
       Revision of mender-mcu-integration to trigger.
@@ -87,7 +87,7 @@ test:unit:
     # Fetch and install mender-artifact
     - wget "https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+bookworm_amd64.deb"
       -O mender-artifact.deb &&
-      dpkg --install mender-artifact.deb
+      apt install -yyq ./mender-artifact.deb
   script:
     - cmake -D COVERAGE=ON tests/unit/
     - make --jobs=$(nproc --all) --keep-going coverage
@@ -109,7 +109,7 @@ test:unit:
     # Fetch and install mender-artifact
     - wget "https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+ubuntu+noble_amd64.deb"
       -O mender-artifact.deb &&
-      dpkg --install mender-artifact.deb
+      apt install -yyq ./mender-artifact.deb
     - export CC=$(which clang)
     - export CXX=$(which clang++)
   script:

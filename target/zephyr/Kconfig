@@ -88,9 +88,9 @@ if MENDER_MCU_CLIENT
 
         choice MENDER_DEVICE_TIER
             prompt "Mender Device Tier"
-            default MENDER_DEVICE_TIER_STANDARD
+            default MENDER_DEVICE_TIER_MICRO
             help
-                Set the Device Tier to be used on the device (defaults to "standard"). Note that
+                Set the Device Tier to be used on the device (defaults to "micro"). Note that
                 client configuration takes precedence.
 
             config MENDER_DEVICE_TIER_STANDARD

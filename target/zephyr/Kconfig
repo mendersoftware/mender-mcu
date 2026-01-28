@@ -114,13 +114,17 @@ if MENDER_MCU_CLIENT
             help
                 The type of device, used to ensure compatibility between the hardware and software.
 
+        config MENDER_CLIENT_UPDATE_POLL_INTERVAL_DEFAULT
+            int
+            default 604800
+
         config MENDER_CLIENT_UPDATE_POLL_INTERVAL
             int "Mender client Update poll interval (seconds)"
             range 1 2592000
-            default 86400
+            default MENDER_CLIENT_UPDATE_POLL_INTERVAL_DEFAULT
             help
                 Interval used to periodically check for new deployments on the Mender server.
-                The default value is once a day.
+                The default value is once every 7 days.
 
         config MENDER_DEPLOYMENT_LOGS
             bool "Deployment logs"
@@ -140,15 +144,19 @@ if MENDER_MCU_CLIENT
 
     menu "Inventory configuration"
 
+        config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL_DEFAULT
+            int
+            default 604800
+        
         config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
             int "Mender client Inventory refresh interval (seconds)"
             depends on MENDER_CLIENT_INVENTORY_DISABLE=n
             range 0 2592000
-            default 1209600
+            default MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL_DEFAULT
             help
                 Interval used to periodically send inventory to the Mender server.
                 Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-                The default value is once every 14 days.
+                The default value is once every 7 days.
 
         config MENDER_CLIENT_INVENTORY_BUILD_INFO
             bool "Build info built-in inventory"

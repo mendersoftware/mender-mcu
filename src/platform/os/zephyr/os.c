@@ -21,6 +21,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/reboot.h> /* sys_reboot() */
 #include "alloc.h"
+#include "http.h"
 #include "log.h"
 #include "os.h"
 #include "utils.h"
@@ -242,10 +243,19 @@ mender_os_scheduler_work_handler(struct k_work *work_item) {
     }
     if (MENDER_OK != ret) {
         if (MENDER_RETRY_ERROR == ret) {
-            mender_log_debug("Retry error detected, retrying with backoff");
-            period                        = work->params.backoff.interval;
-            uint16_t next                 = work->params.backoff.interval * 2;
-            work->params.backoff.interval = (next >= work->params.backoff.max_interval) ? work->params.backoff.max_interval : next;
+            /* Check if there's a rate-limit interval */
+            uint32_t retry_interval = mender_http_get_retry_interval();
+            if (retry_interval > 0) {
+                /* Use the rate-limit interval from the server */
+                mender_log_debug("Rate limit detected, retrying");
+                period = retry_interval;
+            } else {
+                /* Normal exponential backoff */
+                mender_log_debug("Retry error detected, retrying with backoff");
+                period                        = work->params.backoff.interval;
+                uint16_t next                 = work->params.backoff.interval * 2;
+                work->params.backoff.interval = (next >= work->params.backoff.max_interval) ? work->params.backoff.max_interval : next;
+            }
         }
         mender_log_error("Work %s failed, retrying in %" PRIu32 " seconds", work->params.name, period);
     } else {

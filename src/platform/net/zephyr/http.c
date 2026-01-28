@@ -18,12 +18,15 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <version.h>
 #include <zephyr/net/http/client.h>
+#include <zephyr/sys/timeutil.h>
 #include <zephyr/kernel.h>
 #include "api.h"
 #include "http.h"
 #include "log.h"
+#include "os.h"
 
 #include "net.h"
 
@@ -46,6 +49,11 @@
  */
 #define MENDER_HTTP_REQUEST_TIMEOUT (60 * 1000)
 
+/**
+ * @brief Rate limit HTTP status code
+ */
+#define MENDER_HTTP_RATE_LIMIT_HTTP_CODE 429
+
 const size_t mender_http_recv_buf_length = 512;
 
 /**
@@ -55,12 +63,28 @@ typedef struct {
     mender_err_t (*callback)(mender_http_client_event_t, void *, size_t, void *); /**< Callback to be invoked when data are received */
     void        *params;                                                          /**< Callback parameters */
     mender_err_t ret;                                                             /**< Last callback return value */
+    bool         parsing_retry_after;                                             /**< Flag indicating if currently parsing Retry-After header */
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+    bool parsing_date; /**< Flag indicating if currently parsing Date header */
+#endif
 } mender_http_request_context;
 
 /**
  * @brief Mender HTTP configuration
  */
 static mender_http_config_t http_config;
+
+/**
+ * @brief Retry-After header value
+ */
+static uint32_t retry_after_seconds = 0;
+
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+/**
+ * @brief Server time from Date header (used for calculating retry delay)
+ */
+static time_t server_time = 0;
+#endif
 
 /**
  * @brief HTTP response callback, invoked to handle data received
@@ -86,6 +110,155 @@ static HTTP_CALLBACK_RETURN_TYPE artifact_response_cb(struct http_response *resp
  * @return Zephyr HTTP client method if the function succeeds, -1 otherwise
  */
 static enum http_method http_method_to_zephyr_http_client_method(mender_http_method_t method);
+
+/**
+ * @brief HTTP parser callback for header field names
+ * @param parser HTTP parser structure
+ * @param at Pointer to header field name
+ * @param length Length of header field name
+ * @return 0 on success
+ */
+static int
+on_header_field(struct http_parser *parser, const char *at, size_t length) {
+    struct http_request *req = CONTAINER_OF(parser, struct http_request, internal.parser);
+
+    /* Only parse header field on 429 status codes */
+    if (MENDER_HTTP_RATE_LIMIT_HTTP_CODE != parser->status_code) {
+        return 0;
+    }
+
+    mender_http_request_context *ctx             = req->internal.user_data;
+    const char                  *retry_after_str = "Retry-After";
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+    const char *date_str = "Date";
+#endif
+
+    if ((length == strlen(retry_after_str)) && StringEqualN(retry_after_str, at, length)) {
+        ctx->parsing_retry_after = true;
+    }
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+    else if ((length == strlen(date_str)) && StringEqualN(date_str, at, length)) {
+        ctx->parsing_date = true;
+    }
+#endif
+    return 0;
+}
+
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+/**
+ * @brief Parse HTTP-date -- https://www.rfc-editor.org/rfc/rfc9110.html#name-date-time-formats
+ * @param str Date string (e.g., "Sun, 27 Jan 2026 15:00:00 GMT")
+ * @param tm Output tm structure
+ * @return 0 on success, -1 on failure
+ */
+static int
+parse_http_date(const char *str, struct tm *tm) {
+    static const char *const months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    char                     day_name[4];
+    char                     mon[4];
+    int                      day, year, hour, min, sec;
+
+    if (7 != sscanf(str, "%3s, %d %3s %d %d:%d:%d", day_name, &day, mon, &year, &hour, &min, &sec)) {
+        mender_log_error("Failed to parse HTTP-date format: '%s'", str);
+        return -1;
+    }
+
+    /* Convert month name to number */
+    for (int i = 0; i < 12; i++) {
+        if (StringEqual(mon, months[i])) {
+            tm->tm_mon   = i;
+            tm->tm_mday  = day;
+            tm->tm_year  = year - 1900;
+            tm->tm_hour  = hour;
+            tm->tm_min   = min;
+            tm->tm_sec   = sec;
+            tm->tm_isdst = 0;
+            return 0;
+        }
+    }
+
+    mender_log_error("Unknown month name in HTTP-date: '%s'", mon);
+    return -1;
+}
+#endif
+
+/**
+ * @brief HTTP parser callback for header values
+ * @param parser HTTP parser structure
+ * @param at Pointer to header value
+ * @param length Length of header value
+ * @return 0 on success
+ */
+static int
+on_header_value(struct http_parser *parser, const char *at, size_t length) {
+    struct http_request         *req = CONTAINER_OF(parser, struct http_request, internal.parser);
+    mender_http_request_context *ctx = req->internal.user_data;
+
+    if (MENDER_HTTP_RATE_LIMIT_HTTP_CODE != parser->status_code) {
+        return 0;
+    }
+
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+    /* We're not guaranteed to have the correct time set on the device, so we attempt to parse the Date header on a response instead.
+     * According to https://httpwg.org/specs/rfc9110.html#field.date, the Date header is sent on 4xx (Client Error) responses
+     * as long as the server has a clock. If we fail to parse the header and the server responds with an HTTP-date
+     * in Retry-After, we will fall back to using regular backoff intervals */
+    if (ctx->parsing_date) {
+        ctx->parsing_date = false;
+
+        char string[length + 1];
+        string[length] = '\0';
+        memcpy(string, at, length);
+
+        struct tm tm_date;
+        if (0 == parse_http_date(string, &tm_date)) {
+            server_time = timeutil_timegm(&tm_date);
+            mender_log_debug("Parsed server time from Date header");
+        } else {
+            mender_log_warning("Failed to parse Date header: '%s'", string);
+            server_time = 0;
+        }
+        return 0;
+    }
+#endif
+
+    if (ctx->parsing_retry_after) {
+        ctx->parsing_retry_after = false;
+
+        char string[length + 1];
+        string[length] = '\0';
+        memcpy(string, at, length);
+
+        char *endptr;
+        errno            = 0;
+        uint32_t seconds = strtoul(string, &endptr, 10);
+
+        /* If not numeric, try parsing as HTTP-date */
+        if ((string == endptr) || ('\0' != *endptr) || (ERANGE == errno) || (0 == seconds)) {
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+            /* Try to parse the Retry-After value as an HTTP-date. We compare the Retry-After HTTP-date
+             * with the HTTP-date from the Date header of the HTTP response.
+             * Normally this won't be the case, as Mender Server returns the Retry-After value in seconds */
+            struct tm tm_retry;
+            if ((0 < server_time) && (0 == parse_http_date(string, &tm_retry))) {
+                time_t retry_time = timeutil_timegm(&tm_retry);
+                if (server_time < retry_time) {
+                    seconds = (uint32_t)(retry_time - server_time);
+                }
+            }
+#endif
+        }
+
+        if (0 < seconds) {
+            retry_after_seconds = seconds;
+            mender_log_debug("Retry-After: %u seconds", retry_after_seconds);
+        } else {
+            mender_log_warning("Unable to parse Retry-After: '%s'", string);
+        }
+    }
+
+    return 0;
+}
 
 mender_err_t
 mender_http_init(mender_http_config_t *config) {
@@ -120,6 +293,13 @@ mender_http_perform(char                *jwt,
     assert(NULL != path);
     assert(NULL != callback);
     assert(NULL != status);
+
+    /* Clear previous Retry-After value */
+    retry_after_seconds = 0;
+#ifdef CONFIG_MENDER_HTTP_PARSE_DATE_HEADER
+    server_time = 0;
+#endif
+
     mender_err_t                ret                = MENDER_FAIL;
     struct http_request         request            = { 0 };
     mender_http_request_context request_context    = { .callback = callback, .params = params, .ret = MENDER_OK };
@@ -150,6 +330,14 @@ mender_http_perform(char                *jwt,
     request.payload     = payload;
     request.payload_len = (NULL != payload) ? strlen(payload) : 0;
     request.response    = http_response_cb;
+
+    /* Set up HTTP parser callbacks to capture Retry-After header */
+    static struct http_parser_settings parser_settings = {
+        .on_header_field = on_header_field,
+        .on_header_value = on_header_value,
+    };
+    request.http_cb = &parser_settings;
+
     if (NULL == (request.recv_buf = (uint8_t *)mender_malloc(mender_http_recv_buf_length))) {
         mender_log_error("Unable to allocate memory");
         goto END;
@@ -421,4 +609,9 @@ http_method_to_zephyr_http_client_method(mender_http_method_t method) {
         default:
             return -1;
     }
+}
+
+uint32_t
+mender_http_get_retry_interval(void) {
+    return retry_after_seconds;
 }

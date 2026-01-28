@@ -541,6 +541,15 @@ if MENDER_MCU_CLIENT
                 help
                     Peer verification level for TLS connection - see mbedtls/ssl.h, in particular mbedtls_ssl_conf_authmode(), for details. 2 (default) requires SSL peer verification, 1 makes verification optional (not implemented) and 0 skips verification.
 
+            config MENDER_HTTP_PARSE_DATE_HEADER
+                bool "Parse Date header for HTTP-date Retry-After"
+                default n
+                help
+                    Enable parsing of the Date header from HTTP responses to calculate retry delays when
+                    Retry-After is in HTTP-date format (e.g., "Sun, 26 Jan 2026 15:30:00 GMT").
+                    This is only needed if the server returns Retry-After as an HTTP-date instead of
+                    seconds. This is disabled by default as Mender Server returns the Retry-After value in
+                    seconds rather than as a HTTP-date.
         endmenu
 
     endif

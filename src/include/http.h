@@ -88,6 +88,12 @@ mender_err_t mender_http_perform(char                *jwt,
 mender_err_t mender_http_artifact_download(const char *path, mender_artifact_download_data_t *dl_data, int *status);
 
 /**
+ * @brief Get the retry interval from the Retry-After header
+ * @return Retry interval in seconds, or 0 if no retry interval is set
+ */
+uint32_t mender_http_get_retry_interval(void);
+
+/**
  * @brief Release mender http
  * @return MENDER_OK if the function succeeds, error code otherwise
  */

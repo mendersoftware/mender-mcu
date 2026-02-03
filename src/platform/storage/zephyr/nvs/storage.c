@@ -319,7 +319,7 @@ mender_storage_init(void) {
 
         /* flatten means: Erase flash area or fill with erase-value. */
         result = flash_area_flatten(
-            fap, depl_logs_buffer.f_sectors[0].fs_off, depl_logs_buffer.f_sectors[0].fs_off * CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS);
+            fap, depl_logs_buffer.f_sectors[0].fs_off, depl_logs_buffer.f_sectors[0].fs_size * CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_SECTORS);
         flash_area_close(fap);
         if (0 != result) {
             mender_log_error("Failed to erase the flash area for deployment logs");

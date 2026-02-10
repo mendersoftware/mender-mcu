@@ -75,8 +75,8 @@ if MENDER_MCU_CLIENT
             bool "Enable dormant certificate for potential server recovery"
             default y
             help
-                Enable this option to install a dormant Let's Encrypt certficiate on the device
-                for potential server recovery scenarios. This certficiate can be used to generate
+                Enable this option to install a dormant Let's Encrypt certificate on the device
+                for potential server recovery scenarios. This certificate can be used to generate
                 a new certificate in case the root certificate for the Mender server is revoked.
                 It is strongly recommended to keep this option enabled to ensure server communication
                 resilience in critical situations.
@@ -446,7 +446,7 @@ if MENDER_MCU_CLIENT
             default "generic/weak" if MENDER_PLATFORM_SHA_TYPE_WEAK
 
         choice MENDER_PLATFORM_CERT_TYPE
-            prompt "Mender platform certificate implementation rype"
+            prompt "Mender platform certificate implementation type"
             default MENDER_PLATFORM_CERT_TYPE_DEFAULT
             help
                 Specify platform certificate implementation type, select 'weak' to use you own implementation.
@@ -715,7 +715,7 @@ if MENDER_MCU_CLIENT
                 range 0 21600
                 default 540
                 help
-                    Maxmium backoff interval on retry errors. The backoff algorithm will increase until it reaches this
+                    Maximum backoff interval on retry errors. The backoff algorithm will increase until it reaches this
                     interval and continue retrying with the max interval.
 
         endmenu

@@ -1,4 +1,8 @@
 include:
+  - project: Northern.tech/Mender/mendertesting
+    file:
+      - qa-common/runner.yml
+      - qa-common/retry.yml
   - component: gitlab.com/Northern.tech/Mender/mendertesting/commit-lint@master
   - project: 'Northern.tech/Mender/mendertesting'
     file:
@@ -27,12 +31,14 @@ variables:
 default:
   tags:
     - hetzner-podman
+  retry: !reference [.qa-common-default-retry, retry]
 
 .test:static:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/ubuntu:24.04
   needs: []
   before_script:
+    - !reference [.qa-common-network-apt-retry, before_script]
     - apt-get update && apt-get install -y git clang-format pcregrep
 
 test:static:license:
@@ -53,6 +59,7 @@ test:smoke-build:posix:
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   needs: []
   before_script:
+    - !reference [.qa-common-network-apt-retry, before_script]
     - apt-get update && apt-get install -yqq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
@@ -66,6 +73,7 @@ test:smoke-build:weak:
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   needs: []
   before_script:
+    - !reference [.qa-common-network-apt-retry, before_script]
     - apt-get update && apt-get install -yqq
       cmake git make pkg-config python3
       libcjson-dev
@@ -78,6 +86,7 @@ test:unit:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/debian:12-slim
   before_script:
+    - !reference [.qa-common-network-apt-retry, before_script]
     - apt update && apt install -yyq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
@@ -100,6 +109,7 @@ test:unit:
   stage: test
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/ubuntu:24.04
   before_script:
+    - !reference [.qa-common-network-apt-retry, before_script]
     - apt update && apt install -yyq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev

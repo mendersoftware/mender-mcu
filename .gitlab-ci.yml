@@ -161,6 +161,7 @@ trigger:mender-mcu-integration:
 
 publish:tests:
   stage: publish
+  allow_failure: true
   image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/python:3.11
   dependencies:
     - test:unit
@@ -180,6 +181,7 @@ publish:tests:
 
 coveralls:finish-build:
   stage: .post
+  allow_failure: true
   variables:
     COVERALLS_WEBHOOK_URL: "https://coveralls.io/webhook"
     COVERALLS_RERUN_BUILD_URL: "https://coveralls.io/rerun_build"

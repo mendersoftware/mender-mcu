@@ -39,6 +39,10 @@
 #define HTTP_CALLBACK_RETURN_TYPE  int
 #endif
 
+#ifndef CONFIG_MENDER_HTTP_REQUEST_TIMEOUT_MS
+#define CONFIG_MENDER_HTTP_REQUEST_TIMEOUT_MS (60000)
+#endif /* CONFIG_MENDER_HTTP_REQUEST_TIMEOUT */
+
 /**
  * @brief HTTP User-Agent
  */
@@ -47,7 +51,7 @@
 /**
  * @brief Request timeout (milliseconds)
  */
-#define MENDER_HTTP_REQUEST_TIMEOUT (60 * 1000)
+#define MENDER_HTTP_REQUEST_TIMEOUT CONFIG_MENDER_HTTP_REQUEST_TIMEOUT_MS
 
 /**
  * @brief Rate limit HTTP status code

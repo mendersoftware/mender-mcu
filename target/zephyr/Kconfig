@@ -541,6 +541,13 @@ if MENDER_MCU_CLIENT
                 help
                     Peer verification level for TLS connection - see mbedtls/ssl.h, in particular mbedtls_ssl_conf_authmode(), for details. 2 (default) requires SSL peer verification, 1 makes verification optional (not implemented) and 0 skips verification.
 
+            config MENDER_HTTP_REQUEST_TIMEOUT_MS
+                int "The HTTP request timeout in milliseconds"
+                default 300000 if MODEM_CELLULAR
+                default 60000
+                help
+                    The timeout used by the HTTP request procedure. Defaults to one minute. If a cellular modem is used, the default is increased to 5 minutes.
+
             config MENDER_HTTP_PARSE_DATE_HEADER
                 bool "Parse Date header for HTTP-date Retry-After"
                 default n

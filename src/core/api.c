@@ -49,6 +49,16 @@
 #define HTTP_RETRY_INTERVAL_FACTOR 2
 
 /**
+ * @brief HTTP status codes
+ */
+#define HTTP_STATUS_OK                     200
+#define HTTP_STATUS_NO_CONTENT             204
+#define HTTP_STATUS_UNAUTHORIZED           401
+#define HTTP_STATUS_NOT_FOUND              404
+#define HTTP_STATUS_CONFLICT               409
+#define HTTP_STATUS_REQUEST_BODY_TOO_LARGE 413
+
+/**
  * @brief Paths of the mender-server APIs
  */
 #define MENDER_API_PATH_POST_AUTHENTICATION_REQUESTS "/api/devices/v1/authentication/auth_requests"
@@ -275,7 +285,7 @@ perform_authentication(void) {
     }
 
     /* Treatment depending of the status */
-    if (200 == status) {
+    if (HTTP_STATUS_OK == status) {
         if (NULL == response) {
             mender_log_error("Response is empty");
             ret = MENDER_FAIL;
@@ -355,7 +365,7 @@ authenticated_http_perform(char *path, mender_http_method_t method, char *payloa
         return ret;
     }
 
-    if (401 == *status) {
+    if (HTTP_STATUS_UNAUTHORIZED == *status) {
         /* Unauthorized => try to re-authenticate and perform the request again */
         mender_log_info("Trying to re-authenticate");
         FREE_AND_NULL(api_jwt);
@@ -515,7 +525,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
     }
 
     /* Yes, 404 still means MENDER_OK above */
-    if (404 == status) {
+    if (HTTP_STATUS_NOT_FOUND == status) {
         mender_log_debug("POST request to v2 version of the deployments API failed, falling back to v1 version and GET");
         FREE_AND_NULL(response);
         if (MENDER_FAIL == (ret = api_check_for_deployment_v1(&status, &response))) {
@@ -524,7 +534,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
     }
 
     /* Treatment depending of the status */
-    if (200 == status) {
+    if (HTTP_STATUS_OK == status) {
         cJSON *json_response = cJSON_Parse(response);
         if (NULL != json_response) {
             cJSON *json_id = cJSON_GetObjectItem(json_response, "id");
@@ -594,7 +604,7 @@ mender_api_check_for_deployment(mender_api_deployment_data_t *deployment) {
             mender_log_error("Invalid response");
             ret = MENDER_FAIL;
         }
-    } else if (204 == status) {
+    } else if (HTTP_STATUS_NO_CONTENT == status) {
         /* No response expected */
         ret = MENDER_NOT_FOUND;
     } else {
@@ -660,10 +670,10 @@ mender_api_publish_deployment_status(const char *id, mender_deployment_status_t 
     }
 
     /* Treatment depending of the status */
-    if (204 == status) {
+    if (HTTP_STATUS_NO_CONTENT == status) {
         /* No response expected */
         ret = MENDER_OK;
-    } else if (409 == status) {
+    } else if (HTTP_STATUS_CONFLICT == status) {
         /* Deployment aborted */
         mender_api_print_response_error(response, status);
         ret = MENDER_ABORTED;
@@ -865,10 +875,10 @@ mender_api_publish_deployment_logs(const char *id) {
     }
 
     /* Treatment depending of the status */
-    if (204 == status) {
+    if (HTTP_STATUS_NO_CONTENT == status) {
         /* No response expected */
         ret = MENDER_OK;
-    } else if (409 == status) {
+    } else if (HTTP_STATUS_CONFLICT == status) {
         /* Deployment aborted */
         mender_api_print_response_error(response, status);
         ret = MENDER_ABORTED;
@@ -915,7 +925,7 @@ mender_api_publish_inventory_data(cJSON *inventory, bool patch) {
     }
 
     /* Treatment depending of the status */
-    if (200 == status) {
+    if (HTTP_STATUS_OK == status) {
         /* No response expected */
         ret = MENDER_OK;
     } else {

@@ -1011,7 +1011,7 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
     /* Create deployment data */
     if (NULL != mender_client_deployment_data) {
         mender_log_warning("Unexpected stale deployment data");
-        mender_delete_deployment_data(mender_client_deployment_data);
+        DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
     }
     if (MENDER_OK != (mender_create_deployment_data(deployment->id, deployment->artifact_name, &mender_client_deployment_data))) {
         /* Error already logged */
@@ -1084,10 +1084,19 @@ mender_client_update_work_function(void) {
             if (NULL == mender_update_module) {
                 /* The artifact_type from the saved state does not match any update module */
                 mender_log_error("No update module found for artifact type '%s'", artifact_type);
-                mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                if (MENDER_RETRY_ERROR == ret) {
+                    goto END;
+                }
                 mender_storage_delete_deployment_data();
                 goto END;
             }
+        } else if (MENDER_OK == ret) {
+            /* State is valid but no payload type. This can happen when resuming from
+             * a state that doesn't require the update module (e.g. FAILURE after
+             * download failure). */
+            update_state = update_state_resume;
+            mender_log_debug("Resuming from state %s without payload type", update_state_str[update_state]);
         }
     }
 
@@ -1126,6 +1135,7 @@ mender_client_update_work_function(void) {
         update_state       = update_state_transitions[update_state].failure;
         mender_log_debug("Entering state %s", update_state_str[update_state]);
     }
+
     while (MENDER_UPDATE_STATE_END != update_state) {
         switch (update_state) {
             case MENDER_UPDATE_STATE_DOWNLOAD:
@@ -1205,7 +1215,8 @@ mender_client_update_work_function(void) {
                     ret = MENDER_FAIL;
                 }
                 if (MENDER_OK != ret) {
-                    mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                    /* Let NEXT_STATE transition to FAILURE, which will handle publishing */
+                    ret = MENDER_FAIL;
                 }
                 NEXT_STATE;
                 /* fallthrough */
@@ -1279,7 +1290,11 @@ mender_client_update_work_function(void) {
                 /* Check for pending deployment */
                 if (NULL == mender_client_deployment_data) {
                     mender_log_error("No deployment data found on commit");
-                    mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                    ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                    if (MENDER_RETRY_ERROR == ret) {
+                        goto END;
+                    }
+                    mender_storage_delete_deployment_data();
                     goto END;
                 }
 #ifdef CONFIG_MENDER_COMMIT_REQUIRE_AUTH
@@ -1387,8 +1402,18 @@ mender_client_update_work_function(void) {
                 /* fallthrough */
 
             case MENDER_UPDATE_STATE_FAILURE:
-                mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
-                if (NULL != mender_update_module->callbacks[update_state]) {
+                ret = mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+                if (MENDER_RETRY_ERROR == ret) {
+                    /* Increment retry counter before preserving state for next retry */
+                    if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_FAILURE)) {
+                        mender_log_error("Loop detected, exceeded retry limit");
+                        mender_storage_delete_deployment_data();
+                        goto END;
+                    }
+                    /* Preserve state and retry on next call */
+                    goto END;
+                }
+                if ((NULL != mender_update_module) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
                 NEXT_STATE;
@@ -1403,12 +1428,16 @@ mender_client_update_work_function(void) {
     }
 #undef NEXT_STATE /* should not be used anywhere else */
 
-    ret = MENDER_OK;
+    if (!MENDER_IS_ERROR(ret)) {
+        ret = MENDER_OK;
+    }
 
 END:
     /* Release memory */
     deployment_destroy(deployment);
-    DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
+    if (MENDER_RETRY_ERROR != ret) {
+        DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
+    }
     mender_artifact_release_ctx(mender_artifact_ctx);
 
 #ifdef CONFIG_MENDER_DEPLOYMENT_LOGS

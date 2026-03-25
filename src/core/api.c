@@ -696,8 +696,10 @@ END:
     if ((MENDER_OK == ret) && (MENDER_DEPLOYMENT_STATUS_FAILURE == deployment_status)) {
         /* Successfully reported a deployment failure, upload deployment
            logs.  */
-        if (MENDER_OK != mender_api_publish_deployment_logs(id)) {
+        mender_err_t logs_ret = mender_api_publish_deployment_logs(id);
+        if (MENDER_OK != logs_ret) {
             mender_log_error("Failed to publish deployment logs");
+            ret = logs_ret;
         }
     }
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
@@ -884,7 +886,7 @@ mender_api_publish_deployment_logs(const char *id) {
         ret = MENDER_ABORTED;
     } else {
         mender_api_print_response_error(response, status);
-        ret = MENDER_FAIL;
+        ret = MENDER_RETRY_ERROR;
     }
 
 END:

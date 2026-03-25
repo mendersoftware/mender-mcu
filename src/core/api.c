@@ -884,6 +884,10 @@ mender_api_publish_deployment_logs(const char *id) {
         /* Deployment aborted */
         mender_api_print_response_error(response, status);
         ret = MENDER_ABORTED;
+    } else if (HTTP_STATUS_REQUEST_BODY_TOO_LARGE == status) {
+        /* Request body too large, retrying won't help */
+        mender_api_print_response_error(response, status);
+        ret = MENDER_FAIL;
     } else {
         mender_api_print_response_error(response, status);
         ret = MENDER_RETRY_ERROR;

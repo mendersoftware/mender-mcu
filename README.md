@@ -4,9 +4,7 @@
 
 mender-mcu is a fork of the [mender-mcu-client](https://github.com/joelguittet/mender-mcu-client)
 project, created to extend its functionality and provide continued support from Northern.tech, the
-creators of [Mender](https://mender.io/). This project is currently under construction, with the
-primary goal of enhancing the original work while integrating it more closely with Northern.tech's
-suite of products.
+creators of [Mender](https://mender.io/).
 
 -------------------------------------------------------------------------------
 
@@ -14,13 +12,9 @@ suite of products.
 
 ## Project Status
 
-This repository is a work in progress. As we continue development, features and functionality may
-evolve significantly. We are actively working on expanding the capabilities of the original
-mender-mcu-client to better support a wider range of use cases.
-
-While working on the first release of the project, we consider the `main` branch to be experimental,
-while the stable versions can be found in separate Git branches like `vX.Y-alias`.
-
+We are actively working on expanding the capabilities of the original
+mender-mcu-client to better support a wider range of use cases. Features and
+functionality may evolve significantly.
 
 ## Why Fork?
 

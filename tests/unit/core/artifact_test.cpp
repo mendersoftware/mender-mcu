@@ -77,7 +77,7 @@ protected:
             echo foobar > ${DIRNAME}/testdata
 
             mender-artifact write module-image --compression none \
-            --type unit-test -n unit-test-artifact --device-type unit-test \
+            --type unit-test -n unit-test-artifact --compatible-types unit-test \
             -f ${DIRNAME}/testdata -o ${DIRNAME}/unit-test-artifact.mender || exit 1)";
         } else {
             script = custom_script;
@@ -284,7 +284,7 @@ DIRNAME=$(dirname $0)
 echo bad-version > ${DIRNAME}/testdata
 
 mender-artifact write module-image --type unit-test --compression none \
---artifact-name test-bad-version --device-type unit-test \
+--artifact-name test-bad-version --compatible-types unit-test \
 --file ${DIRNAME}/testdata --output-path ${DIRNAME}/unit-test-artifact.mender
 
 tar --extract --file ${DIRNAME}/unit-test-artifact.mender
@@ -305,7 +305,7 @@ DIRNAME=$(dirname $0)
 echo bad-header > ${DIRNAME}/testdata
 
 mender-artifact write module-image --type unit-test --compression none \
---artifact-name test-bad-header --device-type unit-test \
+--artifact-name test-bad-header --compatible-types unit-test \
 --file ${DIRNAME}/testdata --output-path ${DIRNAME}/unit-test-artifact.mender
 
 tar --extract --file ${DIRNAME}/unit-test-artifact.mender
@@ -327,7 +327,7 @@ DIRNAME=$(dirname $0)
 echo bad-payload > ${DIRNAME}/testdata
 
 mender-artifact write module-image --type unit-test --compression none \
---artifact-name test-bad-payload --device-type unit-test \
+--artifact-name test-bad-payload --compatible-types unit-test \
 --file ${DIRNAME}/testdata --output-path ${DIRNAME}/unit-test-artifact.mender
 
 tar --extract --file ${DIRNAME}/unit-test-artifact.mender
@@ -351,7 +351,7 @@ TEST_F(MenderArtifactTest, IsCompressed) {
     echo foobar > ${DIRNAME}/testdata
 
     mender-artifact write module-image --type unit-test \
-    -n unit-test-artifact --device-type unit-test \
+    -n unit-test-artifact --compatible-types unit-test \
     -f ${DIRNAME}/testdata -o ${DIRNAME}/unit-test-artifact.mender || exit 1)";
     artifact_data = CreateArtifact(script);
     data          = (void *)artifact_data.data();
@@ -371,7 +371,7 @@ TEST_F(MenderArtifactTest, ArtifactWithMetaData) {
     echo {\"datastring\": \"foobar\", \"datanumber\": 1.0} > ${DIRNAME}/meta-data
 
     mender-artifact write module-image --type unit-test --compression none \
-    -n unit-test-artifact --device-type unit-test --meta-data ${DIRNAME}/meta-data \
+    -n unit-test-artifact --compatible-types unit-test --meta-data ${DIRNAME}/meta-data \
     -f ${DIRNAME}/testdata -o ${DIRNAME}/unit-test-artifact.mender || exit 1)";
     artifact_data = CreateArtifact(script);
     data          = (void *)artifact_data.data();

@@ -557,6 +557,39 @@ if MENDER_MCU_CLIENT
                     This is only needed if the server returns Retry-After as an HTTP-date instead of
                     seconds. This is disabled by default as Mender Server returns the Retry-After value in
                     seconds rather than as a HTTP-date.
+
+            config MENDER_ARTIFACT_DOWNLOAD_RANGES
+                bool "Enable ranged artifact download"
+                default n
+                help
+                    Enable downloading Mender Artifacts in HTTP range-based chunks instead of a single request.
+                    This can help on targets where large downloads are unreliable or where smaller chunks reduce
+                    memory and transport pressure.
+
+            config MENDER_ARTIFACT_DOWNLOAD_CHUNK_SIZE
+                int "Artifact download chunk size"
+                default 2048
+                range 1 65536
+                depends on MENDER_ARTIFACT_DOWNLOAD_RANGES
+                help
+                    Maximum number of bytes requested per HTTP range request.
+
+            config MENDER_ARTIFACT_DOWNLOAD_CHUNK_MAX_TRIES
+                int "Artifact download chunk max retries"
+                default 3
+                range 1 100
+                depends on MENDER_ARTIFACT_DOWNLOAD_RANGES
+                help
+                    Maximum number of retries for a failed artifact download chunk.
+
+            config MENDER_ARTIFACT_DOWNLOAD_CHUNK_DELAY_MS
+                int "Artifact download chunk retry delay in milliseconds"
+                default 500
+                range 0 60000
+                depends on MENDER_ARTIFACT_DOWNLOAD_RANGES
+                help
+                    Delay between retries when an artifact download chunk request fails.
+
         endmenu
 
     endif

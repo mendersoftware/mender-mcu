@@ -316,7 +316,7 @@ mender-artifact write module-image \
   --type $UPDATE_MODULE \
   --file build/zephyr/zephyr.signed.bin \
   --artifact-name $ARTIFACT_NAME \
-  --device-type $DEVICE_TYPE \
+  --compatible-devices $DEVICE_TYPE \
   --compression none
 ```
 ### Deployment

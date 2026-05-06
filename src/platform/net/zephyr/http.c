@@ -57,6 +57,15 @@
  * @brief Rate limit HTTP status code
  */
 #define MENDER_HTTP_RATE_LIMIT_HTTP_CODE 429
+#if defined(CONFIG_MENDER_ARTIFACT_DOWNLOAD_RANGES)
+#define MENDER_HTTP_CHUNK_RETRY_MAX      CONFIG_MENDER_ARTIFACT_DOWNLOAD_CHUNK_MAX_TRIES
+#define MENDER_HTTP_CHUNK_RETRY_DELAY_MS CONFIG_MENDER_ARTIFACT_DOWNLOAD_CHUNK_DELAY_MS
+#define MENDER_HTTP_ARTIFACT_RANGE_MAX   CONFIG_MENDER_ARTIFACT_DOWNLOAD_CHUNK_SIZE
+#else
+#define MENDER_HTTP_CHUNK_RETRY_MAX      1
+#define MENDER_HTTP_CHUNK_RETRY_DELAY_MS 0
+#define MENDER_HTTP_ARTIFACT_RANGE_MAX   0
+#endif
 
 const size_t mender_http_recv_buf_length = 512;
 
@@ -446,16 +455,22 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     mender_err_t        ret                = MENDER_FAIL;
     struct http_request request            = { 0 };
     mender_err_t        request_ret        = MENDER_OK;
-    const char         *header_fields[3]   = { NULL }; /* The list is NULL terminated; make sure the size reflects it */
+    const char         *header_fields[4]   = { NULL }; /* The list is NULL terminated; make sure the size reflects it */
     size_t              header_fields_size = sizeof(header_fields) / sizeof(header_fields[0]);
     char               *host               = NULL;
     char               *port               = NULL;
     char               *url                = NULL;
     int                 sock               = -1;
     int                 http_req_ret;
+    bool                connected  = false;
+    bool                done       = false;
+    size_t              offset     = 0;
+    size_t              total_size = 0;
+    const bool          use_ranges = IS_ENABLED(CONFIG_MENDER_ARTIFACT_DOWNLOAD_RANGES);
 
     /* Headers to be added to the request */
-    char *host_header = NULL;
+    char *host_header  = NULL;
+    char *range_header = NULL;
 
     /* Retrieve host, port and url */
     if (MENDER_OK != mender_net_get_host_port_url(uri, http_config.host, &host, &port, &url)) {
@@ -463,75 +478,153 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
         goto END;
     }
 
-    /* Configuration of the client */
-    request.method   = http_method_to_zephyr_http_client_method(MENDER_HTTP_GET);
-    request.url      = url;
-    request.host     = host;
-    request.protocol = "HTTP/1.1";
-    request.response = artifact_response_cb;
-    if (NULL == (request.recv_buf = (uint8_t *)mender_malloc(mender_http_recv_buf_length))) {
-        mender_log_error("Unable to allocate memory");
-        goto END;
-    }
-    request.recv_buf_len = mender_http_recv_buf_length;
+    do {
+        size_t range_end;
+        size_t body_bytes_received;
+        request          = (struct http_request) { 0 };
+        header_fields[0] = NULL;
+        header_fields[1] = NULL;
+        header_fields[2] = NULL;
+        header_fields[3] = NULL;
+        http_req_ret     = -1;
 
-    /* Add headers */
-    host_header = header_alloc_and_add(header_fields, header_fields_size, "Host: %s\r\n", host);
-    if (NULL == host_header) {
-        mender_log_error("Unable to add 'Host' header");
-        goto END;
-    }
-    if (MENDER_FAIL == header_add(header_fields, header_fields_size, MENDER_HEADER_HTTP_USER_AGENT)) {
-        mender_log_error("Unable to add 'User-Agent' header");
-        goto END;
-    }
-    request.header_fields = header_fields;
+        request.method   = http_method_to_zephyr_http_client_method(MENDER_HTTP_GET);
+        request.url      = url;
+        request.host     = host;
+        request.protocol = "HTTP/1.1";
+        request.response = artifact_response_cb;
+        if (NULL == (request.recv_buf = (uint8_t *)mender_malloc(mender_http_recv_buf_length))) {
+            mender_log_error("Unable to allocate memory");
+            goto END;
+        }
+        request.recv_buf_len = mender_http_recv_buf_length;
 
-    /* Connect to the server */
-    sock = mender_net_connect(host, port);
-    if (sock < 0) {
-        mender_log_error("Unable to open HTTP client connection");
-        goto END;
-    }
-    if (MENDER_OK != (ret = dl_data->artifact_download_callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, dl_data))) {
-        mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_CONNECTED' artifact callback");
-        goto END;
-    }
+        host_header = header_alloc_and_add(header_fields, header_fields_size, "Host: %s\r\n", host);
+        if (NULL == host_header) {
+            mender_log_error("Unable to add 'Host' header");
+            mender_free(request.recv_buf);
+            goto END;
+        }
 
-    /* Perform HTTP request */
-    if ((http_req_ret = http_client_req(sock, &request, MENDER_HTTP_REQUEST_TIMEOUT, dl_data)) < 0) {
-        mender_log_error("HTTP request failed: %s", strerror(-http_req_ret));
-        goto END;
-    }
+        if (MENDER_FAIL == header_add(header_fields, header_fields_size, MENDER_HEADER_HTTP_USER_AGENT)) {
+            mender_log_error("Unable to add 'User-Agent' header");
+            mender_free(request.recv_buf);
+            goto END;
+        }
+        if (use_ranges) {
+            range_end = offset + MENDER_HTTP_ARTIFACT_RANGE_MAX - 1;
+            if ((0 != total_size) && (range_end >= total_size)) {
+                range_end = total_size - 1;
+            }
+            range_header = header_alloc_and_add(header_fields, header_fields_size, "Range: bytes=%zu-%zu\r\n", offset, range_end);
+            if (NULL == range_header) {
+                mender_log_error("Unable to add 'Range' header");
+                mender_free(request.recv_buf);
+                goto END;
+            }
+        }
+        request.header_fields = header_fields;
 
-    /* Artifact download failed*/
-    if (MENDER_OK != dl_data->ret) {
-        goto END;
-    }
+        for (int attempt = 1; attempt <= MENDER_HTTP_CHUNK_RETRY_MAX; attempt++) {
+            if (sock < 0) {
+                sock = mender_net_connect(host, port);
+            }
+            if (sock < 0) {
+                mender_log_warning("Unable to open HTTP client connection (attempt %d/%d)", attempt, MENDER_HTTP_CHUNK_RETRY_MAX);
+            } else {
+                if (!connected) {
+                    if (MENDER_OK != (ret = dl_data->artifact_download_callback(MENDER_HTTP_EVENT_CONNECTED, NULL, 0, dl_data))) {
+                        mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_CONNECTED' artifact callback");
+                        mender_net_disconnect(sock);
+                        sock = -1;
+                        goto END;
+                    }
+                    connected = true;
+                }
+                http_req_ret = http_client_req(sock, &request, MENDER_HTTP_REQUEST_TIMEOUT, dl_data);
+                if (http_req_ret >= 0) {
+                    break;
+                } else {
+                    mender_net_disconnect(sock);
+                    sock = -1;
+                    mender_log_warning(
+                        "HTTP request failed at offset %zu: %s (attempt %d/%d)", offset, strerror(-http_req_ret), attempt, MENDER_HTTP_CHUNK_RETRY_MAX);
+                }
+            }
 
-    /* Check if an error occured during the treatment of data */
-    if (MENDER_OK != (ret = request_ret)) {
-        goto END;
-    }
+            if (attempt < MENDER_HTTP_CHUNK_RETRY_MAX) {
+                mender_os_sleep(MENDER_HTTP_CHUNK_RETRY_DELAY_MS);
+            }
+        }
+        if (http_req_ret < 0) {
+            mender_log_error("HTTP request failed after retries: %s", strerror(-http_req_ret));
+            mender_free(request.recv_buf);
+            goto END;
+        }
 
-    /* Read HTTP status code */
-    if (0 == request.internal.response.http_status_code) {
-        mender_log_error("An error occurred, connection has been closed");
-        dl_data->artifact_download_callback(MENDER_HTTP_EVENT_ERROR, NULL, 0, dl_data);
-        goto END;
-    } else {
-        *status = request.internal.response.http_status_code;
-    }
+        /* Artifact download failed*/
+        if (MENDER_OK != dl_data->ret) {
+            mender_free(request.recv_buf);
+            goto END;
+        }
+
+        /* Check if an error occured during the treatment of data */
+        if (MENDER_OK != (ret = request_ret)) {
+            mender_free(request.recv_buf);
+            goto END;
+        }
+
+        /* Read HTTP status code */
+        if (0 == request.internal.response.http_status_code) {
+            mender_log_error("An error occurred, connection has been closed");
+            dl_data->artifact_download_callback(MENDER_HTTP_EVENT_ERROR, NULL, 0, dl_data);
+            mender_free(request.recv_buf);
+            goto END;
+        }
+        *status             = request.internal.response.http_status_code;
+        body_bytes_received = request.internal.response.processed;
+
+        FREE_AND_NULL(host_header);
+        FREE_AND_NULL(range_header);
+        mender_free(request.recv_buf);
+
+        if (use_ranges) {
+            if (206 != *status) {
+                mender_log_error("Artifact server ignored range request, status=%d", *status);
+                ret = MENDER_FAIL;
+                goto END;
+            }
+            if ((0 == total_size) && request.internal.response.content_range.total > 0) {
+                total_size = request.internal.response.content_range.total;
+            }
+            if (0 == body_bytes_received) {
+                mender_log_error("Artifact server returned empty body for range request");
+                ret = MENDER_FAIL;
+                goto END;
+            }
+            offset += body_bytes_received;
+            done = ((0 != total_size) && (offset >= total_size));
+        } else {
+            done = true;
+        }
+    } while (!done);
+
     if (MENDER_OK != (ret = dl_data->artifact_download_callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, dl_data))) {
         mender_log_error("An error occurred while calling 'MENDER_HTTP_EVENT_DISCONNECTED' artifact callback");
         goto END;
     }
 
+    if (use_ranges && (206 == *status)) {
+        *status = 200;
+    }
+
     ret = MENDER_OK;
 
 END:
+    if (MENDER_OK != ret) {
+        dl_data->artifact_download_callback(MENDER_HTTP_EVENT_ERROR, NULL, 0, dl_data);
+    }
 
-    /* Close connection */
     if (sock >= 0) {
         mender_net_disconnect(sock);
     }
@@ -541,8 +634,7 @@ END:
     mender_free(port);
     mender_free(url);
     mender_free(host_header);
-
-    mender_free(request.recv_buf);
+    mender_free(range_header);
 
     /* Return MENDER_RETRY_ERROR if ret is MENDER_FAIL, otherwise return ret */
     return (MENDER_FAIL != ret) ? ret : MENDER_RETRY_ERROR;

@@ -116,7 +116,8 @@ if MENDER_MCU_CLIENT
 
         config MENDER_CLIENT_UPDATE_POLL_INTERVAL_DEFAULT
             int
-            default 604800
+            default 604800 if MENDER_DEVICE_TIER_MICRO
+            default 1800 if MENDER_DEVICE_TIER_STANDARD
 
         config MENDER_CLIENT_UPDATE_POLL_INTERVAL
             int "Mender client Update poll interval (seconds)"
@@ -124,7 +125,7 @@ if MENDER_MCU_CLIENT
             default MENDER_CLIENT_UPDATE_POLL_INTERVAL_DEFAULT
             help
                 Interval used to periodically check for new deployments on the Mender server.
-                The default value is once every 7 days.
+                The default value is once every 7 days for micro tier and once every 30 minutes for standard tier.
 
         config MENDER_DEPLOYMENT_LOGS
             bool "Deployment logs"
@@ -146,7 +147,8 @@ if MENDER_MCU_CLIENT
 
         config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL_DEFAULT
             int
-            default 604800
+            default 604800 if MENDER_DEVICE_TIER_MICRO
+            default 28800 if MENDER_DEVICE_TIER_STANDARD
         
         config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
             int "Mender client Inventory refresh interval (seconds)"
@@ -156,7 +158,7 @@ if MENDER_MCU_CLIENT
             help
                 Interval used to periodically send inventory to the Mender server.
                 Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
-                The default value is once every 7 days.
+                The default value is once every 7 days for micro tier and once every 8 hours for standard tier.
 
         config MENDER_CLIENT_INVENTORY_BUILD_INFO
             bool "Build info built-in inventory"
@@ -287,11 +289,12 @@ if MENDER_MCU_CLIENT
 
             config MENDER_ARTIFACT_WARN_SIZE
                 string "Warning limit for Artifact size"
-                default "5MB"
+                default "5MB" if MENDER_DEVICE_TIER_MICRO
+                default "10GB" if MENDER_DEVICE_TIER_STANDARD
                 depends on MENDER_ARTIFACT_SIZE_LIMITS
                 help
                     Warn if size of the Artifact exceeds the given limit.
-                    Defaults to 5MB.
+                    Defaults to 5MB for micro tier and 10GB for standard tier.
                     Leave empty to disable.
                     You can specify units: "123B", "1MB", etc. Supported units: B, KB, MB, GB, TB
 

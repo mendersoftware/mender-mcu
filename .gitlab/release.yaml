@@ -23,7 +23,7 @@ variables:
       - "false"
 
 changelog:
-  image: "registry.gitlab.com/northern.tech/mender/mender-test-containers:release-please-v1-master"
+  image: "registry.gitlab.com/northern.tech/mender/mender-test-containers/release-please:master"
   stage: changelog
   variables:
     GIT_DEPTH: 0  # Always get the full history
@@ -71,7 +71,7 @@ changelog:
     - git remote remove github-${CI_JOB_ID}
 
 release:github:
-  image: "registry.gitlab.com/northern.tech/mender/mender-test-containers:release-please-v1-master"
+  image: "registry.gitlab.com/northern.tech/mender/mender-test-containers/release-please:master"
   stage: .post
   tags:
     - hetzner-amd-beefy
@@ -97,7 +97,7 @@ release:github:
       --target-branch=${CI_COMMIT_REF_NAME}
 
 release:mender-docs-changelog:
-  image: "registry.gitlab.com/northern.tech/mender/mender-test-containers:release-please-v1-master"
+  image: "registry.gitlab.com/northern.tech/mender/mender-test-containers/release-please:master"
   stage: .post
   tags:
     - hetzner-amd-beefy

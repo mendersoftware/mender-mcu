@@ -159,7 +159,7 @@ mender_get_deployment_data(mender_deployment_data_t **deployment_data) {
     /* Parse deployment data from JSON string. */
     *deployment_data = cJSON_Parse(json_str);
     mender_free(json_str);
-    if (NULL == deployment_data) {
+    if (NULL == *deployment_data) {
         mender_log_error("Unable to parse deployment data");
         return MENDER_FAIL;
     }

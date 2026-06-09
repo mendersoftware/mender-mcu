@@ -8,6 +8,10 @@ include:
     file:
       - '.gitlab-ci-github-status-updates.yml'
   - local: "/.gitlab/release.yaml"
+  - component: gitlab.com/Northern.tech/Mender/mendertesting/publish-codecov@master
+    inputs:
+      coverage_file: coverage.lcov
+      flag: unit-tests
   - component: gitlab.com/renovate-bot/renovate-runner/renovate.gitlab-ci@main
 
 stages:
@@ -188,35 +192,3 @@ trigger:mender-mcu-integration:
     PARENT_MENDER_MCU_PIPELINE_ID: $CI_PIPELINE_ID
     PARENT_MENDER_MCU_COMMIT_BRANCH: $CI_COMMIT_BRANCH
 
-publish:tests:
-  stage: publish
-  allow_failure: true
-  image: ${CI_DEPENDENCY_PROXY_DIRECT_GROUP_IMAGE_PREFIX}/python:3.11
-  dependencies:
-    - test:unit
-  before_script:
-    # https://github.com/coverallsapp/coverage-reporter
-    - wget -qO- https://coveralls.io/coveralls-linux.tar.gz | tar xz -C /usr/local/bin
-  variables:
-    COVERALLS_PARALLEL: true
-    COVERALLS_FLAG_NAME: "unit-tests"
-    COVERALLS_SERVICE_NAME: "gitlab-ci"
-    COVERALLS_GIT_BRANCH: $CI_COMMIT_BRANCH
-    COVERALLS_GIT_COMMIT: $CI_COMMIT_SHA
-    COVERALLS_REPO_TOKEN: $COVERALLS_TOKEN
-  script:
-    - coveralls report --build-number $CI_PIPELINE_ID
-
-
-coveralls:finish-build:
-  stage: .post
-  allow_failure: true
-  variables:
-    COVERALLS_WEBHOOK_URL: "https://coveralls.io/webhook"
-    COVERALLS_RERUN_BUILD_URL: "https://coveralls.io/rerun_build"
-    COVERALLS_GIT_BRANCH: $CI_COMMIT_BRANCH
-    COVERALLS_GIT_COMMIT: $CI_COMMIT_SHA
-  image: curlimages/curl-base
-  script:
-    - 'curl -k ${COVERALLS_WEBHOOK_URL}?repo_token=${COVERALLS_TOKEN} -d "payload[build_num]=$CI_PIPELINE_ID&payload[status]=done"'
-    - 'curl -k "${COVERALLS_RERUN_BUILD_URL}?repo_token=${COVERALLS_TOKEN}&build_num=${CI_PIPELINE_ID}"'

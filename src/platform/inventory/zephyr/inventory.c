@@ -18,6 +18,7 @@
  */
 
 #include <zephyr/net/net_if.h>
+#include <zephyr/net/net_ip.h>
 #include <zephyr/version.h> /* a file generated during build */
 
 #include "alloc.h"
@@ -45,9 +46,11 @@ build_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
 #ifdef CONFIG_MENDER_CLIENT_INVENTORY_NETWORK_INFO
 static mender_err_t
 network_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
-    mender_keystore_t *network_info = NULL;
-    struct net_if     *iface        = NULL;
-    const char        *ifname       = NULL;
+    mender_keystore_t    *network_info = NULL;
+    struct net_if        *iface        = NULL;
+    const char           *ifname       = NULL;
+    const struct in_addr *ipv4_addr    = NULL;
+    struct in_addr        addr;
 
     if (NULL == (iface = net_if_get_default())) {
         mender_log_debug("No network interface");
@@ -65,6 +68,14 @@ network_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
     network_info[0].name  = mender_utils_strdup("Default network interface");
     network_info[0].value = mender_utils_strdup(ifname);
 
+    ipv4_addr = net_if_ipv4_get_global_addr(iface, NET_ADDR_PREFERRED);
+    if (NULL == ipv4_addr) {
+        mender_log_debug("No preferred IPv4 address on default interface");
+        *inventory     = network_info;
+        *inventory_len = 1;
+        return MENDER_OK;
+    }
+
     /* The first IP of the iface */
     if (mender_utils_asprintf(&(network_info[1].name), "IPv4[%s]", ifname) <= 0) {
         mender_log_error("Failed to construct network inventory data");
@@ -74,7 +85,7 @@ network_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
         mender_log_error("Unable to allocate memory");
         goto ERR;
     }
-    if (NULL == net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[0].ipv4.address.in_addr, network_info[1].value, NET_IPV4_ADDR_LEN)) {
+    if (NULL == net_addr_ntop(AF_INET, ipv4_addr, network_info[1].value, NET_IPV4_ADDR_LEN)) {
         mender_log_error("Failed to construct network inventory data");
         goto ERR;
     }
@@ -88,12 +99,14 @@ network_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
         mender_log_error("Unable to allocate memory");
         goto ERR;
     }
-    if (NULL == net_addr_ntop(AF_INET, &iface->config.ip.ipv4->unicast[0].netmask, network_info[2].value, NET_IPV4_ADDR_LEN)) {
+    addr = net_if_ipv4_get_netmask_by_addr(iface, ipv4_addr);
+    if (NULL == net_addr_ntop(AF_INET, &addr, network_info[2].value, NET_IPV4_ADDR_LEN)) {
         mender_log_error("Failed to construct network inventory data");
         goto ERR;
     }
 
     /* Gateway */
+    addr = net_if_ipv4_get_gw(iface);
     if (mender_utils_asprintf(&(network_info[3].name), "Gateway[%s]", ifname) <= 0) {
         mender_log_error("Failed to construct network inventory data");
         goto ERR;
@@ -102,7 +115,7 @@ network_info_callback(mender_keystore_t **inventory, uint8_t *inventory_len) {
         mender_log_error("Unable to allocate memory");
         goto ERR;
     }
-    if (NULL == net_addr_ntop(AF_INET, &iface->config.ip.ipv4->gw, network_info[3].value, NET_IPV4_ADDR_LEN)) {
+    if (NULL == net_addr_ntop(AF_INET, &addr, network_info[3].value, NET_IPV4_ADDR_LEN)) {
         mender_log_error("Failed to construct network inventory data");
         goto ERR;
     }

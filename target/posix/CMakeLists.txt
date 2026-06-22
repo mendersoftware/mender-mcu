@@ -108,7 +108,7 @@ include(FetchContent)
 FetchContent_Declare(
   MbedTLS
   GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls
-  GIT_TAG        v3.6.2
+  GIT_TAG        v3.6.6
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   FIND_PACKAGE_ARGS NAMES MbedTLS
 )

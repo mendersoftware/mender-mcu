@@ -20,10 +20,23 @@
 
 #include <errno.h>
 #include <zephyr/drivers/flash.h>
+/* Zephyr 4.4 moved NVS to the KVSS subsystem: zephyr/fs/nvs.h -> zephyr/kvss/nvs.h. */
+#if defined(__has_include) && __has_include(<zephyr/kvss/nvs.h>)
+#include <zephyr/kvss/nvs.h>
+#else
 #include <zephyr/fs/nvs.h>
+#endif
 #include <zephyr/storage/flash_map.h>
 #include "log.h"
 #include "storage.h"
+
+/* Zephyr 4.4 renamed FIXED_PARTITION_* to PARTITION_*. */
+#ifndef PARTITION_DEVICE
+#define PARTITION_DEVICE(label) FIXED_PARTITION_DEVICE(label)
+#endif
+#ifndef PARTITION_ID
+#define PARTITION_ID(label) FIXED_PARTITION_ID(label)
+#endif
 
 #ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
 #include <zephyr/sys/crc.h>
@@ -68,8 +81,8 @@ mender_get_storage_spec(const struct device **dev, int *part_id, uint16_t *secto
     return MENDER_NOT_IMPLEMENTED;
 #else
     /* Otherwise we set the parameters based on the values defined above. */
-    *dev     = FIXED_PARTITION_DEVICE(MENDER_STORAGE_LABEL);
-    *part_id = FIXED_PARTITION_ID(MENDER_STORAGE_LABEL);
+    *dev     = PARTITION_DEVICE(MENDER_STORAGE_LABEL);
+    *part_id = PARTITION_ID(MENDER_STORAGE_LABEL);
 
     *sector_offset = CONFIG_MENDER_STORAGE_SECTOR_OFFSET;
 
@@ -375,7 +388,7 @@ mender_storage_deployment_log_append(const char *msg, size_t msg_size) {
     msg_size = MIN(DEPL_LOGS_MAX_MSG_LEN + 1, msg_size);
 
     const struct flash_area *fap;
-    if (0 != (result = flash_area_open(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
+    if (0 != (result = flash_area_open(PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
         mender_log_error("Unable to open the Mender storage flash area [%d]", -result);
         return MENDER_FAIL;
     }
@@ -412,7 +425,7 @@ mender_storage_deployment_log_walk(MenderDeploymentLogVisitor visitor_fn, void *
     char         msg[DEPL_LOGS_MAX_MSG_LEN + 1];
 
     const struct flash_area *fap;
-    if (0 != (result = flash_area_open(FIXED_PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
+    if (0 != (result = flash_area_open(PARTITION_ID(MENDER_STORAGE_LABEL), &fap))) {
         mender_log_error("Unable to open the Mender storage flash area");
         return MENDER_FAIL;
     }

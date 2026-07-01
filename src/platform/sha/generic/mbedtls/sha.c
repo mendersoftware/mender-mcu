@@ -21,21 +21,22 @@
 #include "sha.h"
 #include "log.h"
 
-#include <mbedtls/sha256.h>
+#include <mbedtls/md.h>
 
 mender_err_t
 mender_sha256_begin(mender_sha256_context_t *context) {
     assert(NULL != context);
 
-    mbedtls_sha256_context *ctx = mender_malloc(sizeof(mbedtls_sha256_context));
+    mbedtls_md_context_t *ctx = mender_malloc(sizeof(mbedtls_md_context_t));
     if (NULL == ctx) {
         mender_log_error("Unable to allocate memory");
         return MENDER_FAIL;
     }
 
-    mbedtls_sha256_init(ctx);
-    if (0 != mbedtls_sha256_starts(ctx, 0 /* Use SHA-256, not SHA-224 */)) {
+    mbedtls_md_init(ctx);
+    if (0 != mbedtls_md_setup(ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 0) || 0 != mbedtls_md_starts(ctx)) {
         mender_log_error("Failed to start SHA-256 checksum calculation");
+        mbedtls_md_free(ctx);
         mender_free(ctx);
         return MENDER_FAIL;
     }
@@ -48,8 +49,8 @@ mender_err_t
 mender_sha256_update(mender_sha256_context_t context, const unsigned char *input, size_t length) {
     assert(NULL != context);
 
-    mbedtls_sha256_context *ctx = context;
-    if (0 != mbedtls_sha256_update(ctx, input, length)) {
+    mbedtls_md_context_t *ctx = context;
+    if (0 != mbedtls_md_update(ctx, input, length)) {
         mender_log_error("Failed to update SHA-256 checksum calculation");
         return MENDER_FAIL;
     }
@@ -59,16 +60,16 @@ mender_sha256_update(mender_sha256_context_t context, const unsigned char *input
 
 mender_err_t
 mender_sha256_finish(mender_sha256_context_t context, unsigned char *output) {
-    mender_err_t            ret = MENDER_OK;
-    mbedtls_sha256_context *ctx = context;
+    mender_err_t          ret = MENDER_OK;
+    mbedtls_md_context_t *ctx = context;
     if (NULL != ctx) {
         if (NULL != output) {
-            if (0 != mbedtls_sha256_finish(ctx, output)) {
+            if (0 != mbedtls_md_finish(ctx, output)) {
                 mender_log_error("Failed to finish SHA-256 checksum calculation");
                 ret = MENDER_FAIL;
             }
         }
-        mbedtls_sha256_free(ctx);
+        mbedtls_md_free(ctx);
         mender_free(ctx);
     }
     return ret;

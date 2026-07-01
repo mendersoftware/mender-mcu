@@ -18,16 +18,22 @@
  * limitations under the License.
  */
 
+#include <mbedtls/build_info.h>
 #include <mbedtls/base64.h>
-#include <mbedtls/bignum.h>
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/entropy.h>
 #ifdef MBEDTLS_ERROR_C
 #include <mbedtls/error.h>
 #endif /* MBEDTLS_ERROR_C */
 #include <mbedtls/pk.h>
-#include <mbedtls/ecdsa.h>
 #include <mbedtls/x509.h>
+#if MBEDTLS_VERSION_NUMBER >= 0x04000000
+/* 4.x: crypto primitives moved to TF-PSA-Crypto behind PSA; PK/X.509/base64/md remain. */
+#include <psa/crypto.h>
+#else /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
+#include <mbedtls/bignum.h>
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ecdsa.h>
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
 #include "alloc.h"
 #include "log.h"
 #include "utils.h"
@@ -123,7 +129,14 @@ static mender_err_t mender_tls_pem_write_buffer(const unsigned char *der_data, s
 mender_err_t
 mender_tls_init(void) {
 
-    /* Nothing to do */
+#if MBEDTLS_VERSION_NUMBER >= 0x04000000
+    /* 4.x routes all crypto through PSA, which must be initialized before any PK/X.509/MD op. */
+    if (PSA_SUCCESS != psa_crypto_init()) {
+        mender_log_error("psa_crypto_init failed");
+        return MENDER_FAIL;
+    }
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
+
     return MENDER_OK;
 }
 
@@ -263,12 +276,15 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
     assert(NULL != payload);
     assert(NULL != signature);
     assert(NULL != signature_length);
-    int                       ret;
-    mbedtls_pk_context       *pk_context = NULL;
-    mbedtls_ctr_drbg_context *ctr_drbg   = NULL;
-    mbedtls_entropy_context  *entropy    = NULL;
-    unsigned char            *sig        = NULL;
-    size_t                    sig_length;
+    int                 ret;
+    mbedtls_pk_context *pk_context = NULL;
+#if MBEDTLS_VERSION_NUMBER < 0x04000000
+    /* pre-4.x: pk_parse_key/pk_sign take an explicit RNG; 4.x uses the PSA RNG. */
+    mbedtls_ctr_drbg_context *ctr_drbg = NULL;
+    mbedtls_entropy_context  *entropy  = NULL;
+#endif /* MBEDTLS_VERSION_NUMBER < 0x04000000 */
+    unsigned char *sig = NULL;
+    size_t         sig_length;
     MBEDTLS_ERR_BUF;
 
     /* Initialize mbedtls */
@@ -278,6 +294,8 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
         goto END;
     }
     mbedtls_pk_init(pk_context);
+#if MBEDTLS_VERSION_NUMBER < 0x04000000
+    /* pre-4.x: set up the entropy source and ctr_drbg RNG. */
     if (NULL == (ctr_drbg = (mbedtls_ctr_drbg_context *)mender_malloc(sizeof(mbedtls_ctr_drbg_context)))) {
         mender_log_error("Unable to allocate memory");
         ret = -1;
@@ -296,13 +314,17 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
         LOG_MBEDTLS_ERROR("Unable to initialize ctr drbg", ret);
         goto END;
     }
+#endif /* MBEDTLS_VERSION_NUMBER < 0x04000000 */
 
     /* Parse private key (IMPORTANT NOTE: length must include the ending \0 character) */
-#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+#if MBEDTLS_VERSION_NUMBER >= 0x04000000
+    /* 4.x dropped the RNG arguments from mbedtls_pk_parse_key(). */
+    if (0 != (ret = mbedtls_pk_parse_key(pk_context, mender_tls_private_key, mender_tls_private_key_length, NULL, 0))) {
+#elif MBEDTLS_VERSION_NUMBER >= 0x03000000
     if (0 != (ret = mbedtls_pk_parse_key(pk_context, mender_tls_private_key, mender_tls_private_key_length, NULL, 0, mbedtls_ctr_drbg_random, ctr_drbg))) {
 #else
     if (0 != (ret = mbedtls_pk_parse_key(pk_context, mender_tls_private_key, mender_tls_private_key_length, NULL, 0))) {
-#endif /* MBEDTLS_VERSION_NUMBER >= 0x03000000 */
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
         LOG_MBEDTLS_ERROR("Unable to parse private key", ret);
         goto END;
     }
@@ -321,11 +343,14 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
         goto END;
     }
     sig_length = MBEDTLS_PK_SIGNATURE_MAX_SIZE;
-#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+#if MBEDTLS_VERSION_NUMBER >= 0x04000000
+    /* 4.x dropped the RNG arguments from mbedtls_pk_sign() (RNG comes from PSA). */
+    if (0 != (ret = mbedtls_pk_sign(pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), sig, sig_length, &sig_length))) {
+#elif MBEDTLS_VERSION_NUMBER >= 0x03000000
     if (0 != (ret = mbedtls_pk_sign(pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), sig, sig_length, &sig_length, mbedtls_ctr_drbg_random, ctr_drbg))) {
 #else
     if (0 != (ret = mbedtls_pk_sign(pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), sig, &sig_length, mbedtls_ctr_drbg_random, ctr_drbg))) {
-#endif /* MBEDTLS_VERSION_NUMBER >= 0x03000000 */
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
         LOG_MBEDTLS_ERROR("Unable to compute signature", ret);
         goto END;
     }
@@ -350,10 +375,12 @@ mender_tls_sign_payload(char *payload, char **signature, size_t *signature_lengt
 END:
 
     /* Release mbedtls */
+#if MBEDTLS_VERSION_NUMBER < 0x04000000
     mbedtls_entropy_free(entropy);
     mender_free(entropy);
     mbedtls_ctr_drbg_free(ctr_drbg);
     mender_free(ctr_drbg);
+#endif /* MBEDTLS_VERSION_NUMBER < 0x04000000 */
     mbedtls_pk_free(pk_context);
     mender_free(pk_context);
 
@@ -378,6 +405,36 @@ mender_tls_exit(void) {
 static mender_err_t
 mender_tls_generate_authentication_keys(mbedtls_pk_context *pk_context) {
 
+#if MBEDTLS_VERSION_NUMBER >= 0x04000000
+    /* Mbed TLS 4.x only generates keys via psa_generate_key, but mender stores and signs
+     * with an mbedtls_pk_context. So generate the P-256 key, copy it into the
+     * pk_context, then discard the PSA key. The copy reads the key material out,
+     * so the PSA key needs EXPORT; signing is done by the pk_context, so it
+     * needs no sign usage. */
+    psa_status_t         status;
+    mbedtls_svc_key_id_t key_id     = MBEDTLS_SVC_KEY_ID_INIT;
+    psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+
+    psa_set_key_type(&attributes, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+    psa_set_key_bits(&attributes, 256);
+    psa_set_key_usage_flags(&attributes, PSA_KEY_USAGE_EXPORT);
+    psa_set_key_algorithm(&attributes, PSA_ALG_ECDSA(PSA_ALG_SHA_256));
+
+    if (PSA_SUCCESS != (status = psa_generate_key(&attributes, &key_id))) {
+        mender_log_error("Unable to generate key (psa: %d)", (int)status);
+        return MENDER_FAIL;
+    }
+
+    int ret = mbedtls_pk_copy_from_psa(key_id, pk_context);
+    psa_destroy_key(key_id);
+    if (0 != ret) {
+        MBEDTLS_ERR_BUF;
+        LOG_MBEDTLS_ERROR("Unable to import generated key into PK context", ret);
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+#else  /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
     mbedtls_ctr_drbg_context     *ctr_drbg   = NULL;
     mbedtls_entropy_context      *entropy    = NULL;
     const mbedtls_ecp_curve_info *curve_info = NULL;
@@ -435,6 +492,7 @@ END:
     mender_free(ctr_drbg);
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
 }
 
 static mender_err_t
@@ -443,10 +501,13 @@ mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, con
     assert(NULL != user_provided_key);
     assert(0 != user_provided_key_length);
 
+    int ret;
+    MBEDTLS_ERR_BUF;
+
+#if MBEDTLS_VERSION_NUMBER < 0x04000000
+    /* pre-4.x: pk_parse_key takes an explicit RNG; 4.x uses the PSA RNG. */
     mbedtls_ctr_drbg_context *ctr_drbg = NULL;
     mbedtls_entropy_context  *entropy  = NULL;
-    int                       ret;
-    MBEDTLS_ERR_BUF;
 
     if (NULL == (ctr_drbg = (mbedtls_ctr_drbg_context *)mender_malloc(sizeof(mbedtls_ctr_drbg_context)))) {
         mender_log_error("Unable to allocate memory");
@@ -466,25 +527,31 @@ mender_tls_user_provided_authentication_keys(mbedtls_pk_context *pk_context, con
         LOG_MBEDTLS_ERROR("Unable to initialize ctr drbg", ret);
         goto END;
     }
+#endif /* MBEDTLS_VERSION_NUMBER < 0x04000000 */
 
     /* Load and parse the private key buffer */
-#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+#if MBEDTLS_VERSION_NUMBER >= 0x04000000
+    /* 4.x dropped the RNG arguments from mbedtls_pk_parse_key(). */
+    if (0 != (ret = mbedtls_pk_parse_key(pk_context, (const unsigned char *)user_provided_key, user_provided_key_length, NULL, 0))) {
+#elif MBEDTLS_VERSION_NUMBER >= 0x03000000
     if (0
         != (ret = mbedtls_pk_parse_key(
                 pk_context, (const unsigned char *)user_provided_key, user_provided_key_length, NULL, 0, mbedtls_ctr_drbg_random, ctr_drbg))) {
 #else
     if (0 != (ret = mbedtls_pk_parse_key(pk_context, (const unsigned char *)user_provided_key, user_provided_key_length, NULL, 0))) {
-#endif /* MBEDTLS_VERSION_NUMBER >= 0x03000000 */
+#endif /* MBEDTLS_VERSION_NUMBER >= 0x04000000 */
         LOG_MBEDTLS_ERROR("Unable to parse private key", ret);
         goto END;
     }
 
 END:
     /* Release mbedtls */
+#if MBEDTLS_VERSION_NUMBER < 0x04000000
     mbedtls_entropy_free(entropy);
     mender_free(entropy);
     mbedtls_ctr_drbg_free(ctr_drbg);
     mender_free(ctr_drbg);
+#endif /* MBEDTLS_VERSION_NUMBER < 0x04000000 */
 
     return (0 != ret) ? MENDER_FAIL : MENDER_OK;
 }

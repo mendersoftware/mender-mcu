@@ -149,7 +149,7 @@ if MENDER_MCU_CLIENT
             int
             default 604800 if MENDER_DEVICE_TIER_MICRO
             default 28800 if MENDER_DEVICE_TIER_STANDARD
-        
+
         config MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL
             int "Mender client Inventory refresh interval (seconds)"
             depends on MENDER_CLIENT_INVENTORY_DISABLE=n

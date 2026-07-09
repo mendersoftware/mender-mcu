@@ -1,0 +1,35 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-symlinks
+      - id: check-json
+      - id: double-quote-string-fixer
+      - id: requirements-txt-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+        exclude: .gitlab-ci.yml
+  - repo: local
+    hooks:
+      - id: clang-format
+        name: clang-format
+        entry: clang-format -i
+        language: system
+        types_or: [c, c++]
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.3.2
+    hooks:
+      - id: autopep8
+        args: ["--in-place", "--aggressive"]
+        exclude: ^flashing/uart_uniflash\.py$
+  - repo: https://github.com/jackdewinter/pymarkdown
+    rev: v0.9.36
+    hooks:
+      - id: pymarkdown
+        args: ["fix"]
+        types: [markdown]

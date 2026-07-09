@@ -67,12 +67,16 @@ manifest:
       path: modules/mender-mcu
       import: true
 ```
+
 If you already have a west workspace, you can simply add `mender-mcu` with the following command
 inside the workspace after adding the project to the manifest:
+
 ```
 west update
 ```
+
 If you're starting from scratch, you can initialize a new workspace based on the manifest like so:
+
 ```
 west init workspace --manifest-url https://url/to/repository-containing-manifest
 cd workspace && west update
@@ -162,8 +166,6 @@ only the ones that are relevant for a particular type of update.
 After writing the code, you need to register the Update Module into the Mender MCU. See the register
 update module function in [`update-module.h`](include/mender/update-module.h).
 
-
-
 ### Network
 
 See this [example](https://github.com/mendersoftware/mender-mcu-integration/blob/main/src/utils/netup.c) from mender-mcu-integration for a demo.
@@ -187,6 +189,7 @@ generate_inc_file_for_target(app
     "${ZEPHYR_BINARY_DIR}/include/generated/Cerficiate1.cer.inc"
 )
 ```
+
 [`generate_inc_file_for_target`](https://github.com/zephyrproject-rtos/zephyr/blob/bc42004d1be40d9b5bec2d3e8c600780b644ff6e/cmake/modules/extensions.cmake#L703)
 is a Zephyr CMake extension.
 
@@ -199,13 +202,14 @@ The API for adding the certificates is provided by Zephyr, and can be used by in
 
 You can add the certificate by calling `tls_credential_add` with the following arguments:
 * `tag` - The tag of the certificate - configured by setting either:
-    * `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_PRIMARY` - The tag for the primary certificate
-    * `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY` - The tag for the secondary certificate
+  * `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_PRIMARY` - The tag for the primary certificate
+  * `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY` - The tag for the secondary certificate
 * `type` - The type of the certificate - should be `TLS_CREDENTIAL_CA_CERTIFICATE`
 * `data` - The certificate data - should be an array of unsigned characters
 * `len` - The length of the certificate data - should be the size of the array of unsigned characters
 
 Example:
+
 ```c
 #include <zephyr/net/tls_credentials.h>
 
@@ -236,13 +240,14 @@ and
 
 `mender_client_callbacks_t` with the callbacks defined in [client.h](include/mender/client.h).
 
-See [The Mender client API ](#the-mender-client-api).
+See [The Mender client API](#the-mender-client-api).
 
 After implementing the necessary callbacks and creating the structs,
 the client can be initialized by calling `mender_client_init`, which
 is defined in [client.h](include/mender/client.h):
 
 Example:
+
 ```c
 mender_client_init(&mender_client_config, &mender_client_callbacks));
 ```
@@ -253,6 +258,7 @@ Update Modules. Without an Update Module, the client can run and report inventor
 not be able to perform any updates.
 
 Registering `zephyr-image` Update Module (compiled in by default):
+
 ```c
 mender_zephyr_image_register_update_module());
 ```
@@ -268,6 +274,7 @@ You can add an inventory callback by calling
 `mender_inventory_add_callback`, which is defined in the [inventory API](include/mender/inventory.h).
 
 Example of adding a persistent callback:
+
 ```c
 static mender_err_t
 persistent_inventory_cb(mender_keystore_t **keystore, uint8_t *keystore_len) {
@@ -282,9 +289,11 @@ mender_inventory_add_callback(persistent_inventory_cb, true);
 
 #### Activating the Client
 Finally, you can activate the client by calling `mender_client_activate`:
+
 ```c
 mender_client_activate();
 ```
+
 After the client is activated, it will run on a workqueue thread, either a dedicated one
 (default) or the system one (configurable with the options starting with `CONFIG_SYSTEM_WORKQUEUE_`).
 From this thread, the client will regularly poll for updates and submit inventory.
@@ -319,6 +328,7 @@ mender-artifact write module-image \
   --compatible-devices $DEVICE_TYPE \
   --compression none
 ```
+
 ### Deployment
 After creating the Artifact, you can upload it to the Mender Server and deploy it to your device.
 
@@ -329,7 +339,6 @@ See the documentation on [deployments](https://docs.mender.io/overview/deploymen
 We welcome and ask for your contribution. If you would like to contribute to
 Mender, please read our guide on how to best get started
 [contributing code or documentation](https://github.com/mendersoftware/mender/blob/master/CONTRIBUTING.md).
-
 
 ## License
 
@@ -342,14 +351,12 @@ The `mender-mcu` project is a fork from [Joel Guittet's
 License, Version 2.0. See
 [LICENSE](https://github.com/joelguittet/mender-mcu-client/blob/master/LICENSE)
 
-
 ## Security disclosure
 
 We take security very seriously. If you come across any issue regarding
 security, please disclose the information by sending an email to
 [security@mender.io](security@mender.io). Please do not create a new public
 issue. We thank you in advance for your cooperation.
-
 
 ## Connect with us
 

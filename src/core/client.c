@@ -798,7 +798,13 @@ mender_filter_provides(mender_artifact_ctx_t *mender_artifact_ctx, mender_key_va
     for (size_t i = 0; i < mender_artifact_ctx->payloads.size; i++) {
         for (size_t j = 0; j < mender_artifact_ctx->payloads.values[i].clears_provides_size; j++) {
             const char *to_clear = mender_artifact_ctx->payloads.values[i].clears_provides[j];
-            for (mender_key_value_list_t *item = *stored_provides; NULL != item; item = item->next) {
+            /* Capture the next pointer before the loop body: when the key
+             * matches, mender_utils_key_value_list_delete_node() frees the
+             * current node, so advancing via item->next afterwards would
+             * dereference freed memory (use-after-free). */
+            mender_key_value_list_t *next_item = NULL;
+            for (mender_key_value_list_t *item = *stored_provides; NULL != item; item = next_item) {
+                next_item = item->next;
                 if (MENDER_OK != mender_utils_compare_wildcard(item->key, to_clear, &matches)) {
                     mender_log_error("Unable to compare wildcard %s with key %s", to_clear, item->key);
                     goto END;

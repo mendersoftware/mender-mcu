@@ -1,11 +1,32 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+
   "extends": [
     "config:recommended",
     ":gitSignOff",
     ":rebaseStalePrs"
   ],
-  "reviewers": ["team:client-dependabot-reviewers"],
+
+  // CODEOWNERS drives reviewer assignment. Keep CODEOWNERS complete.
+  "reviewersFromCodeOwners": true,
+
+  // chore(deps): <desc>, matching the old Dependabot prefix. CI files get ci: below.
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+
+  // Drain backlogs gradually. 10 concurrent because there are three base branches.
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 10,
+
+  "baseBranchPatterns": ["main", "1.0.x"],
+
+  // Security PRs bypass the schedule
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "labels": ["security"]
+  },
 
   "packageRules": [
     {
@@ -33,6 +54,4 @@
       "versioningTemplate": "semver"
     },
   ],
-
-  "prHourlyLimit": 0
 }

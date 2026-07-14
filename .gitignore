@@ -7,8 +7,9 @@ tests/smoke/mender-mcu-client.elf
 
 CMakeCache.txt
 CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
 Makefile
-*.cmake
 *.a
 
 *_test

@@ -66,3 +66,9 @@ mender_http_exit(void) {
     /* Nothing to do */
     return MENDER_OK;
 }
+
+MENDER_FUNC_WEAK uint32_t
+mender_http_get_retry_interval(void) {
+    /* Nothing to do */
+    return 0;
+}

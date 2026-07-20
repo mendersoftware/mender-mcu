@@ -20,15 +20,15 @@
 #include <time.h>
 #include "log.h"
 
-mender_err_t
-mender_log_init(void) {
+static mender_err_t
+default_mender_log_init(void) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
 
-mender_err_t
-mender_log_print(uint8_t level, const char *filename, const char *function, int line, char *format, ...) {
+static mender_err_t
+default_mender_log_print(uint8_t level, const char *filename, const char *function, int line, char *format, ...) {
 
     (void)function;
     struct timespec now;
@@ -64,9 +64,33 @@ mender_log_print(uint8_t level, const char *filename, const char *function, int 
     return MENDER_OK;
 }
 
-mender_err_t
-mender_log_exit(void) {
+static mender_err_t
+default_mender_log_exit(void) {
 
     /* Nothing to do */
     return MENDER_OK;
 }
+
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+static mender_err_t
+default_mender_deployment_logs_activate(void) {
+    /* Default activation logic */
+    return MENDER_OK;
+}
+
+static mender_err_t
+default_mender_deployment_logs_deactivate(void) {
+    /* Default deactivation logic */
+    return MENDER_OK;
+}
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+
+mender_log_t mender_log = {
+    .init  = default_mender_log_init,
+    .exit  = default_mender_log_exit,
+    .print = default_mender_log_print,
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+    .deployment_logs_activate   = default_mender_deployment_logs_activate,
+    .deployment_logs_deactivate = default_mender_deployment_logs_deactivate,
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+};

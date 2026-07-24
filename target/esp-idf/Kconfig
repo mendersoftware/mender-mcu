@@ -1,5 +1,17 @@
 menu "Mender client"
 
+    menu "Storage options"
+
+         config MENDER_STORAGE_PARTITION_LABEL
+             string "Label of partition to store persistent Mender data"
+             default "mender"
+             help
+                 Use "nvs" to use the ESP-IDF's default non-volatile storage partition (not recommended), or see
+                 https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/partition-tables.html#creating-custom-tables
+                 for partition table definition docs and how to define a partition with label "mender".
+
+    endmenu
+
     menu "Scheduler options (ADVANCED)"
 
         config MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE

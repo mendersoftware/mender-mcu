@@ -23,6 +23,9 @@ set(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE "freertos")
 
 include(${MENDER_MCU_ROOT}/cmake/mender_mcu_sources.txt)
 
+# FreeRTOS has no reboot API; provide the ESP-IDF one
+list(APPEND MENDER_MCU_SOURCES "${MENDER_MCU_ROOT}/src/platform/os/esp-idf/reboot.c")
+
 idf_component_register(
     SRCS ${MENDER_MCU_SOURCES}
     INCLUDE_DIRS ${MENDER_MCU_INCLUDE}

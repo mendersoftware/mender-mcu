@@ -162,26 +162,6 @@ mender_os_scheduler_work_execute(mender_work_t *work) {
 }
 
 mender_err_t
-mender_os_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
-    assert(NULL != work);
-
-    /* Set timer period */
-    work->params.period = period;
-    if (work->params.period > 0) {
-#ifdef CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE
-        k_work_reschedule_for_queue(&work_queue, &(work->delayable), K_SECONDS(period));
-#else
-        k_work_reschedule(&(work->delayable), K_SECONDS(period));
-#endif /* CONFIG_MENDER_SCHEDULER_SEPARATE_WORK_QUEUE */
-    } else {
-        k_work_cancel_delayable(&(work->delayable));
-        work->activated = false;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
 mender_os_scheduler_work_deactivate(mender_work_t *work) {
     assert(NULL != work);
 

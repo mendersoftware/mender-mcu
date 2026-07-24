@@ -220,25 +220,6 @@ mender_os_scheduler_work_activate(mender_work_t *work) {
 }
 
 mender_err_t
-mender_os_scheduler_work_set_period(mender_work_t *work, uint32_t period) {
-    assert(NULL != work);
-
-    /* Set timer period */
-    work->params.period   = period;
-    struct itimerspec its = { 0 };
-    if (work->params.period > 0) {
-        its.it_value.tv_sec    = work->params.period;
-        its.it_interval.tv_sec = work->params.period;
-    }
-    if (0 != timer_settime(work->timer_handle, 0, &its, NULL)) {
-        mender_log_error("Unable to set timer period");
-        return MENDER_FAIL;
-    }
-
-    return MENDER_OK;
-}
-
-mender_err_t
 mender_os_scheduler_work_execute(mender_work_t *work) {
     assert(NULL != work);
 

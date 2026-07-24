@@ -73,14 +73,6 @@ mender_err_t mender_os_scheduler_work_create(mender_os_scheduler_work_params_t *
 mender_err_t mender_os_scheduler_work_activate(mender_work_t *work);
 
 /**
- * @brief Function used to set work period
- * @param handle Work handle
- * @param period Work period (seconds)
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_os_scheduler_work_set_period(mender_work_t *work, uint32_t period);
-
-/**
  * @brief Function used to trigger execution of the work
  * @param handle Work handle
  * @return MENDER_OK if the function succeeds, error code otherwise

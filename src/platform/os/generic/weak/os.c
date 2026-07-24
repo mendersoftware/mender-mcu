@@ -40,12 +40,6 @@ mender_os_scheduler_work_activate(MENDER_ARG_UNUSED mender_work_t *work) {
 }
 
 MENDER_FUNC_WEAK mender_err_t
-mender_os_scheduler_work_set_period(MENDER_ARG_UNUSED mender_work_t *work, MENDER_ARG_UNUSED uint32_t period) {
-    /* Nothing to do */
-    return MENDER_NOT_IMPLEMENTED;
-}
-
-MENDER_FUNC_WEAK mender_err_t
 mender_os_scheduler_work_execute(MENDER_ARG_UNUSED mender_work_t *work) {
     /* Nothing to do */
     return MENDER_NOT_IMPLEMENTED;

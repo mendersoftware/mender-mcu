@@ -19,14 +19,27 @@
 get_filename_component(MENDER_MCU_ROOT ${CMAKE_CURRENT_LIST_DIR}/../.. ABSOLUTE)
 
 set(CONFIG_MENDER_PLATFORM_LOG_TYPE "esp-idf")
+set(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE "freertos")
 
 include(${MENDER_MCU_ROOT}/cmake/mender_mcu_sources.txt)
+
+# FreeRTOS has no reboot API; provide the ESP-IDF one
+list(APPEND MENDER_MCU_SOURCES "${MENDER_MCU_ROOT}/src/platform/os/esp-idf/reboot.c")
 
 idf_component_register(
     SRCS ${MENDER_MCU_SOURCES}
     INCLUDE_DIRS ${MENDER_MCU_INCLUDE}
     PRIV_INCLUDE_DIRS ${MENDER_PRIV_INCLUDE}
+    # menuconfig entries; the values land as the CONFIG_MENDER_* CMake
+    # variables consumed by the definitions below.
+    KCONFIG ${MENDER_MCU_ROOT}/target/esp-idf/Kconfig
 )
+
+# The FreeRTOS platform sources use vanilla FreeRTOS includes (e.g. <FreeRTOS.h>),
+# while ESP-IDF namespaces them under freertos/. Add the kernel header directory
+# to the include path so the vanilla includes resolve.
+idf_component_get_property(freertos_dir freertos COMPONENT_DIR)
+target_include_directories(${COMPONENT_LIB} PRIVATE ${freertos_dir}/FreeRTOS-Kernel/include/freertos)
 
 include(${MENDER_MCU_ROOT}/cmake/CMake_defaults.txt)
 if(CONFIG_MENDER_LOG_LEVEL)
@@ -75,6 +88,15 @@ if(CONFIG_MENDER_RETRY_ERROR_MAX_BACKOFF)
 endif()
 if(CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL=${CONFIG_MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL})
+endif()
+if(CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE=${CONFIG_MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE})
+endif()
+if(CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY=${CONFIG_MENDER_SCHEDULER_WORK_QUEUE_PRIORITY})
+endif()
+if(CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH=${CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH})
 endif()
 
 # TODO: figure out how to dynamically get the version.

@@ -1,0 +1,28 @@
+menu "Mender client"
+
+    menu "Scheduler options (ADVANCED)"
+
+        config MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE
+            int "Mender Scheduler Work Queue Stack Size (kB)"
+            range 1 64
+            default 12
+            help
+                Mender scheduler work queue stack size, customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
+
+        config MENDER_SCHEDULER_WORK_QUEUE_PRIORITY
+            int "Mender Scheduler Work Queue Priority"
+            range 1 24
+            default 1
+            help
+                Mender scheduler work queue priority (higher number = higher priority), customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
+
+        config MENDER_SCHEDULER_WORK_QUEUE_LENGTH
+            int "Mender Scheduler Work Queue Length"
+            range 1 64
+            default 10
+            help
+                Mender scheduler work queue capacity (pending work items), customize only if you have a deep understanding of the impacts! Default value is suitable for most applications.
+
+    endmenu
+
+endmenu

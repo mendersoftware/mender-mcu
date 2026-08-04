@@ -21,7 +21,12 @@ get_filename_component(MENDER_MCU_ROOT ${CMAKE_CURRENT_LIST_DIR}/../.. ABSOLUTE)
 set(CONFIG_MENDER_PLATFORM_LOG_TYPE "esp-idf")
 set(CONFIG_MENDER_PLATFORM_SCHEDULER_TYPE "freertos")
 set(CONFIG_MENDER_PLATFORM_STORAGE_TYPE "esp-idf")
-list(APPEND MENDER_ESP_IDF_COMPS nvs_flash)
+set(CONFIG_MENDER_PLATFORM_NET_TYPE "esp-idf")
+list(APPEND MENDER_ESP_IDF_COMPS
+  esp_http_client
+  mbedtls
+  nvs_flash
+)
 
 include(${MENDER_MCU_ROOT}/cmake/mender_mcu_sources.txt)
 

@@ -33,6 +33,15 @@ mender_http_init(mender_http_config_t *config) {
 }
 
 MENDER_FUNC_WEAK mender_err_t
+mender_http_reinit(mender_http_config_t *config) {
+
+    (void)config;
+
+    /* Nothing to do */
+    return MENDER_OK;
+}
+
+MENDER_FUNC_WEAK mender_err_t
 mender_http_perform(char                *jwt,
                     char                *path,
                     mender_http_method_t method,

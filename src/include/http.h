@@ -59,6 +59,13 @@ typedef enum {
 mender_err_t mender_http_init(mender_http_config_t *config);
 
 /**
+ * @brief Re-initialize mender http
+ * @param config Mender HTTP configuration
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_http_reinit(mender_http_config_t *config);
+
+/**
  * @brief Perform HTTP request
  * @param jwt Token, NULL if not authenticated yet
  * @param path Path of the request

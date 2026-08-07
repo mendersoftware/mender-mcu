@@ -644,6 +644,9 @@ mender_client_work_function(void) {
                     /* Try to release network so that it gets set up again next
                        time. */
                     mender_client_network_release();
+                    /* Also make sure we re-authenticate to the server, possibly
+                       using a fallback host/URL. */
+                    mender_api_drop_authentication_data();
                 }
             } else if (!MENDER_IS_ERROR(ret)) {
                 mender_err_count_net_reset();

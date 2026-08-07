@@ -66,6 +66,8 @@
  */
 static mender_api_config_t api_config;
 
+static const char *current_host;
+
 /**
  * @brief Authentication token
  */
@@ -110,6 +112,7 @@ mender_api_init(mender_api_config_t *config) {
 
     /* Save configuration */
     memcpy(&api_config, config, sizeof(mender_api_config_t));
+    current_host = api_config.host;
 
     /* Initializations */
     mender_http_config_t mender_http_config = { .host = api_config.host };
@@ -125,6 +128,24 @@ mender_api_init(mender_api_config_t *config) {
 
     return ret;
 }
+
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
+/**
+ * @brief Swap the primary and secondary host (URLs)
+ * @return the old host/URL
+ */
+static inline const char *
+swap_primary_secondary_host(void) {
+    assert((current_host == api_config.host) || (current_host == api_config.secondary_host));
+    if (current_host == api_config.host) {
+        current_host = api_config.secondary_host;
+        return api_config.host;
+    } else {
+        current_host = api_config.host;
+        return api_config.secondary_host;
+    }
+}
+#endif
 
 mender_err_t
 mender_api_drop_authentication_data(void) {
@@ -171,7 +192,23 @@ ensure_authenticated_and_locked(void) {
     }
 
     /* Perform authentication with the mender server */
-    if (MENDER_OK != (ret = perform_authentication())) {
+    ret = perform_authentication();
+
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
+    if (MENDER_OK != ret) {
+        /* Retry with the other server */
+        const char *old_host = swap_primary_secondary_host();
+        mender_log_warning("Authentication to '%s' failed, retrying with the alternative server '%s'", old_host, current_host);
+        mender_http_config_t mender_http_config = { .host = current_host };
+        if (MENDER_OK != (ret = mender_http_reinit(&mender_http_config))) {
+            mender_log_error("Unable to re-initialize HTTP with the alternative server");
+            return ret;
+        }
+        ret = perform_authentication();
+    }
+#endif
+
+    if (MENDER_OK != ret) {
         mender_log_error("Authentication failed");
         return ret;
     } else {

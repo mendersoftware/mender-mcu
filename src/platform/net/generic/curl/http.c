@@ -21,6 +21,7 @@
 #include "alloc.h"
 #include "http.h"
 #include "log.h"
+#include "os.h"
 #include "utils.h"
 
 /**
@@ -48,6 +49,8 @@ typedef struct {
  * @brief Mender HTTP configuration
  */
 static mender_http_config_t http_config;
+
+static void *config_lock = NULL;
 
 /**
  * @brief HTTP PREREQ callback, used to inform the client is connected to the server
@@ -91,8 +94,32 @@ mender_http_init(mender_http_config_t *config) {
     /* Save configuration */
     memcpy(&http_config, config, sizeof(mender_http_config_t));
 
+    if (MENDER_OK != mender_os_mutex_create(&config_lock)) {
+        mender_log_error("Unable to initialize HTTP config lock");
+        return MENDER_FAIL;
+    }
+
     /* Initialization of curl */
     curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_http_reinit(mender_http_config_t *config) {
+    assert(NULL != config);
+    assert(NULL != config->host);
+
+    /* Save new configuration while making sure nobody uses the intermediate state */
+    if (MENDER_OK != mender_os_mutex_take(config_lock, -1)) {
+        mender_log_error("Unable to obtain the HTTP config lock");
+        return MENDER_LOCK_FAILED;
+    }
+    memcpy(&http_config, config, sizeof(mender_http_config_t));
+    if (MENDER_OK != mender_os_mutex_give(config_lock)) {
+        mender_log_error("Unable to release the HTTP config lock");
+        return MENDER_FAIL;
+    }
 
     return MENDER_OK;
 }
@@ -119,12 +146,21 @@ mender_http_perform(char                *jwt,
     struct curl_slist *headers         = NULL;
 
     /* Compute URL if required */
+    if (MENDER_OK != (ret = mender_os_mutex_take(config_lock, -1))) {
+        mender_log_error("Unable to obtain the HTTP config lock");
+        ret = MENDER_LOCK_FAILED;
+        goto END;
+    }
     if (!mender_utils_strbeginswith(path, "http://") && !mender_utils_strbeginswith(path, "https://")) {
         if (-1 == mender_utils_asprintf(&url, "%s%s", http_config.host, path)) {
             mender_log_error("Unable to allocate memory for URL");
             ret = MENDER_FAIL;
             goto END;
         }
+    }
+    if (MENDER_OK != mender_os_mutex_give(config_lock)) {
+        mender_log_error("Unable to release the HTTP config lock");
+        return MENDER_FAIL;
     }
 
     /* Initialization of the client */
@@ -252,12 +288,21 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     struct curl_slist *headers = NULL;
 
     /* Compute URL if required */
+    if (MENDER_OK != (ret = mender_os_mutex_take(config_lock, -1))) {
+        mender_log_error("Unable to obtain the HTTP config lock");
+        ret = MENDER_LOCK_FAILED;
+        goto END;
+    }
     if (!mender_utils_strbeginswith(uri, "http://") && !mender_utils_strbeginswith(uri, "https://")) {
         if (-1 == mender_utils_asprintf(&url, "%s%s", http_config.host, uri)) {
             mender_log_error("Unable to allocate memory");
             ret = MENDER_FAIL;
             goto END;
         }
+    }
+    if (MENDER_OK != mender_os_mutex_give(config_lock)) {
+        mender_log_error("Unable to release the HTTP config lock");
+        return MENDER_FAIL;
     }
 
     /* Initialization of the client */
@@ -340,6 +385,8 @@ END:
 
 mender_err_t
 mender_http_exit(void) {
+    /* Destroy the config lock */
+    mender_os_mutex_delete(config_lock);
 
     /* Cleaning */
     curl_global_cleanup();

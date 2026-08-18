@@ -87,6 +87,8 @@ typedef struct {
  */
 static mender_http_config_t http_config;
 
+static void *config_lock = NULL;
+
 /**
  * @brief Retry-After header value
  */
@@ -282,6 +284,30 @@ mender_http_init(mender_http_config_t *config) {
     /* Save configuration */
     memcpy(&http_config, config, sizeof(mender_http_config_t));
 
+    if (MENDER_OK != mender_os_mutex_create(&config_lock)) {
+        mender_log_error("Unable to initialize HTTP config lock");
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
+}
+
+mender_err_t
+mender_http_reinit(mender_http_config_t *config) {
+    assert(NULL != config);
+    assert(NULL != config->host);
+
+    /* Save new configuration while making sure nobody uses the intermediate state */
+    if (MENDER_OK != mender_os_mutex_take(config_lock, -1)) {
+        mender_log_error("Unable to obtain the HTTP config lock");
+        return MENDER_LOCK_FAILED;
+    }
+    memcpy(&http_config, config, sizeof(mender_http_config_t));
+    if (MENDER_OK != mender_os_mutex_give(config_lock)) {
+        mender_log_error("Unable to release the HTTP config lock");
+        return MENDER_FAIL;
+    }
+
     return MENDER_OK;
 }
 
@@ -330,9 +356,18 @@ mender_http_perform(char                *jwt,
     char *signature_header = NULL;
 
     /* Retrieve host, port and url */
+    if (MENDER_OK != (ret = mender_os_mutex_take(config_lock, -1))) {
+        mender_log_error("Unable to obtain the HTTP config lock");
+        ret = MENDER_LOCK_FAILED;
+        goto END;
+    }
     if (MENDER_OK != mender_net_get_host_port_url(path, http_config.host, &host, &port, &url)) {
         mender_log_error("Unable to retrieve host/port/url");
         goto END;
+    }
+    if (MENDER_OK != mender_os_mutex_give(config_lock)) {
+        mender_log_error("Unable to release the HTTP config lock");
+        return MENDER_FAIL;
     }
 
     /* Configuration of the client */
@@ -473,9 +508,18 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
     char *range_header = NULL;
 
     /* Retrieve host, port and url */
+    if (MENDER_OK != (ret = mender_os_mutex_take(config_lock, -1))) {
+        mender_log_error("Unable to obtain the HTTP config lock");
+        ret = MENDER_LOCK_FAILED;
+        goto END;
+    }
     if (MENDER_OK != mender_net_get_host_port_url(uri, http_config.host, &host, &port, &url)) {
         mender_log_error("Unable to retrieve host/port/url");
         goto END;
+    }
+    if (MENDER_OK != mender_os_mutex_give(config_lock)) {
+        mender_log_error("Unable to release the HTTP config lock");
+        return MENDER_FAIL;
     }
 
     do {
@@ -642,8 +686,9 @@ END:
 
 mender_err_t
 mender_http_exit(void) {
+    /* Destroy the config lock */
+    mender_os_mutex_delete(config_lock);
 
-    /* Nothing to do */
     return MENDER_OK;
 }
 

@@ -60,7 +60,23 @@ if MENDER_MCU_CLIENT
                 string "Mender server URL" if MENDER_SERVER_HOST_ON_PREM
                 help
                     Specify a Mender server URL.
+
         endchoice
+
+        config MENDER_SECONDARY_SERVER_HOST_DISABLE
+            bool "Disable secondary/fallback Mender server URL (NOT RECOMMENDED)"
+            default y
+            help
+                Disable secondary/fallback Mender server URL. This is HIGHLY UNRECOMMENDED because persistent
+                connection issues using the primary Mender server URL can render the device permanently unreachable.
+
+        config MENDER_SECONDARY_SERVER_HOST
+            string "Secondary/fallback Mender server host (URL)"
+            depends on MENDER_SECONDARY_SERVER_HOST_DISABLE=n
+            default ""
+            help
+                Specify a fallback URL of the Mender server used when connections using the primary URL/hostname fail.
+                (This may also require an extra CA certificate, see MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY_ENABLED.)
 
         if MENDER_SERVER_HOST_US
             config MENDER_SERVER_HOST
@@ -515,6 +531,12 @@ if MENDER_MCU_CLIENT
                 help
                     A secondary security tag that ROOT CA server credential will be referenced with, typically used to authenticate the server from where to download Mender Artifacts. See tls_credential_add.
 
+            config MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY
+                int "Tertiary CA certificate tag, for secondary host/URL"
+                default 3
+                help
+                    A tertiary security tag that ROOT CA server credential will be referenced with, typically used to authenticate the secondary/fallback Mender host/URL. See tls_credential_add.
+
             config MENDER_NET_CA_CERTIFICATE_TAG_DORMANT_A
                 int "Dormant CA certificate A tag for Server rescue"
                 # the tag is arbitrarily set to 9
@@ -536,6 +558,12 @@ if MENDER_MCU_CLIENT
                 default n
                 help
                     Enables the secondary CA tag. If this option is enabled, the user must add the two certificates with tls_credential_add
+
+            config MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY_ENABLED
+                bool "Enable MENDER_NET_CA_CERTIFICATE_TAG_TERTIARY"
+                default n
+                help
+                    Enables the tertiary CA tag. If this option is enabled, the user must add the three certificates with tls_credential_add
 
             config MENDER_NET_TLS_PEER_VERIFY
                 int "TLS_PEER_VERIFY option"

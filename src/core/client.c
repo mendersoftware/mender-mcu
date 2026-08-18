@@ -322,6 +322,25 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         ret = MENDER_FAIL;
         goto END;
     }
+
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
+    if ((NULL != config->secondary_host) && (strlen(config->secondary_host) > 0)) {
+        mender_client_config.secondary_host = config->secondary_host;
+    } else {
+        mender_client_config.secondary_host = CONFIG_MENDER_SECONDARY_SERVER_HOST;
+    }
+    if ((NULL == mender_client_config.secondary_host) || (0 == strlen(mender_client_config.secondary_host))) {
+        mender_log_error("Invalid server secondary_host configuration, can't be null or empty");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+    if ('/' == mender_client_config.secondary_host[strlen(mender_client_config.secondary_host) - 1]) {
+        mender_log_error("Invalid server secondary_host configuration, trailing '/' is not allowed");
+        ret = MENDER_FAIL;
+        goto END;
+    }
+#endif /* !CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE */
+
     if ((NULL != config->tenant_token) && (strlen(config->tenant_token) > 0)) {
         mender_client_config.tenant_token = config->tenant_token;
     } else {
@@ -382,8 +401,11 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         goto END;
     }
     mender_api_config_t mender_api_config = {
-        .device_type  = mender_client_config.device_type,
-        .host         = mender_client_config.host,
+        .device_type = mender_client_config.device_type,
+        .host        = mender_client_config.host,
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
+        .secondary_host = mender_client_config.secondary_host,
+#endif
         .tenant_token = mender_client_config.tenant_token,
         .device_tier  = mender_client_config.device_tier,
         .identity_cb  = callbacks->get_identity,
@@ -622,6 +644,9 @@ mender_client_work_function(void) {
                     /* Try to release network so that it gets set up again next
                        time. */
                     mender_client_network_release();
+                    /* Also make sure we re-authenticate to the server, possibly
+                       using a fallback host/URL. */
+                    mender_api_drop_authentication_data();
                 }
             } else if (!MENDER_IS_ERROR(ret)) {
                 mender_err_count_net_reset();

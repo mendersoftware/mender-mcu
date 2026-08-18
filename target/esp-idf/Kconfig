@@ -37,4 +37,11 @@ menu "Mender client"
 
     endmenu
 
+    # Hidden symbol (no prompt) that is always enabled (default y), allowing us to unconditionally select dependencies
+    config MENDER_FORCED_DEPS
+        bool
+        default y
+        # Enables use of MbedTLS's internal CA bundle for verification
+        select MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY
+
 endmenu

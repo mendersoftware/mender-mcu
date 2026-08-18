@@ -118,7 +118,7 @@ if(CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH=${CONFIG_MENDER_SCHEDULER_WORK_QUEUE_LENGTH})
 endif()
 if(CONFIG_MENDER_STORAGE_PARTITION_LABEL)
-    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_PARTITION_LABEL=${CONFIG_MENDER_PARTITION_LABEL})
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_STORAGE_PARTITION_LABEL=\"${CONFIG_MENDER_STORAGE_PARTITION_LABEL}\")
 endif()
 # TODO: figure out how to dynamically get the version.
 # The component manager only fetches the staged files, so no git information is available

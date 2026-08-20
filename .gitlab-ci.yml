@@ -27,7 +27,7 @@ variables:
     description: |
       Revision of mender-mcu-integration to trigger.
       Should correspond to the gitlab branch: `pr_XXX`
-    value: main
+    value: zephyr-4.2.x
 
   # Renovate required variables
   RENOVATE_PLATFORM: github

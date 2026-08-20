@@ -45,6 +45,13 @@ idf_component_register(
     KCONFIG ${MENDER_MCU_ROOT}/target/esp-idf/Kconfig
 )
 
+# This requires a special treatment because the MENDER_ESP_IDF_COMPS list above
+# is constructed because Kconfig configuration is applied and thus it cannot
+# handle conditional components.
+if(CONFIG_MENDER_ESP_OTA_UPDATE_MODULE)
+  idf_component_optional_requires(PRIVATE app_update)
+endif()
+
 # The FreeRTOS platform sources use vanilla FreeRTOS includes (e.g. <FreeRTOS.h>),
 # while ESP-IDF namespaces them under freertos/. Add the kernel header directory
 # to the include path so the vanilla includes resolve.

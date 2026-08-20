@@ -203,6 +203,11 @@ if (CONFIG_MENDER_ZEPHYR_IMAGE_UPDATE_MODULE)
         "${MENDER_MCU_ROOT}/src/platform/update_modules/zephyr/image/update-module.c"
     )
 endif()
+if (CONFIG_MENDER_ESP_OTA_UPDATE_MODULE)
+    list(APPEND MENDER_MCU_SOURCES
+        "${MENDER_MCU_ROOT}/src/platform/update_modules/esp-idf/esp-ota/update-module.c"
+    )
+endif()
 if (CONFIG_MENDER_PLATFORM_NET_TYPE STREQUAL "zephyr")
     list(APPEND MENDER_MCU_SOURCES
         "${MENDER_MCU_ROOT}/src/platform/net/${CONFIG_MENDER_PLATFORM_NET_TYPE}/net.c"

@@ -46,7 +46,7 @@ set(mender_artifact_cmd ${mender_artifact_cmd} --type ${CONFIG_MENDER_ARTIFACT_T
 # Device type
 string(REPLACE " " ";" device_type_list ${CONFIG_MENDER_DEVICE_TYPES_COMPATIBLE})
 foreach(device_type ${device_type_list})
-    set(mender_artifact_cmd ${mender_artifact_cmd} --device-type ${device_type})
+    set(mender_artifact_cmd ${mender_artifact_cmd} --compatible-types ${device_type})
 endforeach()
 # Artifact provides
 if(NOT CONFIG_MENDER_ARTIFACT_PROVIDES STREQUAL "")

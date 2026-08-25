@@ -189,6 +189,11 @@ static mender_err_t mender_zephyr_image_set_pending_image(mender_update_state_t 
 static mender_err_t mender_zephyr_image_abort_deployment(mender_update_state_t state, mender_update_state_data_t callback_data);
 
 /**
+ * @brief Cleanup callback
+ */
+static mender_err_t mender_zephyr_image_cleanup(mender_update_state_t state, mender_update_state_data_t callback_data);
+
+/**
  * @brief Reboot callback
  */
 static mender_err_t mender_zephyr_image_reboot_callback(mender_update_state_t state, mender_update_state_data_t callback_data);
@@ -224,6 +229,7 @@ mender_zephyr_image_register_update_module(void) {
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_VERIFY_REBOOT]   = &mender_zephyr_image_verify_reboot_callback;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_COMMIT]          = &mender_zephyr_image_confirm_image;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_FAILURE]         = &mender_zephyr_image_abort_deployment;
+    zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_CLEANUP]         = &mender_zephyr_image_cleanup;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_ROLLBACK]        = &mender_zephyr_image_rollback_callback;
     zephyr_image_umod->callbacks[MENDER_UPDATE_STATE_ROLLBACK_REBOOT] = &mender_zephyr_image_reboot_callback;
     zephyr_image_umod->artifact_type                                  = "zephyr-image";
@@ -321,6 +327,17 @@ mender_zephyr_image_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t 
             return MENDER_FAIL;
         }
     }
+    return MENDER_OK;
+}
+
+static mender_err_t
+mender_zephyr_image_cleanup(mender_update_state_t state, mender_update_state_data_t callback_data) {
+    assert(MENDER_UPDATE_STATE_CLEANUP == state);
+
+    /* Cleanup can be called without aborting a deployment in case of a download
+       failure. Let's make sure we don't leak the flash handle.  */
+    FREE_AND_NULL(mcu_boot_flash_handle);
+
     return MENDER_OK;
 }
 

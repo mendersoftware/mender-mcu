@@ -209,7 +209,6 @@ if MENDER_MCU_CLIENT
             # affect the MCUboot configuration
             select BOOTLOADER_MCUBOOT
             select MCUBOOT_MODE_SWAP_USING_MOVE
-            select IMG_ENABLE_IMAGE_CHECK
             select IMG_ERASE_PROGRESSIVELY
             select IMG_MANAGER
             select MENDER_COMMIT_REQUIRE_AUTH

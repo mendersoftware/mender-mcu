@@ -143,6 +143,19 @@ menu "Mender client"
 
     endmenu
 
+    menu "Update modules configuration"
+
+        config MENDER_ESP_OTA_UPDATE_MODULE
+            bool "The default Mender esp-ota update module"
+            default y
+            select BOOTLOADER_APP_ROLLBACK_ENABLE
+            help
+                The default esp-ota Update Module handles full ESP-IDF images using the ESP OTA update mechanism.
+                Proper partitionining is required for ESP OTA to work (see
+                https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/ota.html#ota-process-overview
+                for details).
+    endmenu
+
     menu "Scheduler options (ADVANCED)"
 
         config MENDER_SCHEDULER_WORK_QUEUE_STACK_SIZE

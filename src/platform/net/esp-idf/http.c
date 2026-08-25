@@ -122,7 +122,7 @@ mender_http_perform(char                *jwt,
         .method            = http_method_to_http_client_method(method),
         .user_agent        = MENDER_HTTP_USER_AGENT,
         .crt_bundle_attach = esp_crt_bundle_attach,
-        /* .buffer_size_tx = 2048, (being set in https://github.com/joelguittet/mender-mcu-client/blob/master/platform/net/esp-idf/src/mender-http.c#L93) */
+        .buffer_size_tx    = 2048,
     };
 
     /* Initialization of the client */

@@ -252,9 +252,16 @@ As mentioned in [Update Modules API](#update-modules-api), you must also registe
 Update Modules. Without an Update Module, the client can run and report inventory, but it will
 not be able to perform any updates.
 
-Registering `zephyr-image` Update Module (compiled in by default):
+Registering `zephyr-image` Update Module (compiled in by default on Zephyr):
 ```c
-mender_zephyr_image_register_update_module());
+#include "mender/zephyr-image-update-module.h"
+mender_zephyr_image_register_update_module();
+```
+
+Registering `esp-ota` Update Module (compiled in by default on ESP-IDF):
+```c
+#include "mender/esp-ota-update-module.h"
+mender_esp_ota_register_update_module();
 ```
 
 #### Enabling Inventory

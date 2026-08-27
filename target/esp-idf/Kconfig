@@ -95,12 +95,29 @@ menu "Mender client"
                 Interval used to periodically check for new deployments on the Mender server.
                 The default value is once every 7 days for micro tier and once every 30 minutes for standard tier.
 
+        choice MENDER_LOG_LEVEL_CHOICE
+            prompt "Mender client log level"
+            default MENDER_LOG_LEVEL_INF
+
+            config MENDER_LOG_LEVEL_OFF
+                bool "Off"
+            config MENDER_LOG_LEVEL_ERR
+                bool "Error"
+            config MENDER_LOG_LEVEL_WRN
+                bool "Warning"
+            config MENDER_LOG_LEVEL_INF
+                bool "Info"
+            config MENDER_LOG_LEVEL_DBG
+                bool "Debug"
+        endchoice
+
         config MENDER_LOG_LEVEL
-            int "Mender client log level"
-            range 0 4
-            default 3
-            help
-                Log level for the Mender client: 0=off, 1=error, 2=warning, 3=info, 4=debug.
+            int
+            default 0 if MENDER_LOG_LEVEL_OFF
+            default 1 if MENDER_LOG_LEVEL_ERR
+            default 2 if MENDER_LOG_LEVEL_WRN
+            default 3 if MENDER_LOG_LEVEL_INF
+            default 4 if MENDER_LOG_LEVEL_DBG
 
     endmenu
 

@@ -56,7 +56,7 @@ mender_log_print(uint8_t level, MENDER_ARG_UNUSED const char *filename, const ch
             break;
     }
 
-    ESP_LOG_LEVEL(esp_level, "mender", "%s:%d: %s", function, line, msg);
+    ESP_LOG_LEVEL_LOCAL(esp_level, "mender", "%s:%d: %s", function, line, msg);
 
     return MENDER_OK;
 }

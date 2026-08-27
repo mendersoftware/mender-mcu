@@ -97,18 +97,27 @@ menu "Mender client"
 
         choice MENDER_LOG_LEVEL_CHOICE
             prompt "Mender client log level"
-            default MENDER_LOG_LEVEL_INF
+            default MENDER_LOG_LEVEL_INF if LOG_MAXIMUM_LEVEL >= 3
+            default MENDER_LOG_LEVEL_WRN if LOG_MAXIMUM_LEVEL >= 2
+            default MENDER_LOG_LEVEL_ERR if LOG_MAXIMUM_LEVEL >= 1
+            default MENDER_LOG_LEVEL_OFF
 
+            comment "Levels above LOG_MAXIMUM_LEVEL are hidden"
+                depends on LOG_MAXIMUM_LEVEL < 4
             config MENDER_LOG_LEVEL_OFF
                 bool "Off"
             config MENDER_LOG_LEVEL_ERR
                 bool "Error"
+                depends on LOG_MAXIMUM_LEVEL >= 1
             config MENDER_LOG_LEVEL_WRN
                 bool "Warning"
+                depends on LOG_MAXIMUM_LEVEL >= 2
             config MENDER_LOG_LEVEL_INF
                 bool "Info"
+                depends on LOG_MAXIMUM_LEVEL >= 3
             config MENDER_LOG_LEVEL_DBG
                 bool "Debug"
+                depends on LOG_MAXIMUM_LEVEL >= 4
         endchoice
 
         config MENDER_LOG_LEVEL

@@ -291,12 +291,14 @@ mender_esp_ota_abort_deployment(MENDER_NDEBUG_UNUSED mender_update_state_t state
     esp_ota_img_states_t   img_state;
     esp_err_t              err;
 
-    err = esp_ota_abort(ota_handle);
-    if (ESP_OK != err) {
-        mender_log_error("Failed to abort deployment: %s", esp_err_to_name(err));
-        return MENDER_FAIL;
+    if (OTA_HANDLE_INVALID != ota_handle) {
+        err = esp_ota_abort(ota_handle);
+        if (ESP_OK != err) {
+            mender_log_error("Failed to abort deployment: %s", esp_err_to_name(err));
+            return MENDER_FAIL;
+        }
+        ota_handle = OTA_HANDLE_INVALID;
     }
-    ota_handle           = OTA_HANDLE_INVALID;
     artifact_had_payload = false;
 
     if (NULL == (partition = esp_ota_get_running_partition())) {

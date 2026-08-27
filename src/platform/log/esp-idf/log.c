@@ -26,7 +26,8 @@
 
 mender_err_t
 mender_log_init(void) {
-    /* Nothing to do */
+    static const esp_log_level_t levels[] = { ESP_LOG_NONE, ESP_LOG_ERROR, ESP_LOG_WARN, ESP_LOG_INFO, ESP_LOG_DEBUG };
+    esp_log_level_set("mender", levels[CONFIG_MENDER_LOG_LEVEL]);
     return MENDER_OK;
 }
 

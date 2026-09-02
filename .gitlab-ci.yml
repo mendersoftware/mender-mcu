@@ -12,12 +12,8 @@ include:
     inputs:
       coverage_file: coverage.lcov
       flag: unit-tests
-  - component: gitlab.com/Northern.tech/Mender/mendertesting/renovate@master
-    inputs:
-      stage: "renovate"
 
 stages:
-  - renovate
   - test
   - changelog
   - release

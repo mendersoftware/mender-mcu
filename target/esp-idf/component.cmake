@@ -127,6 +127,19 @@ endif()
 if(CONFIG_MENDER_STORAGE_PARTITION_LABEL)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_STORAGE_PARTITION_LABEL=\"${CONFIG_MENDER_STORAGE_PARTITION_LABEL}\")
 endif()
-# TODO: figure out how to dynamically get the version.
-# The component manager only fetches the staged files, so no git information is available
-target_compile_definitions(${COMPONENT_LIB} PUBLIC MENDER_CLIENT_VERSION="esp-idf-demo")
+
+idf_component_get_property(MENDER_MCU_VERSION ${COMPONENT_NAME} COMPONENT_VERSION)
+if(NOT MENDER_MCU_VERSION OR MENDER_MCU_VERSION STREQUAL "*")
+    # local path dependency: exact tag, else the commit
+    git_describe(MENDER_MCU_VERSION ${MENDER_MCU_ROOT} --exact-match)
+    if(MENDER_MCU_VERSION MATCHES "NOTFOUND")
+        set(MENDER_MCU_VERSION "unknown")
+        get_git_head_revision(_refspec MENDER_MCU_VERSION ${MENDER_MCU_ROOT})
+    endif()
+endif()
+# git dependencies and get_git_head_revision() give the full commit sha
+string(LENGTH "${MENDER_MCU_VERSION}" _len)
+if(_len EQUAL 40)
+    string(SUBSTRING "${MENDER_MCU_VERSION}" 0 7 MENDER_MCU_VERSION)
+endif()
+target_compile_definitions(${COMPONENT_LIB} PRIVATE MENDER_CLIENT_VERSION="${MENDER_MCU_VERSION}")

@@ -130,3 +130,7 @@ endif()
 # TODO: figure out how to dynamically get the version.
 # The component manager only fetches the staged files, so no git information is available
 target_compile_definitions(${COMPONENT_LIB} PUBLIC MENDER_CLIENT_VERSION="esp-idf-demo")
+
+if(CONFIG_MENDER_ARTIFACT_GENERATE)
+  include(${CMAKE_CURRENT_LIST_DIR}/mender-artifact.cmake)
+endif()

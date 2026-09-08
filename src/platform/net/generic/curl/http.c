@@ -55,7 +55,7 @@ static void *config_lock = NULL;
 /**
  * @brief HTTP PREREQ callback, used to inform the client is connected to the server
  * @param params User data
- * @param conn_primary_ip Primary IP of the remote server 
+ * @param conn_primary_ip Primary IP of the remote server
  * @param conn_local_ip Originating IP of the connection
  * @param conn_primary_port Primary port number on the remote server
  * @param conn_local_port Originating port number of the connection

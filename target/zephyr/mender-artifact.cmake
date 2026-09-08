@@ -117,7 +117,7 @@ set(mender_artifact_cmd ${mender_artifact_cmd} --output-path ${mender_artifact_o
 # so that we clear any stale Artifact every time that we build a new kernel. And
 # then as custom target that runs always, we check and generate the Artifact
 # opportunistically.
-# 
+#
 ##################
 
 set_property(
@@ -132,7 +132,7 @@ add_custom_target(
     COMMAND
     test -f ${mender_artifact_output} ||
     echo "Generating Mender Artifact ${CONFIG_MENDER_ARTIFACT_NAME} for devices ${CONFIG_MENDER_DEVICE_TYPES_COMPATIBLE} from ${mender_artifact_payload}" &&
-    ${mender_artifact_cmd} 
+    ${mender_artifact_cmd}
     DEPENDS
     ${mender_artifact_payload}
     BYPRODUCTS

@@ -46,6 +46,36 @@ extern "C" {
 #define CONFIG_MENDER_LOG_LEVEL MENDER_LOG_LEVEL_INF
 #endif /* CONFIG_MENDER_LOG_LEVEL */
 
+typedef struct {
+    /**
+     * @brief Initialize mender log
+     * @return MENDER_OK if the function succeeds, error code otherwise
+     */
+    mender_err_t (*init)(void);
+
+    /**
+    * @brief Release mender log
+    * @return MENDER_OK if the function succeeds, error code otherwise
+    */
+    mender_err_t (*exit)(void);
+
+    mender_err_t (*print)(uint8_t level, const char *filename, const char *function, int line, char *format, ...);
+#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
+    /**
+     * @brief Activate deployment logs saving
+     * @return MENDER_OK if the function succeeds, error code otherwise
+     */
+    mender_err_t (*deployment_logs_activate)(void);
+
+    /**
+     * @brief Deactivate deployment logs saving
+     * @return MENDER_OK if the function succeeds, error code otherwise
+     */
+    mender_err_t (*mender_deployment_logs_deactivate)(void);
+#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
+} mender_log_t;
+extern mender_log_t mender_log;
+
 #ifdef __ZEPHYR__
 
 LOG_MODULE_DECLARE(mender, CONFIG_MENDER_LOG_LEVEL);
@@ -98,24 +128,12 @@ LOG_MODULE_DECLARE(mender, CONFIG_MENDER_LOG_LEVEL);
 #else /* __ZEPHYR__ */
 
 /**
- * @brief Print log
- * @param level Log level
- * @param filename Filename
- * @param function Function name
- * @param line Line
- * @param format Log format
- * @param ... Arguments
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_print(uint8_t level, const char *filename, const char *function, int line, char *format, ...);
-
-/**
  * @brief Print error log
  * @param ... Arguments
  * @return Error code
  */
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_ERR
-#define mender_log_error(...) ({ mender_log_print(MENDER_LOG_LEVEL_ERR, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
+#define mender_log_error(...) ({ mender_log.print(MENDER_LOG_LEVEL_ERR, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
 #else
 #define mender_log_error(...)
 #endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_ERR */
@@ -126,7 +144,7 @@ mender_err_t mender_log_print(uint8_t level, const char *filename, const char *f
  * @return Error code
  */
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_WRN
-#define mender_log_warning(...) ({ mender_log_print(MENDER_LOG_LEVEL_WRN, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
+#define mender_log_warning(...) ({ mender_log.print(MENDER_LOG_LEVEL_WRN, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
 #else
 #define mender_log_warning(...)
 #endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_WRN */
@@ -137,7 +155,7 @@ mender_err_t mender_log_print(uint8_t level, const char *filename, const char *f
  * @return Error code
  */
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
-#define mender_log_info(...) ({ mender_log_print(MENDER_LOG_LEVEL_INF, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
+#define mender_log_info(...) ({ mender_log.print(MENDER_LOG_LEVEL_INF, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
 #else
 #define mender_log_info(...)
 #endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF */
@@ -149,7 +167,7 @@ mender_err_t mender_log_print(uint8_t level, const char *filename, const char *f
  * @return Error code
  */
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG
-#define mender_log_debug(...) ({ mender_log_print(MENDER_LOG_LEVEL_DBG, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
+#define mender_log_debug(...) ({ mender_log.print(MENDER_LOG_LEVEL_DBG, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); })
 #else
 #define mender_log_debug(...)
 #endif /* CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_DBG */

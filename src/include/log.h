@@ -26,32 +26,6 @@ extern "C" {
 
 #include <mender/log.h>
 
-/**
- * @brief Initialize mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_init(void);
-
-/**
- * @brief Release mender log
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_log_exit(void);
-
-#ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
-/**
- * @brief Activate deployment logs saving
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_deployment_logs_activate(void);
-
-/**
- * @brief Deactivate deployment logs saving
- * @return MENDER_OK if the function succeeds, error code otherwise
- */
-mender_err_t mender_deployment_logs_deactivate(void);
-#endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

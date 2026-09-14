@@ -24,6 +24,7 @@ set(CONFIG_MENDER_PLATFORM_STORAGE_TYPE "esp-idf")
 set(CONFIG_MENDER_PLATFORM_NET_TYPE "esp-idf")
 set(CONFIG_MENDER_PLATFORM_TLS_TYPE "generic/mbedtls")
 set(CONFIG_MENDER_PLATFORM_SHA_TYPE "generic/mbedtls")
+set(CONFIG_MENDER_PLATFORM_INVENTORY_TYPE "esp-idf")
 list(APPEND MENDER_ESP_IDF_COMPS
   esp_http_client
   mbedtls
@@ -50,6 +51,9 @@ idf_component_register(
 # handle conditional components.
 if(CONFIG_MENDER_ESP_OTA_UPDATE_MODULE)
   idf_component_optional_requires(PRIVATE app_update)
+endif()
+if(NOT CONFIG_MENDER_CLIENT_INVENTORY_DISABLE)
+  idf_component_optional_requires(PRIVATE esp_netif)
 endif()
 
 # The FreeRTOS platform sources use vanilla FreeRTOS includes (e.g. <FreeRTOS.h>),

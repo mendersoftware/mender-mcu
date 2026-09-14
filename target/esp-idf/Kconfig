@@ -147,6 +147,20 @@ menu "Mender client"
                 Setting this value to 0 permits to disable the periodic execution and relies on the application to do it.
                 The default value is once every 7 days for micro tier and once every 8 hours for standard tier.
 
+        config MENDER_CLIENT_INVENTORY_BUILD_INFO
+            bool "Build info built-in inventory"
+            depends on MENDER_CLIENT_INVENTORY_DISABLE=n
+            default y
+            help
+                Enable built-in build info inventory
+
+        config MENDER_CLIENT_INVENTORY_NETWORK_INFO
+            bool "Network info built-in inventory"
+            depends on MENDER_CLIENT_INVENTORY_DISABLE=n
+            default y
+            help
+                Enable built-in network info inventory
+
         config MENDER_CLIENT_INVENTORY_DISABLE
             bool "Disable Mender client Inventory (EXPERIMENTAL)"
             default n

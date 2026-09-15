@@ -251,7 +251,7 @@ mender_http_artifact_download(const char *uri, mender_artifact_download_data_t *
                                MENDER_HTTP_GET,
                                NULL,
                                NULL,
-                               (mender_err_t(*)(mender_http_client_event_t, void *, size_t, void *))dl_data->artifact_download_callback,
+                               (mender_err_t (*)(mender_http_client_event_t, void *, size_t, void *))dl_data->artifact_download_callback,
                                dl_data,
                                status);
 }

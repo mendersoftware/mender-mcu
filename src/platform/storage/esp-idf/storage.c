@@ -201,7 +201,7 @@ depl_logs_read_entry(size_t sector_idx, size_t offset, char *msg, size_t msg_buf
 
     if (NULL != msg) {
         size_t copy_len = header.len;
-        bool trim = (msg_buf_size - 1) < (size_t)header.len;
+        bool   trim     = (msg_buf_size - 1) < (size_t)header.len;
         if (trim) {
             mender_log_warning("Trimming a long deployment log entry");
             copy_len = msg_buf_size - 1;

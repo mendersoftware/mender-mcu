@@ -131,6 +131,31 @@ endif()
 if(CONFIG_MENDER_STORAGE_PARTITION_LABEL)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE CONFIG_MENDER_STORAGE_PARTITION_LABEL=\"${CONFIG_MENDER_STORAGE_PARTITION_LABEL}\")
 endif()
+if(CONFIG_MENDER_DEPLOYMENT_LOGS)
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC CONFIG_MENDER_DEPLOYMENT_LOGS)
+endif()
+if(CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE
+        CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL=\"${CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL}\")
+endif()
+
+# The deployment logs storage backend needs its own dedicated partition.
+# Catch a missing partition at build time instead of only failing at first
+# boot; the actual size (>= 2 erase sectors) is only checked at runtime,
+# against the partition's real esp_partition_t::erase_size.
+if(CONFIG_MENDER_DEPLOYMENT_LOGS AND DEFINED PARTITION_CSV_PATH AND EXISTS "${PARTITION_CSV_PATH}")
+    file(STRINGS "${PARTITION_CSV_PATH}" mender_depl_logs_partition_lines
+         REGEX "^[ \t]*${CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL}[ \t]*,")
+    if(NOT mender_depl_logs_partition_lines)
+        message(FATAL_ERROR
+            "Deployment logs partition '${CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL}' not found in "
+            "${PARTITION_CSV_PATH}. See MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL in menuconfig.")
+    else()
+        message(STATUS
+            "Deployment logs partition '${CONFIG_MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL}' found; "
+            "make sure it is sized to at least 2 erase sectors (typically 8KB).")
+    endif()
+endif()
 
 if(CONFIG_MENDER_ARTIFACT_GENERATE)
   include(${CMAKE_CURRENT_LIST_DIR}/mender-artifact.cmake)

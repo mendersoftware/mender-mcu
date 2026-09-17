@@ -70,7 +70,7 @@ test:smoke-build:posix:
     - if [ -n "${GITHUB_SIMPLE_AUTH_TOKEN}" ]; then
     -   set +x
     -   git config --global "url.https://x-access-token:${GITHUB_SIMPLE_AUTH_TOKEN}@github.com/.insteadOf" "https://github.com/"
-    -   git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf '%s:%s' 'x-access-token' "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"
+    -   'git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf "%s:%s" "x-access-token" "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"'
     -   set -x
     - fi
   script:
@@ -90,7 +90,7 @@ test:smoke-build:weak:
     - if [ -n "${GITHUB_SIMPLE_AUTH_TOKEN}" ]; then
     -   set +x
     -   git config --global "url.https://x-access-token:${GITHUB_SIMPLE_AUTH_TOKEN}@github.com/.insteadOf" "https://github.com/"
-    -   git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf '%s:%s' 'x-access-token' "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"
+    -   'git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf "%s:%s" "x-access-token" "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"'
     -   set -x
     - fi
   script:
@@ -144,7 +144,7 @@ test:unit:
     - if [ -n "${GITHUB_SIMPLE_AUTH_TOKEN}" ]; then
     -   set +x
     -   git config --global "url.https://x-access-token:${GITHUB_SIMPLE_AUTH_TOKEN}@github.com/.insteadOf" "https://github.com/"
-    -   git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf '%s:%s' 'x-access-token' "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"
+    -   'git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf "%s:%s" "x-access-token" "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"'
     -   set -x
     - fi
     # Fetch and install mender-artifact

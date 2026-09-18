@@ -1,5 +1,7 @@
 include:
   - project: Northern.tech/Mender/mendertesting
+    ref: pr_536 # TODO: remove once mendertesting#536 is merged, fall back to default (master)
+    ref: pr_536 # TODO: remove once mendertesting#536 is merged, fall back to default (master)
     file:
       - qa-common/runner.yml
       - qa-common/retry.yml
@@ -92,12 +94,7 @@ test:smoke-build:posix:
     - apt-get update && apt-get install -yqq
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
-    - if [ -n "${GITHUB_SIMPLE_AUTH_TOKEN}" ]; then
-    -   set +x
-    -   git config --global "url.https://x-access-token:${GITHUB_SIMPLE_AUTH_TOKEN}@github.com/.insteadOf" "https://github.com/"
-    -   'git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf "%s:%s" "x-access-token" "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"'
-    -   set -x
-    - fi
+    - !reference [.qa-common-github-auth, before_script]
   script:
     - cmake -C cmake/CMake_posix_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
@@ -112,12 +109,7 @@ test:smoke-build:weak:
     - apt-get update && apt-get install -yqq
       cmake git make pkg-config python3
       libcjson-dev
-    - if [ -n "${GITHUB_SIMPLE_AUTH_TOKEN}" ]; then
-    -   set +x
-    -   git config --global "url.https://x-access-token:${GITHUB_SIMPLE_AUTH_TOKEN}@github.com/.insteadOf" "https://github.com/"
-    -   'git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf "%s:%s" "x-access-token" "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"'
-    -   set -x
-    - fi
+    - !reference [.qa-common-github-auth, before_script]
   script:
     - cmake -C cmake/CMake_weak_defaults.txt -B build tests/smoke
     - cmake --build build --parallel $(nproc --all)
@@ -166,12 +158,7 @@ test:unit:
       cmake git make pkg-config python3
       libcurl4-openssl-dev libcjson-dev
       clang wget
-    - if [ -n "${GITHUB_SIMPLE_AUTH_TOKEN}" ]; then
-    -   set +x
-    -   git config --global "url.https://x-access-token:${GITHUB_SIMPLE_AUTH_TOKEN}@github.com/.insteadOf" "https://github.com/"
-    -   'git config --global "http.https://x-access-token@github.com/.extraHeader" "Authorization: Basic $(printf "%s:%s" "x-access-token" "${GITHUB_SIMPLE_AUTH_TOKEN}" | base64 -w0)"'
-    -   set -x
-    - fi
+    - !reference [.qa-common-github-auth, before_script]
     # Fetch and install mender-artifact
     - MENDER_ARTIFACT_URL="https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+ubuntu+noble_amd64.deb"
     - NETWORK_RETRY_SLEEP_S=10

@@ -99,18 +99,7 @@ test:unit:
       g++ lcov wget
     # Fetch and install mender-artifact
     - MENDER_ARTIFACT_URL="https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+debian+bookworm_amd64.deb"
-    - NETWORK_RETRY_SLEEP_S=10
-    - DOWNLOADED=false
-    - for try in 4 3 2 1; do
-    -  wget "${MENDER_ARTIFACT_URL}" -O mender-artifact.deb && DOWNLOADED=true
-    -  if [ "${DOWNLOADED}" == "true" ]; then
-    -   break
-    -  fi
-    -  sleep "${NETWORK_RETRY_SLEEP_S}"
-    - done
-    - if [ "${DOWNLOADED}" != "true" ]; then
-    -  exit 192
-    - fi
+    - wget --tries=4 --waitretry=10 --retry-connrefused "${MENDER_ARTIFACT_URL}" -O mender-artifact.deb || exit 192
     - apt install -yyq ./mender-artifact.deb
   script:
     - cmake -D COVERAGE=ON tests/unit/
@@ -134,18 +123,7 @@ test:unit:
     - !reference [.qa-common-github-auth, before_script]
     # Fetch and install mender-artifact
     - MENDER_ARTIFACT_URL="https://downloads.mender.io/repos/workstation-tools/pool/main/m/mender-artifact/mender-artifact_${MENDER_ARTIFACT_VERSION}-1+ubuntu+noble_amd64.deb"
-    - NETWORK_RETRY_SLEEP_S=10
-    - DOWNLOADED=false
-    - for try in 4 3 2 1; do
-    -  wget "${MENDER_ARTIFACT_URL}" -O mender-artifact.deb && DOWNLOADED=true
-    -  if [ "${DOWNLOADED}" == "true" ]; then
-    -   break
-    -  fi
-    -  sleep "${NETWORK_RETRY_SLEEP_S}"
-    - done
-    - if [ "${DOWNLOADED}" != "true" ]; then
-    -  exit 192
-    - fi
+    - wget --tries=4 --waitretry=10 --retry-connrefused "${MENDER_ARTIFACT_URL}" -O mender-artifact.deb || exit 192
     - apt install -yyq ./mender-artifact.deb
     - export CC=$(which clang)
     - export CXX=$(which clang++)

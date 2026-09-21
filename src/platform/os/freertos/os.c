@@ -26,6 +26,7 @@
 #include <timers.h>
 
 #include "alloc.h"
+#include "http.h"
 #include "log.h"
 #include "os.h"
 #include "utils.h"
@@ -54,11 +55,13 @@
 /**
  * @brief Work context
  */
+
 typedef struct mender_platform_work_t {
     mender_os_scheduler_work_params_t params;       /**< Work parameters */
     SemaphoreHandle_t                 sem_handle;   /**< Semaphore used to indicate work is pending or executing */
     TimerHandle_t                     timer_handle; /**< Timer used to periodically execute work */
     bool                              activated;    /**< Flag indicating the work is activated */
+    uint16_t                          initial_backoff_interval;
 } mender_platform_work_t;
 
 /**
@@ -139,11 +142,14 @@ mender_os_scheduler_work_create(mender_os_scheduler_work_params_t *work_params, 
         goto FAIL;
     }
 
-    /* Copy work parameters.
-     * Note: backoff parameters are ignored; failed work simply retries at its
-     * regular period. Proper backoff and rate-limit handling is a follow-up. */
-    work_context->params.function = work_params->function;
-    work_context->params.period   = work_params->period;
+    /* Copy work parameters */
+    work_context->params.function             = work_params->function;
+    work_context->params.period               = work_params->period;
+    work_context->params.backoff.max_interval = work_params->backoff.max_interval;
+    work_context->params.backoff.interval     = work_params->backoff.interval;
+
+    /* Set initial_backoff_interval */
+    work_context->initial_backoff_interval = work_params->backoff.interval;
 
     if (NULL == (work_context->params.name = mender_utils_strdup(work_params->name))) {
         mender_log_error("Unable to allocate memory");
@@ -157,9 +163,10 @@ mender_os_scheduler_work_create(mender_os_scheduler_work_params_t *work_params, 
         goto FAIL;
     }
 
-    /* Create auto-reload timer to handle the work periodically.
+    /* Create one-shot timer: re-armed by worker after a failed attempt,
+     * preventing slow attempts from stacking alarms and erasing the backoff delay.
      * Use a period of 1 tick as placeholder; actual period is set on activation. */
-    work_context->timer_handle = xTimerCreate(work_context->params.name, 1, pdTRUE, (void *)work_context, mender_os_scheduler_timer_callback);
+    work_context->timer_handle = xTimerCreate(work_context->params.name, 1, pdFALSE, (void *)work_context, mender_os_scheduler_timer_callback);
     if (NULL == work_context->timer_handle) {
         mender_log_error("Unable to create timer");
         goto FAIL;
@@ -212,11 +219,11 @@ mender_os_scheduler_work_activate(mender_work_t *work) {
         return MENDER_FAIL;
     }
 
-    /* Execute the work now by enqueuing it */
-    mender_os_scheduler_timer_callback(work->timer_handle);
-
     /* Indicate the work has been activated */
     work->activated = true;
+
+    /* Execute the work now by enqueuing it */
+    mender_os_scheduler_timer_callback(work->timer_handle);
 
     return MENDER_OK;
 }
@@ -238,8 +245,8 @@ mender_os_scheduler_work_deactivate(mender_work_t *work) {
     /* Check if the work was activated */
     if (work->activated) {
 
-        /* Stop the timer used to periodically execute the work */
-        xTimerStop(work->timer_handle, portMAX_DELAY);
+        /* Indicate the work has been deactivated */
+        work->activated = false;
 
         /* Wait if the work is pending or executing */
         if (pdTRUE != xSemaphoreTake(work->sem_handle, portMAX_DELAY)) {
@@ -247,8 +254,8 @@ mender_os_scheduler_work_deactivate(mender_work_t *work) {
             return MENDER_FAIL;
         }
 
-        /* Indicate the work has been deactivated */
-        work->activated = false;
+        /* Stop the timer used to execute the work */
+        xTimerStop(work->timer_handle, portMAX_DELAY);
     }
 
     return MENDER_OK;
@@ -342,15 +349,40 @@ mender_os_scheduler_work_queue_task(MENDER_ARG_UNUSED void *arg) {
         mender_log_debug("Executing %s work", work->params.name);
         mender_err_t ret = work->params.function();
 
+        uint32_t period = work->params.period;
+
         if (MENDER_DONE == ret) {
-            /* Nothing more to do, stop the periodic timer */
+            work->params.backoff.interval = work->initial_backoff_interval;
+
+            /* Nothing more to do, stop the timer */
             xTimerStop(work->timer_handle, portMAX_DELAY);
         } else if (MENDER_OK != ret) {
-            /* No backoff or rate-limit handling; the auto-reload timer retries
-             * the work at its regular period. Proper backoff is a follow-up. */
-            mender_log_error("Work %s failed, retrying in %" PRIu32 " seconds", work->params.name, work->params.period);
+            if (MENDER_RETRY_ERROR == ret) {
+                /* Check if there's a rate-limit interval */
+                uint32_t retry_interval = mender_http_get_retry_interval();
+                if (retry_interval > 0) {
+                    /* Use the rate-limit interval from the server */
+                    mender_log_debug("Rate limit detected, retrying");
+                    period = retry_interval;
+                } else {
+                    /* Normal exponential backoff */
+                    mender_log_debug("Retry error detected, retrying with backoff");
+                    period                        = work->params.backoff.interval;
+                    uint32_t next                 = work->params.backoff.interval * 2;
+                    work->params.backoff.interval = MIN(next, work->params.backoff.max_interval);
+                }
+            }
+
+            mender_log_error("Work %s failed, retrying in %" PRIu32 " seconds", work->params.name, period);
+        } else {
+            /* Reset the backoff */
+            work->params.backoff.interval = work->initial_backoff_interval;
         }
 
+        if (work->activated) {
+            /* Activate the timer */
+            xTimerChangePeriod(work->timer_handle, (TickType_t)period * configTICK_RATE_HZ, portMAX_DELAY);
+        }
         /* Release semaphore used to protect the work function */
         xSemaphoreGive(work->sem_handle);
     }

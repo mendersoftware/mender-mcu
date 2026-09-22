@@ -43,4 +43,3 @@ if [[ ${result} != "" ]]; then
 fi
 
 exit 0
-

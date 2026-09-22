@@ -1,7 +1,6 @@
 ---
 ## 1.1.0 - 2026-09-01
 
-
 ### New features
 
 - Add support for chunked artifact download ([751274c](https://github.com/mendersoftware/mender-mcu/commit/751274c148dabfa5d751560ceca98bef0fa72370)) by @Dexter9532
@@ -36,14 +35,12 @@
 | [MEN-9961](https://northerntech.atlassian.net/browse/MEN-9961) |
 | [MEN-9977](https://northerntech.atlassian.net/browse/MEN-9977) |
 
-
 ## 1.0.0 - 2026-04-17
 
-* The first stable release
-
+- The first stable release
 
 ## 0.9.0 - 2025-04-11
 
-* Preview of Mender MCU
+- Preview of Mender MCU
 
 ---

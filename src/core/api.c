@@ -876,6 +876,7 @@ mender_api_publish_deployment_logs(const char *id) {
 
     if (0 == cJSON_GetArraySize(json_messages)) {
         /* Nothing to do, no logs to submit. */
+        mender_log_warning("No deployment logs available");
         ret = MENDER_OK;
         goto END;
     }

@@ -40,6 +40,7 @@ The numbers in this table are extracted from a build with the following properti
 | Mender MCU | Zephyr OS   | ROM usage | RAM usage |
 | -------    | ----------- | --------- | --------- |
 | preview    | v4.0.0      | 33 KiB    | 15 KiB    |
+| 1.0        | v4.2.0      | 36 KiB    | 15 KiB    |
 
 ### RAM usage configuration
 

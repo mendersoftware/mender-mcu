@@ -67,7 +67,7 @@ mender_net_get_host_port_url(const char *path, const char *config_host, char **h
     }
 
     /* Extract url path: next '/' character in the path after finding protocol must be the beginning of url */
-    char *path_url = strchr(path_no_prefix, '/');
+    const char *path_url = strchr(path_no_prefix, '/');
     if ((NULL != path_url) && (NULL != url)) {
         if (NULL == (*url = mender_utils_strdup(path_url))) {
             mender_log_error("Unable to allocate memory for URL");
@@ -76,7 +76,7 @@ mender_net_get_host_port_url(const char *path, const char *config_host, char **h
     }
 
     /* Extract host and port */
-    char *path_port = strchr(path_no_prefix, ':');
+    const char *path_port = strchr(path_no_prefix, ':');
     if ((NULL == path_port) && (NULL == path_url)) {
         *port = mender_utils_strdup(is_https ? "443" : "80");
         *host = mender_utils_strdup(path_no_prefix);

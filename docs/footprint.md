@@ -41,6 +41,7 @@ The numbers in this table are extracted from a build with the following properti
 | -------    | ----------- | --------- | --------- |
 | preview    | v4.0.0      | 33 KiB    | 15 KiB    |
 | 1.0        | v4.2.0      | 36 KiB    | 15 KiB    |
+| 1.1        | v4.4.0      | 36 KiB    | 15 KiB    |
 
 ### RAM usage configuration
 

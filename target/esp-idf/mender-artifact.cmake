@@ -49,4 +49,3 @@ endfunction()
 # CMAKE_SOURCE_DIR), not when it is scheduled. Wrapping in EVAL CODE with a
 # bracket argument forces immediate substitution so the value survives.
 cmake_language(EVAL CODE "cmake_language(DEFER DIRECTORY \"${CMAKE_SOURCE_DIR}\" CALL run_mender_artifact [[${mender_artifact_cmd}]])")
-

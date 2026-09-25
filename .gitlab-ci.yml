@@ -43,7 +43,7 @@ default:
   needs: []
   before_script:
     - !reference [.qa-common-network-apt-retry, before_script]
-    - apt-get update && apt-get install -y git clang-format pcregrep
+    - apt-get update && apt-get install -y git clang-format pcregrep pre-commit
 
 test:static:license:
   extends: .test:static
@@ -53,6 +53,7 @@ test:static:license:
 test:static:code:
   extends: .test:static
   script:
+    - /usr/bin/pre-commit run --all-files
     - ./.github/workflows/check_include_guards.sh
     - ./.github/workflows/check_equivalence_tests.sh
     - ./.github/workflows/check_code_format.sh
@@ -165,4 +166,3 @@ trigger:mender-mcu-integration:
     MENDER_MCU_REVISION: $CI_COMMIT_SHA
     PARENT_MENDER_MCU_PIPELINE_ID: $CI_PIPELINE_ID
     PARENT_MENDER_MCU_COMMIT_BRANCH: $CI_COMMIT_BRANCH
-

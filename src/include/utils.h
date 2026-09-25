@@ -30,6 +30,10 @@ extern "C" {
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif /* !MAX */
 
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif /* !MIN */
+
 /**
  * @brief Macro for releasing a resource followed by setting it to NULL.
  */

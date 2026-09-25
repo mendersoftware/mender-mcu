@@ -128,6 +128,14 @@ menu "Mender client"
             default 3 if MENDER_LOG_LEVEL_INF
             default 4 if MENDER_LOG_LEVEL_DBG
 
+         config MENDER_DEPLOYMENT_LOGS
+             bool "Store deployment logs"
+             default y
+             help
+                 Store warning/error log messages produced during a deployment in a dedicated flash
+                 partition (see MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL), so they can be
+                 uploaded to the Mender server for diagnostics after a failed deployment.
+
     endmenu
 
     menu "Inventory configuration"
@@ -180,6 +188,16 @@ menu "Mender client"
                  Use "nvs" to use the ESP-IDF's default non-volatile storage partition (not recommended), or see
                  https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/partition-tables.html#creating-custom-tables
                  for partition table definition docs and how to define a partition with label "mender".
+
+         config MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL
+             string "Label of the partition to store deployment logs"
+             depends on MENDER_DEPLOYMENT_LOGS
+             default "mender_logs"
+             help
+                 Must reference a "data" partition (any subtype) dedicated exclusively to
+                 deployment logs storage, sized to at least two erase sectors. See
+                 https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/partition-tables.html#creating-custom-tables
+                 for partition table definition docs.
 
     endmenu
 

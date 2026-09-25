@@ -164,6 +164,19 @@ depl_logs_prepare_sector(size_t sector_idx, uint16_t seq) {
 }
 
 /**
+ * @brief Read entry header
+ * @return MENDER_OK if reading succeeded, MENDER_FAIL otherwise
+ */
+static mender_err_t
+depl_logs_read_entry_header(size_t sector_idx, size_t offset, depl_logs_entry_header_t *header) {
+    if (ESP_OK != esp_partition_read(depl_logs_part, depl_logs_sector_offset(sector_idx) + offset, header, sizeof(*header))) {
+        mender_log_error("Failed to read deployment log entry header");
+        return MENDER_FAIL;
+    }
+    return MENDER_OK;
+}
+
+/**
  * @brief Validate and optionally read back the entry at #offset within sector #sector_idx
  * @param sector_idx   Sector to read from
  * @param offset       Offset relative to the start of the sector
@@ -177,10 +190,11 @@ depl_logs_prepare_sector(size_t sector_idx, uint16_t seq) {
 static mender_err_t
 depl_logs_read_entry(size_t sector_idx, size_t offset, char *msg, size_t msg_buf_size, size_t *entry_size) {
     depl_logs_entry_header_t header;
-    if (ESP_OK != esp_partition_read(depl_logs_part, depl_logs_sector_offset(sector_idx) + offset, &header, sizeof(header))) {
-        mender_log_error("Failed to read deployment log entry header");
+    if (MENDER_OK != depl_logs_read_entry_header(sector_idx, offset, &header)) {
+        /* error already logged */
         return MENDER_FAIL;
     }
+
     /* 0xFF means unwritten (erased) */
     if (0xFF == header.len) {
         return MENDER_NOT_FOUND;
@@ -221,20 +235,24 @@ depl_logs_read_entry(size_t sector_idx, size_t offset, char *msg, size_t msg_buf
 }
 
 /**
- * @brief Find the first free (unwritten or corrupt) offset within a sector
+ * @brief Find the first free (unwritten) offset within a sector
  */
-static size_t
-depl_logs_find_next_offset(size_t sector_idx) {
-    size_t offset = sizeof(depl_logs_sector_header_t);
-    while (offset + sizeof(depl_logs_entry_header_t) <= depl_logs_part->erase_size) {
-        size_t       entry_size;
-        mender_err_t ret = depl_logs_read_entry(sector_idx, offset, NULL, 0, &entry_size);
+static mender_err_t
+depl_logs_find_next_offset(size_t sector_idx, size_t *offset) {
+    depl_logs_entry_header_t header;
+
+    *offset = sizeof(depl_logs_sector_header_t);
+    while (*offset + sizeof(depl_logs_entry_header_t) <= depl_logs_part->erase_size) {
+        mender_err_t ret = depl_logs_read_entry_header(sector_idx, *offset, &header);
         if (MENDER_OK != ret) {
-            break;
+            return ret;
+        } else if (0xFF == header.len) {
+            /* 0xFF is an erased/unwritten byte, we never store 255-long messages */
+            return MENDER_OK;
         }
-        offset += entry_size;
+        *offset += DEPL_LOGS_ENTRY_SIZE(header.len);
     }
-    return offset;
+    return MENDER_OK;
 }
 
 static mender_err_t
@@ -287,10 +305,23 @@ depl_logs_storage_init(void) {
         depl_logs_next_seq    = 1;
         depl_logs_next_offset = sizeof(depl_logs_sector_header_t);
     } else {
-        depl_logs_head_sector = min_idx;
-        depl_logs_tail_sector = max_idx;
-        depl_logs_next_seq    = max_seq + 1;
-        depl_logs_next_offset = depl_logs_find_next_offset(depl_logs_tail_sector);
+        if (MENDER_OK == depl_logs_find_next_offset(depl_logs_tail_sector, &depl_logs_next_offset)) {
+            depl_logs_head_sector = min_idx;
+            depl_logs_tail_sector = max_idx;
+            depl_logs_next_seq    = max_seq + 1;
+        } else {
+            /* This should not happen, but if it does, the best thing to do is
+               to try to start from scratch so that future logs can be captured
+               (and published). */
+            mender_log_error("Failed to identify the end of existing deployment logs");
+            if (MENDER_OK != depl_logs_prepare_sector(0, 0)) {
+                return MENDER_FAIL;
+            }
+            depl_logs_head_sector = 0;
+            depl_logs_tail_sector = 0;
+            depl_logs_next_seq    = 1;
+            depl_logs_next_offset = sizeof(depl_logs_sector_header_t);
+        }
     }
 
     mender_log_debug("Initialized deployment logs storage on '" MENDER_STORAGE_DEPLOYMENT_LOGS_PARTITION_LABEL "': %zu sectors of %" PRIu32

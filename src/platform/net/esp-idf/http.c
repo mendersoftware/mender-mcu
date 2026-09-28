@@ -20,6 +20,8 @@
 #include <errno.h>
 #include <esp_http_client.h>
 #include <esp_crt_bundle.h>
+#include <stdlib.h>
+#include <strings.h>
 
 #include "api.h"
 #include "http.h"
@@ -34,10 +36,44 @@
 const size_t mender_http_recv_buf_length = 512;
 
 /**
+ * @brief Rate limit HTTP status code
+ */
+#define MENDER_HTTP_RATE_LIMIT_HTTP_CODE 429
+
+/**
  * @brief Retry-After header value
  */
-/* TODO: properly implement parsing of Retry-After (MEN-10030) */
 static uint32_t retry_after_seconds = 0;
+
+#define MENDER_HTTP_RETRY_AFTER_HEADER "Retry-After"
+
+static esp_err_t
+http_event_handler(esp_http_client_event_t *evt) {
+    /* No event on header */
+    if (HTTP_EVENT_ON_HEADER != evt->event_id) {
+        return ESP_OK;
+    }
+
+    /* Event on header is not Retry-After */
+    if (0 != strcasecmp(evt->header_key, MENDER_HTTP_RETRY_AFTER_HEADER)) {
+        return ESP_OK;
+    }
+
+    /* Note: would like to add parsing header as HTTP Date in the future */
+    /* Retry-After: Parse wait time in seconds */
+    char *endptr;
+    errno                 = 0;
+    unsigned long seconds = strtoul(evt->header_value, &endptr, 10);
+    if ((evt->header_value == endptr) || ('\0' != *endptr) || (ERANGE == errno) || (0 == seconds) || (UINT32_MAX < seconds)) {
+        mender_log_warning("Unable to parse Retry-After: '%s'", evt->header_value);
+        return ESP_OK;
+    }
+
+    /* Set retry_after_seconds */
+    retry_after_seconds = (uint32_t)seconds;
+    mender_log_debug("Retry-After: %" PRIu32 " seconds", retry_after_seconds);
+    return ESP_OK;
+}
 
 /**
  * @brief Mender HTTP configuration
@@ -95,6 +131,9 @@ mender_http_perform(char                *jwt,
     assert(NULL != callback);
     assert(NULL != status);
 
+    /* Clear previous Retry-After value */
+    retry_after_seconds = 0;
+
     mender_err_t             ret    = MENDER_FAIL;
     char                    *url    = NULL;
     char                    *bearer = NULL;
@@ -123,6 +162,7 @@ mender_http_perform(char                *jwt,
         .user_agent        = MENDER_HTTP_USER_AGENT,
         .crt_bundle_attach = esp_crt_bundle_attach,
         .buffer_size_tx    = 2048,
+        .event_handler     = http_event_handler,
     };
 
     /* Initialization of the client */
@@ -220,6 +260,10 @@ mender_http_perform(char                *jwt,
     if (MENDER_OK != (ret = callback(MENDER_HTTP_EVENT_DISCONNECTED, NULL, 0, params))) {
         mender_log_error("An error occurred");
         goto END;
+    }
+    if (MENDER_HTTP_RATE_LIMIT_HTTP_CODE != *status) {
+        /* Retry-After is only meaningful on a rate-limit response */
+        retry_after_seconds = 0;
     }
 
 END:

@@ -230,7 +230,8 @@ END:
     mender_free(url);
     mender_free(bearer);
 
-    return ret;
+    /* Return MENDER_RETRY_ERROR if ret is MENDER_FAIL, otherwise return ret */
+    return (MENDER_FAIL != ret) ? ret : MENDER_RETRY_ERROR;
 }
 
 mender_err_t

@@ -45,6 +45,7 @@ here for more in-depth information.
 ### Compatibility
 | Zephyr OS version |
 |-------------------|
+| v4.4.0            |
 | v4.2.0            |
 
 ### Boards

@@ -1314,8 +1314,10 @@ mender_client_update_work_function(void) {
                 /* If there was no reboot, we need to tell inventory to refresh
                    the persistent data (because the deployment must have changed
                    artifact name, at least) and we should trigger an inventory
-                   submission to refresh the data on the server. */
-                if (!mender_update_module->requires_reboot) {
+                   submission to refresh the data on the server. Inventory
+                   submission is not desired after a failed commit, so skip it
+                   then (which also keeps the error in ret). */
+                if (!MENDER_IS_ERROR(ret) && !mender_update_module->requires_reboot) {
                     if (MENDER_OK != (ret = mender_inventory_reset_persistent())) {
                         mender_log_error("Failed to reset persistent inventory after deployment commit with no reboot");
                     } else if (MENDER_OK != (ret = mender_inventory_execute())) {

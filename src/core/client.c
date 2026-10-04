@@ -1379,6 +1379,13 @@ mender_client_update_work_function(void) {
                 } else if (NULL != mender_update_module->callbacks[update_state]) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
+                if ((MENDER_OK == ret) && !mender_update_module->requires_reboot) {
+                    /* skip rollback reboot, as INSTALL skips reboot */
+                    update_state = MENDER_UPDATE_STATE_FAILURE;
+                    mender_log_debug("Entering state %s", update_state_str[update_state]);
+                    set_and_store_state(update_state);
+                    continue;
+                }
                 NEXT_STATE;
                 /* fallthrough */
 

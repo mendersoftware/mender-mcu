@@ -1335,11 +1335,13 @@ mender_client_update_work_function(void) {
                     }
                 }
 #endif /* CONFIG_MENDER_COMMIT_REQUIRE_AUTH */
-                if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
-                    mender_log_error("Unable to commit artifact data");
-                }
                 if (!MENDER_IS_ERROR(ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
+                }
+                /* Store the new artifact data only once the module has
+                   committed, so that a rollback keeps the old data. */
+                if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
+                    mender_log_error("Unable to commit artifact data");
                 }
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
                 /* If there was no reboot, we need to tell inventory to refresh

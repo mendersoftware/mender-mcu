@@ -307,3 +307,126 @@ TEST(MenderUtilsTest, KeystoreDelete) {
     // Nothing to check here, we just rely on ASAN detecting a potential leak or
     // memory access violation (if any).
 }
+
+/* Build a buffer consisting of the given header bytes followed by body_len bytes of filler */
+static vector<uint8_t>
+der_buffer(const vector<uint8_t> &header, size_t body_len) {
+    vector<uint8_t> buf(header);
+    buf.resize(header.size() + body_len, 0xAB);
+    return buf;
+}
+
+TEST(MenderUtilsTest, DerSequenceValid) {
+    /* Real EC P-256 public key (SubjectPublicKeyInfo) as written by mbedtls_pk_write_pubkey_der() */
+    const vector<uint8_t> ec_public_key = {
+        0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07,
+        0x03, 0x42, 0x00, 0x04, 0x55, 0x1c, 0x45, 0xed, 0xf2, 0xd4, 0x5e, 0x90, 0xf9, 0x00, 0xb9, 0x97, 0xcb, 0xa8, 0x4b, 0x0a, 0x6a, 0xb1, 0x40,
+        0xad, 0xc8, 0x14, 0x02, 0xca, 0xef, 0xa4, 0x48, 0x75, 0xf9, 0xf6, 0xb5, 0x16, 0x1a, 0x16, 0x60, 0x9d, 0xa1, 0x09, 0x8f, 0x44, 0x1e, 0x1e,
+        0xad, 0x37, 0xc0, 0xec, 0x64, 0xa3, 0x31, 0x7c, 0xcd, 0x95, 0xb9, 0x1e, 0xc7, 0x83, 0xce, 0x4c, 0x2e, 0x57, 0xec, 0x4e, 0x7b, 0x46,
+    };
+    ASSERT_EQ(ec_public_key.size(), 91u);
+    EXPECT_TRUE(mender_utils_der_sequence_valid(ec_public_key.data(), ec_public_key.size()));
+
+    /* Same key, but stored with one byte missing or one extra byte */
+    EXPECT_FALSE(mender_utils_der_sequence_valid(ec_public_key.data(), ec_public_key.size() - 1));
+    vector<uint8_t> longer(ec_public_key);
+    longer.push_back(0x00);
+    EXPECT_FALSE(mender_utils_der_sequence_valid(longer.data(), longer.size()));
+
+    /* Short form: EC P-256 private key size (30 77 + 119 bytes) and the edge cases */
+    vector<uint8_t> buf = der_buffer({ 0x30, 0x77 }, 0x77);
+    EXPECT_TRUE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+    buf = der_buffer({ 0x30, 0x00 }, 0);
+    EXPECT_TRUE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+    buf = der_buffer({ 0x30, 0x7F }, 0x7F);
+    EXPECT_TRUE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+
+    /* Long form, 1 length byte */
+    buf = der_buffer({ 0x30, 0x81, 0xC8 }, 200);
+    EXPECT_TRUE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+    buf = der_buffer({ 0x30, 0x81, 0xC8 }, 199);
+    EXPECT_FALSE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+
+    /* Long form, 2 length bytes (big-endian), e.g. an RSA-2048 private key */
+    buf = der_buffer({ 0x30, 0x82, 0x04, 0xA6 }, 0x04A6);
+    EXPECT_TRUE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+    buf = der_buffer({ 0x30, 0x82, 0xA6, 0x04 }, 0x04A6); /* length bytes swapped */
+    EXPECT_FALSE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+
+    /* Wrong tag (INTEGER instead of SEQUENCE), otherwise consistent */
+    buf = der_buffer({ 0x02, 0x03 }, 3);
+    EXPECT_FALSE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+
+    /* Indefinite length is not allowed in DER, 3+ length bytes are not supported */
+    buf = der_buffer({ 0x30, 0x80 }, 10);
+    EXPECT_FALSE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+    buf = der_buffer({ 0x30, 0x83, 0x00, 0x00, 0x05 }, 5);
+    EXPECT_FALSE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+
+    /* Truncated headers must not be read past the end (new, exactly sized vectors instead of
+       reusing buf, so that ASAN reports any out-of-bounds read) */
+    const vector<uint8_t> truncated_long_1 = { 0x30, 0x81 };
+    EXPECT_FALSE(mender_utils_der_sequence_valid(truncated_long_1.data(), truncated_long_1.size()));
+    const vector<uint8_t> truncated_long_2 = { 0x30, 0x82, 0x04 };
+    EXPECT_FALSE(mender_utils_der_sequence_valid(truncated_long_2.data(), truncated_long_2.size()));
+    const vector<uint8_t> tag_only = { 0x30 };
+    EXPECT_FALSE(mender_utils_der_sequence_valid(tag_only.data(), tag_only.size()));
+    EXPECT_FALSE(mender_utils_der_sequence_valid(tag_only.data(), 0));
+
+    /* Erased flash */
+    buf = vector<uint8_t>(64, 0xFF);
+    EXPECT_FALSE(mender_utils_der_sequence_valid(buf.data(), buf.size()));
+
+    EXPECT_FALSE(mender_utils_der_sequence_valid(nullptr, 10));
+}
+
+TEST(MenderUtilsTest, CStringValid) {
+    /* Valid strings (length includes the NUL terminator, as stored) */
+    const char *valid[] = {
+        "",
+        "release-1.2.3",
+        "{\"id\":\"1234\",\"state\":\"download\"}",
+        "artifact_name\x1F"
+        "release-1\x1E"
+        "rootfs-image.version\x1F"
+        "1.0\x1E",     /* provides format */
+        "caf\xC3\xA9", /* UTF-8 */
+    };
+    for (const char *str : valid) {
+        EXPECT_TRUE(mender_utils_cstring_valid(str, strlen(str) + 1)) << "for \"" << str << "\"";
+    }
+
+    /* A real provides string as written by mender_utils_key_value_list_to_string() */
+    mender_key_value_list_t *list = nullptr;
+    ASSERT_EQ(mender_utils_key_value_list_create_node("artifact_name", "release-1", &list), MENDER_OK);
+    ASSERT_EQ(mender_utils_key_value_list_create_node("rootfs-image.version", "1.0", &list), MENDER_OK);
+    char *provides_str = nullptr;
+    ASSERT_EQ(mender_utils_key_value_list_to_string(list, &provides_str), MENDER_OK);
+    EXPECT_TRUE(mender_utils_cstring_valid(provides_str, strlen(provides_str) + 1));
+    mender_free(provides_str);
+    EXPECT_EQ(mender_utils_key_value_list_free(list), MENDER_OK);
+
+    /* Missing NUL terminator */
+    const char no_nul[] = { 'a', 'b', 'c' };
+    EXPECT_FALSE(mender_utils_cstring_valid(no_nul, sizeof(no_nul)));
+
+    /* NUL before the end */
+    const char embedded_nul[] = { 'a', '\0', 'b', '\0' };
+    EXPECT_FALSE(mender_utils_cstring_valid(embedded_nul, sizeof(embedded_nul)));
+
+    /* Control characters other than the key-value separators */
+    const char *invalid[] = {
+        "line\nbreak", "tab\there", "\x01start", "del\x7F", "esc\x1B",
+    };
+    for (const char *str : invalid) {
+        EXPECT_FALSE(mender_utils_cstring_valid(str, strlen(str) + 1));
+    }
+
+    /* Erased flash */
+    const vector<uint8_t> erased(64, 0xFF);
+    EXPECT_FALSE(mender_utils_cstring_valid(erased.data(), erased.size()));
+
+    /* Empty buffer and NULL */
+    EXPECT_FALSE(mender_utils_cstring_valid("", 0));
+    EXPECT_FALSE(mender_utils_cstring_valid(nullptr, 1));
+}

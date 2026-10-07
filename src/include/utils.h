@@ -174,6 +174,27 @@ mender_err_t mender_utils_key_value_list_delete_node(mender_key_value_list_t **l
  */
 mender_err_t mender_utils_compare_wildcard(const char *str, const char *wildcard_str, bool *match);
 
+/**
+ * @brief Check that the data looks like a DER-encoded ASN.1 SEQUENCE (e.g. a key written by
+ *        mbedtls_pk_write_key_der() / mbedtls_pk_write_pubkey_der())
+ * @note Only the outer header is checked (tag and that the encoded length matches @p length),
+ *       there is no full parse.
+ * @param data Data to check
+ * @param length Length of the data
+ * @return true if the data looks like a DER SEQUENCE, false otherwise
+ */
+bool mender_utils_der_sequence_valid(const void *data, size_t length);
+
+/**
+ * @brief Check that the data is a single NUL-terminated string as written by Mender storage
+ * @note Allows the key-value list separators (see mender_utils_key_value_list_to_string()) and
+ *       bytes above DEL (UTF-8). Rejects other control characters and NUL bytes before the end.
+ * @param data Data to check
+ * @param length Length of the data, including the NUL terminator
+ * @return true if the data is a valid string, false otherwise
+ */
+bool mender_utils_cstring_valid(const void *data, size_t length);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

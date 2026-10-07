@@ -114,11 +114,43 @@ static struct flash_sector flash_sectors[CONFIG_MENDER_STORAGE_SECTOR_OFFSET + C
 /**
  * @brief NVS keys
  */
+#define MENDER_STORAGE_NVS_INIT_MARKER     0
 #define MENDER_STORAGE_NVS_PRIVATE_KEY     1
 #define MENDER_STORAGE_NVS_PUBLIC_KEY      2
 #define MENDER_STORAGE_NVS_DEPLOYMENT_DATA 3
 #define MENDER_STORAGE_NVS_PROVIDES        4
 #define MENDER_STORAGE_NVS_ARTICACT_NAME   5
+
+/**
+ * @brief NVS init marker
+ * @note Written once the NVS area is known to contain Mender data (or has been
+ *       erased), so that an area that was never erased or belongs to something
+ *       else can be detected on the next mount.
+ */
+#define MENDER_STORAGE_NVS_MARKER_MAGIC   0x4d454e444552ULL /* "MENDER" */
+#define MENDER_STORAGE_NVS_MARKER_VERSION 1
+
+struct mender_storage_nvs_marker {
+    uint64_t magic;
+    uint32_t offset; /* absolute offset of the NVS area on the flash device */
+    uint16_t sector_size;
+    uint8_t  version;
+    uint8_t  reserved; /* always 0 */
+};
+BUILD_ASSERT(16 == sizeof(struct mender_storage_nvs_marker), "NVS marker layout must not contain padding");
+
+typedef enum {
+    MARKER_MATCH,      /* marker present and matches the expected one */
+    MARKER_MISMATCH,   /* something is stored under the marker ID, but it is not our marker */
+    MARKER_ABSENT,     /* nothing stored under the marker ID */
+    MARKER_READ_ERROR, /* reading the marker failed */
+} mender_storage_nvs_marker_state_t;
+
+typedef enum {
+    ENTRY_ABSENT,  /* nothing stored under the ID */
+    ENTRY_VALID,   /* stored data looks like Mender data */
+    ENTRY_INVALID, /* stored data is garbage or could not be read */
+} mender_storage_nvs_entry_state_t;
 
 /**
  * @brief Cached Artifact name
@@ -172,6 +204,25 @@ nvs_read_alloc(struct nvs_fs *nvs, uint16_t id, void **data, size_t *length) {
     return MENDER_OK;
 }
 
+static mender_storage_nvs_entry_state_t
+entry_check(struct nvs_fs *fs, uint16_t id, bool (*validate)(const void *data, size_t length)) {
+    void  *data;
+    size_t length;
+
+    mender_err_t ret = nvs_read_alloc(fs, id, &data, &length);
+    if (MENDER_NOT_FOUND == ret) {
+        return ENTRY_ABSENT;
+    }
+    if (MENDER_OK != ret) {
+        return ENTRY_INVALID;
+    }
+
+    bool valid = validate(data, length);
+    mender_free(data);
+
+    return valid ? ENTRY_VALID : ENTRY_INVALID;
+}
+
 static inline bool
 checked_nvs_write(struct nvs_fs *fs, uint16_t id, const void *data, size_t len) {
     ssize_t ret = nvs_write(fs, id, data, len);
@@ -179,6 +230,91 @@ checked_nvs_write(struct nvs_fs *fs, uint16_t id, const void *data, size_t len) 
      *    When a rewrite of the same data already stored is attempted, nothing is written to flash, thus 0 is returned.
      */
     return (len == ret) || (0 == ret);
+}
+
+static void
+marker_build_expected(const struct nvs_fs *fs, struct mender_storage_nvs_marker *marker) {
+
+    assert(NULL != fs);
+    assert(NULL != marker);
+
+    /* Zero everything first so that the reserved byte is defined for the
+       memcmp() in marker_read_state() */
+    memset(marker, 0, sizeof(*marker));
+    marker->magic       = MENDER_STORAGE_NVS_MARKER_MAGIC;
+    marker->offset      = (uint32_t)fs->offset;
+    marker->sector_size = fs->sector_size;
+    marker->version     = MENDER_STORAGE_NVS_MARKER_VERSION;
+}
+
+static mender_storage_nvs_marker_state_t
+marker_read_state(struct nvs_fs *fs) {
+
+    assert(NULL != fs);
+
+    struct mender_storage_nvs_marker expected;
+    struct mender_storage_nvs_marker stored;
+
+    marker_build_expected(fs, &expected);
+
+    /* nvs_read() returns the length of the stored item, which may be larger
+       than the buffer we provide (only sizeof(stored) bytes are copied then) */
+    ssize_t ret = nvs_read(fs, MENDER_STORAGE_NVS_INIT_MARKER, &stored, sizeof(stored));
+    if ((-ENOENT == ret) || (0 == ret)) {
+        return MARKER_ABSENT;
+    }
+    if (ret < 0) {
+        mender_log_error("Unable to read NVS init marker [%d]", (int)-ret);
+        return MARKER_READ_ERROR;
+    }
+    if (sizeof(stored) != (size_t)ret) {
+        mender_log_debug("NVS init marker has unexpected size %d", (int)ret);
+        return MARKER_MISMATCH;
+    }
+    if (0 != memcmp(&expected, &stored, sizeof(stored))) {
+        mender_log_debug("NVS init marker mismatch (magic: 0x%" PRIx64 ", version: %u, offset: 0x%" PRIx32 ", sector size: %u)",
+                         stored.magic,
+                         stored.version,
+                         stored.offset,
+                         stored.sector_size);
+        return MARKER_MISMATCH;
+    }
+
+    return MARKER_MATCH;
+}
+
+/**
+ * @brief Erase the sectors used by Mender NVS (and nothing else) and mount NVS again
+ * @note Does not use nvs_clear() because that requires a mounted NVS, which is
+ *       exactly what is not available when mounting fails.
+ */
+static mender_err_t
+nvs_area_wipe_and_mount(struct nvs_fs *fs, int part_id, const char *reason) {
+    const struct flash_area *fap;
+    int                      result;
+
+    mender_log_warning("Mender NVS area not usable (%s), erasing", reason);
+    /* Open NVS storage area */
+    if (0 != (result = flash_area_open(part_id, &fap))) {
+        mender_log_error("Unable to open the Mender storage flash area");
+        return MENDER_FAIL;
+    }
+
+    /* Erase */
+    result = flash_area_flatten(fap, fs->offset - fap->fa_off, (size_t)fs->sector_size * fs->sector_count);
+    flash_area_close(fap);
+    if (0 != result) {
+        mender_log_error("Unable to erase the Mender NVS area [%d]", -result);
+        return MENDER_FAIL;
+    }
+
+    /* Remount NVS storage */
+    if (0 != (result = nvs_mount(fs))) {
+        mender_log_error("Unable to mount NVS storage after erasing, result = %d", result);
+        return MENDER_FAIL;
+    }
+
+    return MENDER_OK;
 }
 
 #ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
@@ -226,6 +362,52 @@ crc_check(const unsigned char *data, const size_t data_len) {
     return MENDER_OK;
 }
 #endif /* CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC */
+
+static bool
+deployment_data_valid(const void *data, size_t length) {
+#ifdef CONFIG_MENDER_STORAGE_DEPLOYMENT_DATA_CRC
+    return MENDER_OK == crc_check(data, length);
+#else
+    return mender_utils_cstring_valid(data, length);
+#endif
+}
+
+/**
+ * @brief Check whether the NVS (without an init marker) contains data written by an
+ *        older Mender client which must be preserved
+ * @return true if at least one Mender entry is present and all present entries are
+ *         valid, false otherwise (nothing to preserve or garbage found)
+ */
+static bool
+legacy_data_looks_valid(struct nvs_fs *fs) {
+    const struct {
+        uint16_t    id;
+        const char *name;
+        bool (*validate)(const void *data, size_t length);
+    } entries[] = {
+        { MENDER_STORAGE_NVS_PRIVATE_KEY, "private key", mender_utils_der_sequence_valid },
+        { MENDER_STORAGE_NVS_PUBLIC_KEY, "public key", mender_utils_der_sequence_valid },
+        { MENDER_STORAGE_NVS_DEPLOYMENT_DATA, "deployment data", deployment_data_valid },
+        { MENDER_STORAGE_NVS_PROVIDES, "provides", mender_utils_cstring_valid },
+        { MENDER_STORAGE_NVS_ARTICACT_NAME, "artifact name", mender_utils_cstring_valid },
+    };
+
+    size_t n_valid = 0;
+    for (size_t i = 0; i < ARRAY_SIZE(entries); i++) {
+        switch (entry_check(fs, entries[i].id, entries[i].validate)) {
+            case ENTRY_VALID:
+                n_valid++;
+                break;
+            case ENTRY_INVALID:
+                mender_log_debug("Invalid %s found in NVS without init marker", entries[i].name);
+                return false;
+            case ENTRY_ABSENT:
+                break;
+        }
+    }
+
+    return n_valid > 0;
+}
 
 mender_err_t
 mender_storage_init(void) {
@@ -304,8 +486,48 @@ mender_storage_init(void) {
     mender_storage_nvs_handle.sector_count = CONFIG_MENDER_STORAGE_NVS_SECTOR_COUNT;
 
     /* Mount NVS */
+    bool wiped = false;
     if (0 != (result = nvs_mount(&mender_storage_nvs_handle))) {
-        mender_log_error("Unable to mount NVS storage, result = %d", result);
+        mender_log_warning("Unable to mount NVS storage, result = %d", result);
+        if (MENDER_OK != nvs_area_wipe_and_mount(&mender_storage_nvs_handle, part_id, "mount failed")) {
+            return MENDER_FAIL;
+        }
+        wiped = true;
+    }
+
+    if (!wiped) {
+        const char *wipe_reason = NULL;
+
+        switch (marker_read_state(&mender_storage_nvs_handle)) {
+            case MARKER_MATCH:
+                break;
+            case MARKER_MISMATCH:
+                wipe_reason = "init marker mismatch";
+                break;
+            case MARKER_READ_ERROR:
+                wipe_reason = "could not read init marker";
+                break;
+            case MARKER_ABSENT:
+                if (legacy_data_looks_valid(&mender_storage_nvs_handle)) {
+                    mender_log_info("Existing Mender data found in NVS, adding init marker");
+                } else {
+                    wipe_reason = "no init marker and no valid Mender data";
+                }
+                break;
+        }
+
+        if (NULL != wipe_reason) {
+            if (MENDER_OK != nvs_area_wipe_and_mount(&mender_storage_nvs_handle, part_id, wipe_reason)) {
+                return MENDER_FAIL;
+            }
+        }
+    }
+
+    /* marker written last such that reset during wipe results in new wipe next boot */
+    struct mender_storage_nvs_marker marker;
+    marker_build_expected(&mender_storage_nvs_handle, &marker);
+    if (!checked_nvs_write(&mender_storage_nvs_handle, MENDER_STORAGE_NVS_INIT_MARKER, &marker, sizeof(marker))) {
+        mender_log_error("Unable to write NVS init marker");
         return MENDER_FAIL;
     }
     mender_log_debug("Initialized Mender NVS at 0x%jx with %u sectors (%zu bytes available)",

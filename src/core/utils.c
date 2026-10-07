@@ -25,6 +25,18 @@
 #define MENDER_KEY_VALUE_DELIMITER "\x1F"
 /* ASCII record separator */
 #define MENDER_KEY_VALUE_SEPARATOR "\x1E"
+/**
+ * @brief DER encoding values used by mender_utils_der_sequence_valid() (see ITU-T X.690)
+ */
+#define MENDER_DER_TAG_SEQUENCE        0x30 /* ASN.1 SEQUENCE, constructed (0x20 | 0x10) */
+#define MENDER_DER_LENGTH_LONG_FORM    0x80 /* set: length is in the following bytes; clear: this byte is the length */
+#define MENDER_DER_LENGTH_LONG_1_BYTE  0x81 /* long form, length in the next 1 byte (128..255) */
+#define MENDER_DER_LENGTH_LONG_2_BYTES 0x82 /* long form, length in the next 2 bytes (256..65535) */
+/**
+ * @brief Characters used by mender_utils_cstring_valid()
+ */
+#define MENDER_ASCII_FIRST_PRINTABLE 0x20 /* space; everything below is a control character */
+#define MENDER_ASCII_DEL             0x7F /* DEL, a control character */
 
 const char *
 mender_utils_http_status_to_string(int status) {
@@ -598,4 +610,57 @@ mender_utils_compare_wildcard(const char *str, const char *wildcard_str, bool *m
     }
 
     return MENDER_OK;
+}
+
+bool
+mender_utils_der_sequence_valid(const void *data, size_t length) {
+    const uint8_t *buf = data;
+    size_t         header_len;
+    size_t         body_len;
+
+    /* Header layout: buf[0] = tag, buf[1] = length (or number of length bytes that follow) */
+    if ((NULL == buf) || (length < 2) || (MENDER_DER_TAG_SEQUENCE != buf[0])) {
+        return false;
+    }
+
+    if (buf[1] < MENDER_DER_LENGTH_LONG_FORM) { /* short form: length in this byte */
+        header_len = 2;
+        body_len   = buf[1];
+    } else if ((MENDER_DER_LENGTH_LONG_1_BYTE == buf[1]) && (length >= 3)) {
+        header_len = 3;
+        body_len   = buf[2];
+    } else if ((MENDER_DER_LENGTH_LONG_2_BYTES == buf[1]) && (length >= 4)) {
+        header_len = 4;
+        body_len   = ((size_t)buf[2] << 8) | buf[3]; /* big-endian */
+    } else {
+        /* indefinite length (not allowed in DER), longer forms or truncated data */
+        return false;
+    }
+
+    return (header_len + body_len) == length;
+}
+
+bool
+mender_utils_cstring_valid(const void *data, size_t length) {
+    const uint8_t *buf = data;
+
+    if ((NULL == buf) || (length < 1) || ('\0' != buf[length - 1])) {
+        return false;
+    }
+
+    for (size_t i = 0; i < length - 1; i++) {
+        const uint8_t c = buf[i];
+
+        if ('\0' == c) {
+            return false; /* NUL before the end */
+        }
+        if ((c < MENDER_ASCII_FIRST_PRINTABLE) && (MENDER_KEY_VALUE_DELIMITER[0] != c) && (MENDER_KEY_VALUE_SEPARATOR[0] != c)) {
+            return false; /* control character other than the key-value list separators */
+        }
+        if (MENDER_ASCII_DEL == c) {
+            return false;
+        }
+    }
+
+    return true;
 }

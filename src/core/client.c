@@ -1335,18 +1335,21 @@ mender_client_update_work_function(void) {
                     }
                 }
 #endif /* CONFIG_MENDER_COMMIT_REQUIRE_AUTH */
-                if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
-                    mender_log_error("Unable to commit artifact data");
-                }
                 if (!MENDER_IS_ERROR(ret) && (NULL != mender_update_module->callbacks[update_state])) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
+                }
+                /* Store the new artifact data only once the module has
+                   committed, so that a rollback keeps the old data. */
+                if (!MENDER_IS_ERROR(ret) && (MENDER_OK != (ret = mender_commit_artifact_data()))) {
+                    mender_log_error("Unable to commit artifact data");
                 }
 #ifndef CONFIG_MENDER_CLIENT_INVENTORY_DISABLE
                 /* If there was no reboot, we need to tell inventory to refresh
                    the persistent data (because the deployment must have changed
                    artifact name, at least) and we should trigger an inventory
-                   submission to refresh the data on the server. */
-                if (!mender_update_module->requires_reboot) {
+                   submission to refresh the data on the server. Not after a
+                   failed commit: that would overwrite the error in ret. */
+                if (!MENDER_IS_ERROR(ret) && !mender_update_module->requires_reboot) {
                     if (MENDER_OK != (ret = mender_inventory_reset_persistent())) {
                         mender_log_error("Failed to reset persistent inventory after deployment commit with no reboot");
                     } else if (MENDER_OK != (ret = mender_inventory_execute())) {
@@ -1378,6 +1381,13 @@ mender_client_update_work_function(void) {
                     ret = MENDER_FAIL;
                 } else if (NULL != mender_update_module->callbacks[update_state]) {
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
+                }
+                if ((MENDER_OK == ret) && !mender_update_module->requires_reboot) {
+                    /* skip rollback reboot, as INSTALL skips reboot */
+                    update_state = MENDER_UPDATE_STATE_FAILURE;
+                    mender_log_debug("Entering state %s", update_state_str[update_state]);
+                    set_and_store_state(update_state);
+                    continue;
                 }
                 NEXT_STATE;
                 /* fallthrough */

@@ -274,9 +274,13 @@ if MENDER_MCU_CLIENT
                 help
                     When not defined, the output file is ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME}.mender
 
+        comment "Artifact size limits disabled (on-premise server selected)"
+            depends on MENDER_SERVER_HOST_ON_PREM
+
         menuconfig MENDER_ARTIFACT_SIZE_LIMITS
             bool "Artifact size limits"
             default y
+            depends on !MENDER_SERVER_HOST_ON_PREM
                 help
                     Enable size limits for Artifacts.
                         When enabled, you can configure limits to:

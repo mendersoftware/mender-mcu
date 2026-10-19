@@ -104,16 +104,16 @@ mender_utils_strrstr(const char *haystack, const char *needle) {
     assert(NULL != haystack);
     assert(NULL != needle);
 
-    char *r = NULL;
+    const char *r = NULL;
 
     if (!needle[0]) {
         return (char *)haystack + strlen(haystack);
     }
 
     while (1) {
-        char *p = strstr(haystack, needle);
+        const char *p = strstr(haystack, needle);
         if (!p) {
-            return r;
+            return (char *)r;
         }
         r        = p;
         haystack = p + 1;
@@ -551,7 +551,7 @@ mender_utils_compare_wildcard(const char *str, const char *wildcard_str, bool *m
     const char *to_match = str;
     const char *boundary = wildcard_str;
 
-    char *ptr = strchr(boundary, '*');
+    const char *ptr = strchr(boundary, '*');
 
     /* Check if the wildcard contains wildcard, else compare strings */
     if (NULL == ptr) {

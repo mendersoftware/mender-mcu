@@ -18,8 +18,8 @@ a deployment and that are sent to the Mender server on failed deployments for fu
 On a successful deployment we update the local provides database with the meta-data from the Artifact that was installed, combining
 provides, Artifact name and clears provides.
 
-A successful deployment using the zephyr-image update module will go through 6 state transitions and write the provides and the Artifact
-name to the flash. This results in around $K = 6+2$ writes.
+A successful deployment using the zephyr-image update module will go through 7 state transitions and write the provides and the Artifact
+name to the flash. This results in around $K = 7+2$ writes.
 
 Based on numbers seen in production, we can expect a 5% failure rate for deployments. If we factor in the estimated failure percentage, we
 can roughly estimate the expected amount of writes during the lifetime of a device:
@@ -30,9 +30,10 @@ If we plot in the following values:
 - $N = 100$
 - $F = 0.05$
 - $W = 28$ (the default value of `MENDER_MAX_STATE_DATA_STORE_COUNT`)
-- $B = 8$ (the amount of writes for a successful deployment with zephyr-image update module)
+- $B = 9$ (the amount of writes for a successful deployment with zephyr-image update module)
 
-we get an estimated $K = 900$ writes to the flash during the lifetime of a device.
+we get an estimated $K = 995$ writes to the flash during the lifetime of a device.
+Downloads interrupted by unexpected restarts add at most `MENDER_MAX_DOWNLOAD_ATTEMPTS` extra writes per deployment.
 
 The equation aims at creating an upper estimate; estimating the exact number of writes during a deployment is next to impossible due to the
 unpredictability of the errors and warnings that may occur. However, we can still be fairly sure that the number of writes will be lower than

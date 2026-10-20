@@ -36,7 +36,38 @@ extern "C" {
 #define MENDER_DEPLOYMENT_DATA_KEY_STATE                  "state"
 #define MENDER_DEPLOYMENT_DATA_KEY_STATE_DATA_STORE_COUNT "state_data_store_count"
 
+/**
+ * @brief Maximum number of deployment data stores during a deployment.
+ * @note The default is based on the maximum state transition count
+ *       from the Mender C++ client. It's a number that won't loop
+ *       too many times and still give some wiggle room.
+ *       If this number is exceeded, the update will be aborted.
+ */
+#ifndef CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT
+#define CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT 28
+#endif /* CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT */
+
+/**
+ * @brief Maximum number of download attempts of the same deployment
+ *        interrupted by an unexpected restart.
+ */
+#ifndef CONFIG_MENDER_MAX_DOWNLOAD_ATTEMPTS
+#define CONFIG_MENDER_MAX_DOWNLOAD_ATTEMPTS 3
+#endif /* CONFIG_MENDER_MAX_DOWNLOAD_ATTEMPTS */
+
+#if CONFIG_MENDER_MAX_DOWNLOAD_ATTEMPTS >= CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT
+#error "CONFIG_MENDER_MAX_DOWNLOAD_ATTEMPTS must be lower than CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT"
+#endif
+
 typedef cJSON mender_deployment_data_t;
+
+/**
+ * @brief Get the number of times the deployment data has been stored
+ * @param deployment_data Deployment data
+ * @param count Store count
+ * @return MENDER_OK if the function succeeds, error code otherwise
+ */
+mender_err_t mender_deployment_data_get_state_data_store_count(const mender_deployment_data_t *deployment_data, uint32_t *count);
 
 /**
  * @brief Delete deployment data object

@@ -29,17 +29,6 @@
  */
 #define DEPLOYMENT_DATA_VERSION 1.0
 
-/**
- * @brief Deployment data version number.
- * @note The default is based on the maximum state transition count
- *       from the Mender C++ client. It's a number that won't loop
- *       too many times and still give some wiggle room.
- *       If this number is exceeded, the update will be aborted.
- */
-#ifndef CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT
-#define CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT 28
-#endif /* CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT */
-
 static cJSON_bool
 json_is_string_or_null(const cJSON *json) {
     return cJSON_IsNull(json) || cJSON_IsString(json);
@@ -99,6 +88,28 @@ validate_deployment_data(const cJSON *deployment_data) {
     }
 
     return true;
+}
+
+mender_err_t
+mender_deployment_data_get_state_data_store_count(const mender_deployment_data_t *deployment_data, uint32_t *count) {
+
+    assert(NULL != count);
+
+    if (NULL == deployment_data) {
+        return MENDER_NOT_FOUND;
+    }
+
+    const cJSON *item;
+    if (NULL == (item = cJSON_GetObjectItemCaseSensitive(deployment_data, MENDER_DEPLOYMENT_DATA_KEY_STATE_DATA_STORE_COUNT))) {
+        return MENDER_FAIL;
+    }
+    if (!cJSON_IsNumber(item)) {
+        return MENDER_FAIL;
+    }
+
+    *count = (uint32_t)cJSON_GetNumberValue(item);
+
+    return MENDER_OK;
 }
 
 mender_err_t

@@ -18,6 +18,8 @@
  * limitations under the License.
  */
 
+#include <inttypes.h>
+
 #include "alloc.h"
 #include "api.h"
 #include "client.h"
@@ -1005,6 +1007,15 @@ mender_check_artifact_requirements(mender_artifact_ctx_t *mender_artifact_ctx, m
 }
 #endif /* CONFIG_MENDER_FULL_PARSE_ARTIFACT */
 
+static bool
+is_interrupted_download(mender_deployment_data_t *deployment_data, const char *id) {
+    const char           *stored_id = NULL;
+    mender_update_state_t stored_state;
+
+    return (MENDER_OK == mender_deployment_data_get_id(deployment_data, &stored_id)) && (NULL != stored_id) && (NULL != id) && StringEqual(stored_id, id)
+           && (MENDER_OK == mender_deployment_data_get_state(deployment_data, &stored_state)) && (MENDER_UPDATE_STATE_DOWNLOAD == stored_state);
+}
+
 static mender_err_t
 mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
     assert(NULL != deployment_data);
@@ -1024,9 +1035,19 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
 
     mender_err_t ret = MENDER_OK;
 
+    /* The in-memory deployment data is released at the end of every update
+     * work, reload it to detect an interrupted download of the same deployment */
+    if (NULL == mender_client_deployment_data) {
+        mender_get_deployment_data(&mender_client_deployment_data); /* MENDER_NOT_FOUND is the common case */
+    }
+
     mender_log_info("Checking for deployment...");
     if (MENDER_NOT_FOUND == (ret = mender_api_check_for_deployment(deployment))) {
         mender_log_info("No deployment available");
+        if (NULL != mender_client_deployment_data) {
+            /* Deployment no longer available (e.g. aborted), hence drop it. */
+            mender_storage_delete_deployment_data();
+        }
         return MENDER_DONE;
     } else if (MENDER_OK != ret) {
         mender_log_error("Unable to check for deployment");
@@ -1039,10 +1060,15 @@ mender_client_check_deployment(mender_api_deployment_data_t **deployment_data) {
         return MENDER_FAIL;
     }
 
-    /* Create deployment data */
+    /* Create deployment data unless resuming interrupted download for
+     * the same deployment; keeps state_data_store_count across restarts. */
     if (NULL != mender_client_deployment_data) {
+        if (is_interrupted_download(mender_client_deployment_data, deployment->id)) {
+            mender_log_info("Download of this deployment was interrupted by a restart");
+            return MENDER_OK;
+        }
         mender_log_warning("Unexpected stale deployment data");
-        mender_delete_deployment_data(mender_client_deployment_data);
+        DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
     }
     if (MENDER_OK != (mender_create_deployment_data(deployment->id, deployment->artifact_name, &mender_client_deployment_data))) {
         /* Error already logged */
@@ -1173,8 +1199,18 @@ mender_client_update_work_function(void) {
                     goto END;
                 }
 
+                /* Set deployment_id */
+                deployment_id = deployment->id;
+
+                /* Each start of the download of the same deployment is counted in the
+                 * deployment data, the count only survives unexpected restarts since
+                 * any regular failure goes through CLEANUP which deletes it */
+                uint32_t download_attempts = 0;
+                mender_deployment_data_get_state_data_store_count(mender_client_deployment_data, &download_attempts);
+
 #ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
-                if (MENDER_OK != mender_storage_deployment_log_clear()) {
+                /* Keep the logs of the previous interrupted attempts */
+                if ((0 == download_attempts) && (MENDER_OK != mender_storage_deployment_log_clear())) {
                     mender_log_error("Failed to clean old deployment logs");
                     /* Not a fatal issue to abort the deployment, keep going. */
                 }
@@ -1184,6 +1220,19 @@ mender_client_update_work_function(void) {
                 }
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
+                if (download_attempts >= CONFIG_MENDER_MAX_DOWNLOAD_ATTEMPTS) {
+                    mender_log_error("Download interrupted by a restart %" PRIu32 " times, failing deployment", download_attempts);
+                    if (MENDER_OK == mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE)) {
+                        mender_storage_delete_deployment_data();
+                    }
+                    /* else: keep the deployment data so that the next attempt fails right away */
+                    goto END;
+                }
+                if (MENDER_OK != set_and_store_state(MENDER_UPDATE_STATE_DOWNLOAD)) {
+                    /* Not fatal, only the detection of interrupted downloads is lost */
+                    mender_log_warning("Unable to store deployment data before download");
+                }
+
 #if CONFIG_MENDER_LOG_LEVEL >= MENDER_LOG_LEVEL_INF
                 if (strlen(deployment->id) > 10) {
                     mender_log_info("Downloading artifact with id '%.7s...', name '%s', uri '%s'", deployment->id, deployment->artifact_name, deployment->uri);
@@ -1191,9 +1240,6 @@ mender_client_update_work_function(void) {
                     mender_log_info("Downloading artifact with id '%s', name '%s', uri '%s'", deployment->id, deployment->artifact_name, deployment->uri);
                 }
 #endif
-                /* Set deployment_id */
-                deployment_id = deployment->id;
-
                 /* Check ret to see if the deployment is aborted */
                 ret = mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
                 if ((MENDER_ABORTED != ret)

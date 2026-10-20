@@ -747,6 +747,15 @@ if MENDER_MCU_CLIENT
                     If this limit is reached, a state loop is detected, and the deployment will be marked
                     as a failure.
 
+           config MENDER_MAX_DOWNLOAD_ATTEMPTS
+                int "Maximum number of interrupted download attempts for the same deployment"
+                range 1 255
+                default 3
+                help
+                    Maximum number of times the client starts downloading the same deployment after an
+                    unexpected restart. When this limit is reached, the deployment will be marked as a failure.
+                    Value must be lower than MENDER_MAX_STATE_DATA_STORE_COUNT.
+
             config MENDER_DETECT_NETWORK_ERRORS
                 bool "Try to detect network errors and reset network to fix them"
                 default y

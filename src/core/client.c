@@ -1352,9 +1352,9 @@ mender_client_update_work_function(void) {
                    submission is not desired after a failed commit, so skip it
                    then (which also keeps the error in ret). */
                 if (!MENDER_IS_ERROR(ret) && !mender_update_module->requires_reboot) {
-                    if (MENDER_OK != (ret = mender_inventory_reset_persistent())) {
+                    if (MENDER_OK != mender_inventory_reset_persistent()) {
                         mender_log_error("Failed to reset persistent inventory after deployment commit with no reboot");
-                    } else if (MENDER_OK != (ret = mender_inventory_execute())) {
+                    } else if (MENDER_OK != mender_inventory_execute()) {
                         mender_log_error("Failed to trigger inventory refresh after deployment commit with no reboot");
                     }
                 }

@@ -1132,7 +1132,9 @@ mender_client_update_work_function(void) {
  * mender_update_module is guaranteed be not NULL since the first
  * successful transition (from the DOWNLOAD state). */
 #define NEXT_STATE                                                             \
-    if (MENDER_OK == ret) {                                                    \
+    if (!MENDER_IS_ERROR(ret)) {                                               \
+        /* state's result should always be MENDER_OK or an error */            \
+        assert(MENDER_OK == ret);                                              \
         update_state = update_state_transitions[update_state].success;         \
         assert(NULL != mender_update_module);                                  \
         mender_log_debug("Entering state %s", update_state_str[update_state]); \

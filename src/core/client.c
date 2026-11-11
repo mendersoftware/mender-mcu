@@ -1252,7 +1252,10 @@ mender_client_update_work_function(void) {
                         /* Save the next state before running the install callback.
                          * If there is a spontaneous reboot right after the callback
                          * we assure that we don't get stuck in a potential pending image in slot 1 */
-                        set_and_store_state(MENDER_UPDATE_STATE_REBOOT);
+                        if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_REBOOT)) {
+                            update_state = MENDER_UPDATE_STATE_FAILURE;
+                            continue;
+                        }
                     }
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
@@ -1266,7 +1269,9 @@ mender_client_update_work_function(void) {
                         /* skip reboot */
                         update_state = MENDER_UPDATE_STATE_COMMIT;
                         mender_log_debug("Entering state %s", update_state_str[update_state]);
-                        set_and_store_state(update_state);
+                        if (MENDER_LOOP_DETECTED == set_and_store_state(update_state)) {
+                            update_state = MENDER_UPDATE_STATE_FAILURE;
+                        }
                         continue;
                     }
                 }
@@ -1286,7 +1291,10 @@ mender_client_update_work_function(void) {
                      * verification should happen anyway, the callback in that
                      * state should be able to see if things went well or
                      * wrong. */
-                    set_and_store_state(MENDER_UPDATE_STATE_VERIFY_REBOOT);
+                    if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_VERIFY_REBOOT)) {
+                        update_state = MENDER_UPDATE_STATE_FAILURE;
+                        continue;
+                    }
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                     if (MENDER_OK == ret) {
                         /* now we need to get outside of the loop so that a
@@ -1399,7 +1407,10 @@ mender_client_update_work_function(void) {
             case MENDER_UPDATE_STATE_ROLLBACK_REBOOT:
                 /* Save the next state before running the reboot callback (see
                  * STATE_REBOOT for details). */
-                set_and_store_state(MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT);
+                if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT)) {
+                    update_state = MENDER_UPDATE_STATE_FAILURE;
+                    continue;
+                }
                 ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
 
                 if (MENDER_OK == ret) {

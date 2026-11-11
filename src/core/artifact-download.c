@@ -51,6 +51,11 @@ mender_download_artifact(const char               *uri,
 
     /* Perform HTTP request */
     ret = mender_http_artifact_download(uri, &dl_data, &status);
+
+    /* Set even on failure, the deployment data is stored once the update module is
+       known and the update module is needed to clean up and delete it */
+    *update_module = dl_data.update_module;
+
     if (MENDER_OK == mender_artifact_get_ctx(artifact_ctx)) {
         /* Download done (one way or another), we can drop the auxiliary buffers
            from the artifact context. */
@@ -67,7 +72,6 @@ mender_download_artifact(const char               *uri,
     /* Treatment depending of the status */
     if (200 == status) {
         /* Nothing to do */
-        *update_module = dl_data.update_module;
         return MENDER_OK;
     } else {
         mender_api_print_response_error(NULL, status);

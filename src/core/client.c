@@ -691,11 +691,11 @@ mender_client_initialization_work_function(void) {
         }
     }
 
-    /* Handle spontaneous reboots in  MENDER_UPDATE_STATE_INSTALL and MENDER_UPDATE_STATE_COMMIT
+    /* Handle spontaneous reboots in MENDER_UPDATE_STATE_DOWNLOAD, MENDER_UPDATE_STATE_INSTALL and MENDER_UPDATE_STATE_COMMIT
      See https://docs.mender.io/artifact-creation/state-scripts#power-loss */
     mender_update_state_t update_state;
     if (MENDER_OK == (ret = mender_deployment_data_get_state(mender_client_deployment_data, &update_state))) {
-        if ((MENDER_UPDATE_STATE_INSTALL == update_state) || (MENDER_UPDATE_STATE_COMMIT == update_state)) {
+        if ((MENDER_UPDATE_STATE_DOWNLOAD == update_state) || (MENDER_UPDATE_STATE_INSTALL == update_state) || (MENDER_UPDATE_STATE_COMMIT == update_state)) {
             mender_log_debug("Spontaneous reboot detected in state %s", update_state_str[update_state]);
             spontaneous_reboot = true;
         }
@@ -1103,11 +1103,9 @@ mender_client_update_work_function(void) {
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
 
 #ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
-            if (MENDER_UPDATE_STATE_DOWNLOAD != update_state) {
-                if (MENDER_OK != mender_deployment_logs_activate()) {
-                    mender_log_error("Failed to activate deployment logs saving");
-                    /* Not a fatal issue to abort the deployment, keep going. */
-                }
+            if (MENDER_OK != mender_deployment_logs_activate()) {
+                mender_log_error("Failed to activate deployment logs saving");
+                /* Not a fatal issue to abort the deployment, keep going. */
             }
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
@@ -1156,7 +1154,11 @@ mender_client_update_work_function(void) {
     if (spontaneous_reboot) {
         mender_log_error("Failing deployment, spontaneous reboot detected");
         spontaneous_reboot = false;
-        update_state       = update_state_transitions[update_state].failure;
+        if (MENDER_UPDATE_STATE_DOWNLOAD == update_state) {
+            /* Nothing installed, straight to CLEANUP which does not publish the failure */
+            mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        }
+        update_state = update_state_transitions[update_state].failure;
         mender_log_debug("Entering state %s", update_state_str[update_state]);
     }
     while (MENDER_UPDATE_STATE_END != update_state) {
@@ -1195,6 +1197,12 @@ mender_client_update_work_function(void) {
 #endif
                 /* Set deployment_id */
                 deployment_id = deployment->id;
+
+                /* Only set in memory, the deployment data is stored once the artifact
+                 * header is parsed and the update module is known */
+                if (MENDER_OK != mender_deployment_data_set_state(mender_client_deployment_data, MENDER_UPDATE_STATE_DOWNLOAD)) {
+                    mender_log_error("Failed to set deployment data state");
+                }
 
                 /* Check ret to see if the deployment is aborted */
                 ret = mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);

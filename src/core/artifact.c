@@ -963,6 +963,14 @@ artifact_read_header_info(mender_artifact_ctx_t *ctx, mender_artifact_download_d
             index++;
         }
 
+        /* Store the deployment data now that the payload types are known, so that the update
+         * module can clean up if the download is interrupted by an unexpected restart */
+        if (MENDER_OK != mender_set_deployment_data(dl_data->deployment)) {
+            /* Error already logged */
+            ret = MENDER_FAIL;
+            goto END;
+        }
+
 #ifdef CONFIG_MENDER_FULL_PARSE_ARTIFACT
         cJSON *json_provides = cJSON_GetObjectItemCaseSensitive(object, "artifact_provides");
         if (cJSON_IsObject(json_provides)) {

@@ -367,7 +367,7 @@ menu "Mender client"
            config MENDER_MAX_STATE_DATA_STORE_COUNT
                 int "Maximum number of state transitions before detecting a state loop during a deployment"
                 range 1 255
-                default 28
+                default 29
                 help
                     If this limit is reached, a state loop is detected, and the deployment will be marked
                     as a failure.

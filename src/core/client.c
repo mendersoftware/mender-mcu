@@ -691,11 +691,11 @@ mender_client_initialization_work_function(void) {
         }
     }
 
-    /* Handle spontaneous reboots in  MENDER_UPDATE_STATE_INSTALL and MENDER_UPDATE_STATE_COMMIT
+    /* Handle spontaneous reboots in MENDER_UPDATE_STATE_DOWNLOAD, MENDER_UPDATE_STATE_INSTALL and MENDER_UPDATE_STATE_COMMIT
      See https://docs.mender.io/artifact-creation/state-scripts#power-loss */
     mender_update_state_t update_state;
     if (MENDER_OK == (ret = mender_deployment_data_get_state(mender_client_deployment_data, &update_state))) {
-        if ((MENDER_UPDATE_STATE_INSTALL == update_state) || (MENDER_UPDATE_STATE_COMMIT == update_state)) {
+        if ((MENDER_UPDATE_STATE_DOWNLOAD == update_state) || (MENDER_UPDATE_STATE_INSTALL == update_state) || (MENDER_UPDATE_STATE_COMMIT == update_state)) {
             mender_log_debug("Spontaneous reboot detected in state %s", update_state_str[update_state]);
             spontaneous_reboot = true;
         }
@@ -1103,11 +1103,9 @@ mender_client_update_work_function(void) {
             mender_log_debug("Resuming from state %s", update_state_str[update_state]);
 
 #ifdef CONFIG_MENDER_DEPLOYMENT_LOGS
-            if (MENDER_UPDATE_STATE_DOWNLOAD != update_state) {
-                if (MENDER_OK != mender_deployment_logs_activate()) {
-                    mender_log_error("Failed to activate deployment logs saving");
-                    /* Not a fatal issue to abort the deployment, keep going. */
-                }
+            if (MENDER_OK != mender_deployment_logs_activate()) {
+                mender_log_error("Failed to activate deployment logs saving");
+                /* Not a fatal issue to abort the deployment, keep going. */
             }
 #endif /* CONFIG_MENDER_DEPLOYMENT_LOGS */
 
@@ -1156,7 +1154,11 @@ mender_client_update_work_function(void) {
     if (spontaneous_reboot) {
         mender_log_error("Failing deployment, spontaneous reboot detected");
         spontaneous_reboot = false;
-        update_state       = update_state_transitions[update_state].failure;
+        if (MENDER_UPDATE_STATE_DOWNLOAD == update_state) {
+            /* Nothing installed, straight to CLEANUP which does not publish the failure */
+            mender_client_publish_deployment_status(deployment_id, MENDER_DEPLOYMENT_STATUS_FAILURE);
+        }
+        update_state = update_state_transitions[update_state].failure;
         mender_log_debug("Entering state %s", update_state_str[update_state]);
     }
     while (MENDER_UPDATE_STATE_END != update_state) {
@@ -1195,6 +1197,12 @@ mender_client_update_work_function(void) {
 #endif
                 /* Set deployment_id */
                 deployment_id = deployment->id;
+
+                /* Only set in memory, the deployment data is stored once the artifact
+                 * header is parsed and the update module is known */
+                if (MENDER_OK != mender_deployment_data_set_state(mender_client_deployment_data, MENDER_UPDATE_STATE_DOWNLOAD)) {
+                    mender_log_error("Failed to set deployment data state");
+                }
 
                 /* Check ret to see if the deployment is aborted */
                 ret = mender_client_publish_deployment_status(deployment->id, MENDER_DEPLOYMENT_STATUS_DOWNLOADING);
@@ -1252,7 +1260,10 @@ mender_client_update_work_function(void) {
                         /* Save the next state before running the install callback.
                          * If there is a spontaneous reboot right after the callback
                          * we assure that we don't get stuck in a potential pending image in slot 1 */
-                        set_and_store_state(MENDER_UPDATE_STATE_REBOOT);
+                        if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_REBOOT)) {
+                            update_state = MENDER_UPDATE_STATE_FAILURE;
+                            continue;
+                        }
                     }
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                 }
@@ -1266,7 +1277,9 @@ mender_client_update_work_function(void) {
                         /* skip reboot */
                         update_state = MENDER_UPDATE_STATE_COMMIT;
                         mender_log_debug("Entering state %s", update_state_str[update_state]);
-                        set_and_store_state(update_state);
+                        if (MENDER_LOOP_DETECTED == set_and_store_state(update_state)) {
+                            update_state = MENDER_UPDATE_STATE_FAILURE;
+                        }
                         continue;
                     }
                 }
@@ -1286,7 +1299,10 @@ mender_client_update_work_function(void) {
                      * verification should happen anyway, the callback in that
                      * state should be able to see if things went well or
                      * wrong. */
-                    set_and_store_state(MENDER_UPDATE_STATE_VERIFY_REBOOT);
+                    if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_VERIFY_REBOOT)) {
+                        update_state = MENDER_UPDATE_STATE_FAILURE;
+                        continue;
+                    }
                     ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
                     if (MENDER_OK == ret) {
                         /* now we need to get outside of the loop so that a
@@ -1399,7 +1415,10 @@ mender_client_update_work_function(void) {
             case MENDER_UPDATE_STATE_ROLLBACK_REBOOT:
                 /* Save the next state before running the reboot callback (see
                  * STATE_REBOOT for details). */
-                set_and_store_state(MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT);
+                if (MENDER_LOOP_DETECTED == set_and_store_state(MENDER_UPDATE_STATE_ROLLBACK_VERIFY_REBOOT)) {
+                    update_state = MENDER_UPDATE_STATE_FAILURE;
+                    continue;
+                }
                 ret = mender_update_module->callbacks[update_state](update_state, (mender_update_state_data_t)NULL);
 
                 if (MENDER_OK == ret) {

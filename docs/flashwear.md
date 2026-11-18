@@ -29,10 +29,10 @@ $K = N \times ( (W \times F ) + (B \times (1 - F)))$
 If we plot in the following values:
 - $N = 100$
 - $F = 0.05$
-- $W = 28$ (the default value of `MENDER_MAX_STATE_DATA_STORE_COUNT`)
+- $W = 29$ (the default value of `MENDER_MAX_STATE_DATA_STORE_COUNT`)
 - $B = 9$ (the amount of writes for a successful deployment with zephyr-image update module)
 
-we get an estimated $K = 995$ writes to the flash during the lifetime of a device.
+we get an estimated $K = 1000$ writes to the flash during the lifetime of a device.
 
 The equation aims at creating an upper estimate; estimating the exact number of writes during a deployment is next to impossible due to the
 unpredictability of the errors and warnings that may occur. However, we can still be fairly sure that the number of writes will be lower than

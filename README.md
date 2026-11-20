@@ -10,12 +10,6 @@ creators of [Mender](https://mender.io/).
 
 ![Mender logo](https://github.com/mendersoftware/mender/raw/master/mender_logo.png)
 
-## Project Status
-
-We are actively working on expanding the capabilities of the original
-mender-mcu-client to better support a wider range of use cases. Features and
-functionality may evolve significantly.
-
 ## Why Fork?
 
 The decision to fork the original mender-mcu-client was made to:
@@ -27,310 +21,26 @@ The decision to fork the original mender-mcu-client was made to:
 
 ## Get started
 
-This guide is based on our Zephyr reference application [mender-mcu-integration](https://github.com/mendersoftware/mender-mcu-integration).
-The reference application is intended to be used as a reference and a demonstration of how to
-use `mender-mcu` as a Zephyr module. We therefore recommend that you start with this to
-familiarize yourself with the API and how we set it up.
+`mender-mcu` runs on Zephyr and FreeRTOS (ESP-IDF, preview). How to integrate, configure and build
+it for each operating system is described in the [Mender documentation](https://docs.mender.io):
 
-`mender-mcu-integration` will follow the `mender-mcu` main branch.
+* [Get started: Microcontroller](https://docs.mender.io/get-started/microcontroller-preview)
+* [Operating System updates: Zephyr](https://docs.mender.io/operating-system-updates-zephyr)
+* [Operating System updates: FreeRTOS](https://docs.mender.io/operating-system-updates-freertos)
+* [Troubleshoot: Mender MCU](https://docs.mender.io/troubleshoot/mender-mcu)
 
-In the `mender-mcu-integration` repository you will find:
-* A reference `west` workspace for Zephyr OS builds, including `CMake` and `KConfig` configurations.
-* Sample application for how to use `mender-mcu` APIs.
-* A list of boards that we have so far tested.
-
-We recommend starting there to understand how we have designed our solution and then coming back
-here for more in-depth information.
-
-### Compatibility
-| Zephyr OS version |
-|-------------------|
-| v4.4.0            |
-| v4.2.0            |
+The reference application [mender-mcu-integration](https://github.com/mendersoftware/mender-mcu-integration)
+shows how to use `mender-mcu`: the `main` branch for Zephyr and the `esp-idf` branch for ESP-IDF.
 
 ### Boards
-The reference board for `mender-mcu` is the [ESP32-S3-DevKitC](https://docs.zephyrproject.org/latest/boards/espressif/esp32s3_devkitc/doc/index.html).
 
-### Setting up a West project with `mender-mcu` as a Zephyr module
-See the [Zephyr documentation](https://docs.zephyrproject.org/latest/develop/getting_started/index.html) for more information
-on getting started with Zephyr.
+The reference board for `mender-mcu` is the [ESP32-S3-DevKitC](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/index.html).
 
-In order to use `mender-mcu` as a Zephyr [module](https://docs.zephyrproject.org/latest/develop/modules.html#modules-external-projects)
-in a [West project](https://docs.zephyrproject.org/latest/develop/west/basics.html#west-workspace), you will
-need to add `mender-mcu` to your project's west manifest:
+## API
 
-```yaml
-manifest:
-  projects:
-    - name: mender-mcu
-      url: https://github.com/mendersoftware/mender-mcu
-      revision: main
-      path: modules/mender-mcu
-      import: true
-```
-If you already have a west workspace, you can simply add `mender-mcu` with the following command
-inside the workspace after adding the project to the manifest:
-```
-west update
-```
-If you're starting from scratch, you can initialize a new workspace based on the manifest like so:
-```
-west init workspace --manifest-url https://url/to/repository-containing-manifest
-cd workspace && west update
-```
-
-### Configuring the client
-Zephyr provides [tools](https://docs.zephyrproject.org/latest/build/kconfig/menuconfig.html) for configuring
-projects, which are used to set Kconfig options. These options are used by Zephyr modules to configure their behavior.
-
-The options for configuring `mender-mcu` are found in the menuconfig under `Modules -> mender-mcu`,
-and are prefixed with `MENDER_`.
-
-You can use either `west build -t menuconfig` or `west build -t guiconfig` to open
-the configuration menu.
-
-The following option **must** be set in any configuration:
-* `MENDER_SERVER_TENANT_TOKEN` which is a token that identifies which tenant a device belongs to.
-* `MENDER_ARTIFACT_NAME` which is used to generate the Mender Artifact out of the built binary
-  * Alternatively, disable auto-generation of the Mender Artifact with `MENDER_ARTIFACT_GENERATE`
-
-The most common options to modify are:
-* `MENDER_SERVER_HOST`
-* `MENDER_CLIENT_UPDATE_POLL_INTERVAL`
-* `MENDER_CLIENT_INVENTORY_REFRESH_INTERVAL`
-
-See descriptions of the options in the menuconfig for more information.
-
-### The Mender client API
-
-The main API is exposed in [`client.h`](include/mender/client.h). The most notable parts are:
-
-* Identity callback. The user needs to provide a callback that will return the identity. In most
-cases, this would be reading a unique device number like a MAC address. Read more about
-[Mender identity in Mender Docs](https://docs.mender.io/overview/identity).
-
-* Network connect / Network release callbacks. In systems where the network is not always available,
-the client will invoke the network connect callback before doing operations that require
-connectivity (for example, checking for an update). Once network operations are completed, the
-network release callback will be invoked. They can be set to `NULL` if the network is assumed to be
-always ready.
-
-* Restart callback. To be called to trigger a device reset, for example after a fatal error.
-
-* Inventory setting. There is an explicit call to set the inventory. This will update the internal
-inventory of the client and sent to the Mender Server in the next inventory report.
-
-* User Provided Keys. The client can be configured to use a provided a keypair. If set to
-`NULL`, the client will auto-generate its own keypair using ECDSA.
-
-### Update Modules API
-
-The Update Module API is exposed in [update-module.h](include/mender/update-module.h).
-
-Mender MCU models the Update Modules API which we have been using in the regular Mender client for
-years. Refer to the [Update Modules chapter in Mender
-Docs](https://docs.mender.io/artifact-creation/create-a-custom-update-module) for an introduction.
-In Mender MCU, the modules are not "executables" but rather rather a custom C function that is
-integrated with the client to handle each type of update.
-
-#### `zephyr-image` Update Module
-
-We provide the `zephyr-image` Update Module, which implements the update process for a Zephyr OS
-update integrated with MCUboot. Its [source code](src/platform/update_modules/zephyr/image/update-module.c)
-can be inspected for inspiration and a better understanding of the expected behavior of each state.
-
-To use the `zephyr-image` Update Module, you need a board that supports
-MCUboot. The following link will filter the officially supported boards that also support MCUboot:
-* [Zephyr Project supported boards with MCU boot](https://docs.zephyrproject.org/latest/gsearch.html?q=MCUboot&check_keywords=yes&area=default#gsc.tab=0&gsc.q=MCUboot&gsc.ref=more%3Aboards&gsc.sort=)
-
-The Update Module requires a swap algorithm in order to allow rollbacks to revert to the previous image.
-The [MCUboot documentation](https://docs.mcuboot.com/readme-zephyr.html) recommends against using the
-`swap-using-scratch algorithm`, which also requires its own `scratch_partition`. We therefore require
-`MCUBOOT_MODE_SWAP_USING_MOVE` (`MCUBOOT_MODE_SWAP_WITHOUT_SCRATCH` for Zephyr versions below 4.1) to be
-enabled in order to use the Update Module.
-
-#### Update Modules State Machine
-
-As stated above, an Update Module for Mender MCU is set of customizable C functions. Concretely,
-once created, all Update Modules are identified by a C struct. The most important part of
-the struct is the array of callbacks, one to be called for each state.
-
-See [the state machine workflow
-diagram](https://docs.mender.io/artifact-creation/create-a-custom-update-module#the-state-machine-workflow)
-to learn about the flow between each state. An Update Module does not need to implement all of them,
-only the ones that are relevant for a particular type of update.
-
-After writing the code, you need to register the Update Module into the Mender MCU. See the register
-update module function in [`update-module.h`](include/mender/update-module.h).
-
-
-
-### Network
-
-See this [example](https://github.com/mendersoftware/mender-mcu-integration/blob/main/src/utils/netup.c) from mender-mcu-integration for a demo.
-This implementation uses Zephyr's native networking APIs, see [Zephyr's Networking Guide](https://docs.zephyrproject.org/latest/connectivity/networking/index.html).
-
-### Certificates
-See this [example](https://github.com/mendersoftware/mender-mcu-integration/blob/main/src/utils/certs.c) from mender-mcu-integration for a demo.
-
-The client expects the users to add the certificates using `tls_credentials_add`. See the
-[TLS credentials management](https://docs.zephyrproject.org/latest/doxygen/html/group__tls__credentials.html)
-documentation for more information.
-
-The `mender-mcu` client can take up to two certificates; typically one for the Server API calls, and
-one for downloading Mender Artifacts from the Server storage. The latter is optional.
-
-Example of how to add certificates to the client:
-
-```cmake
-generate_inc_file_for_target(app
-    "path/to/certificates/Certificate1.cer"
-    "${ZEPHYR_BINARY_DIR}/include/generated/Cerficiate1.cer.inc"
-)
-```
-[`generate_inc_file_for_target`](https://github.com/zephyrproject-rtos/zephyr/blob/bc42004d1be40d9b5bec2d3e8c600780b644ff6e/cmake/modules/extensions.cmake#L703)
-is a Zephyr CMake extension.
-
-The certificates should be guarded by the `CONFIG_NET_SOCKETS_SOCKOPT_TLS` option,
-
-Use `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY_ENABLED` to check if a secondary certificate is enabled.
-
-The API for adding the certificates is provided by Zephyr, and can be used by including
-`zephyr/include/net/tls_credentials.h`
-
-You can add the certificate by calling `tls_credential_add` with the following arguments:
-* `tag` - The tag of the certificate - configured by setting either:
-    * `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_PRIMARY` - The tag for the primary certificate
-    * `CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_SECONDARY` - The tag for the secondary certificate
-* `type` - The type of the certificate - should be `TLS_CREDENTIAL_CA_CERTIFICATE`
-* `data` - The certificate data - should be an array of unsigned characters
-* `len` - The length of the certificate data - should be the size of the array of unsigned characters
-
-Example:
-```c
-#include <zephyr/net/tls_credentials.h>
-
-#if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS)
-static const unsigned char ca_certificate_one[] = {
-#include "Certificate1.cer.inc"
-};
-#endif
-int add_cert(void) {
-    //...
-    ret = tls_credential_add(CONFIG_MENDER_NET_CA_CERTIFICATE_TAG_PRIMARY, TLS_CREDENTIAL_CA_CERTIFICATE, ca_certificate_one, sizeof(ca_certificate_one));
-    //...
-}
-```
-
-### Starting the client
-See this [example](https://github.com/mendersoftware/mender-mcu-integration/blob/main/src/main.c) from mender-mcu-integration for a demo.
-
-#### Initializing the client
-Before intializing the client, you must set up the network connection, certificates, and an Update Module.
-
-You must also define two structs:
-
-`mender_client_config_t` with the fields defined in [client.h](include/mender/client.h).
-* The `device_type` can be set to `NULL`, as it is defined at build time
-
-and
-
-`mender_client_callbacks_t` with the callbacks defined in [client.h](include/mender/client.h).
-
-See [The Mender client API ](#the-mender-client-api).
-
-After implementing the necessary callbacks and creating the structs,
-the client can be initialized by calling `mender_client_init`, which
-is defined in [client.h](include/mender/client.h):
-
-Example:
-```c
-mender_client_init(&mender_client_config, &mender_client_callbacks));
-```
-
-#### Registering the Update Module
-As mentioned in [Update Modules API](#update-modules-api), you must also register one or more
-Update Modules. Without an Update Module, the client can run and report inventory, but it will
-not be able to perform any updates.
-
-Registering `zephyr-image` Update Module (compiled in by default on Zephyr):
-```c
-#include "mender/zephyr-image-update-module.h"
-mender_zephyr_image_register_update_module();
-```
-
-Registering `esp-ota` Update Module (compiled in by default on ESP-IDF):
-```c
-#include "mender/esp-ota-update-module.h"
-mender_esp_ota_register_update_module();
-```
-
-#### Enabling Inventory
-Inventory is enabled/disabled by setting the `MENDER_CLIENT_INVENTORY` option.
-
-Inventory is added through user-provided callbacks. The data provided by the callbacks
-can be marked as persistent, meaning static data that doesn't change is only set once, or dynamic,
-which means fresh data is always obtained and sent at the specified inventory refresh interval.
-
-You can add an inventory callback by calling
-`mender_inventory_add_callback`, which is defined in the [inventory API](include/mender/inventory.h).
-
-Example of adding a persistent callback:
-```c
-static mender_err_t
-persistent_inventory_cb(mender_keystore_t **keystore, uint8_t *keystore_len) {
-    static mender_keystore_t inventory[] = { { .name = "Name", .value = "Example value" } };
-    *keystore = inventory;
-    *keystore_len = 1;
-    return MENDER_OK;
-}
-
-mender_inventory_add_callback(persistent_inventory_cb, true);
-```
-
-#### Activating the Client
-Finally, you can activate the client by calling `mender_client_activate`:
-```c
-mender_client_activate();
-```
-After the client is activated, it will run on a workqueue thread, either a dedicated one
-(default) or the system one (configurable with the options starting with `CONFIG_SYSTEM_WORKQUEUE_`).
-From this thread, the client will regularly poll for updates and submit inventory.
-
-### Building the client
-
-See the [building section](https://github.com/mendersoftware/mender-mcu-integration?tab=readme-ov-file#building-the-zephyr-project-mender-reference-app)
-in mender-mcu-integration for a list of the boards that we have tested, and for examples
-on how to build for them.
-
-### Manually creating a Mender Artifact
-
-NOTE: Compression of artifacts is **not** supported, which is why we use `--compression none`
-
-After building the client, you can create a [Mender Artifact](https://docs.mender.io/overview/artifact).
-
-The update module must correspond with one of the ones registered during initialization of the client.
-The device type must match the one set at build time - if you're unsure what this is, you can
-check the value of `MENDER_DEVICE_TYPE` in the menuconfig, by default it uses Zephyr's `BOARD`.
-
-The Artifact Name is arbitrary, but should be unique.
-
-```bash
-UPDATE_MODULE=<update_module>
-ARTIFACT_NAME=<artifact_name>
-DEVICE_TYPE=<device_type>
-
-mender-artifact write module-image \
-  --type $UPDATE_MODULE \
-  --file build/zephyr/zephyr.signed.bin \
-  --artifact-name $ARTIFACT_NAME \
-  --compatible-devices $DEVICE_TYPE \
-  --compression none
-```
-### Deployment
-After creating the Artifact, you can upload it to the Mender Server and deploy it to your device.
-
-See the documentation on [deployments](https://docs.mender.io/overview/deployment#deployment) for more information.
+The public API is in [`include/mender`](include/mender). See the Mender documentation for how to use it
+on [Zephyr](https://docs.mender.io/operating-system-updates-zephyr/customize-mender-mcu) and
+[FreeRTOS](https://docs.mender.io/operating-system-updates-freertos/board-integration).
 
 ## Contributing
 

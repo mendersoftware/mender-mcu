@@ -7,7 +7,16 @@ include:
   - project: 'Northern.tech/Mender/mendertesting'
     file:
       - '.gitlab-ci-github-status-updates.yml'
-  - local: "/.gitlab/release.yaml"
+  # Release CI/CD components
+  - component: gitlab.com/Northern.tech/Mender/mendertesting/release-candidate@master
+    inputs:
+      github_repo: mendersoftware/mender-mcu
+  - component: gitlab.com/Northern.tech/Mender/mendertesting/release-docs-changelog@master
+    inputs:
+      remote_changelog_file: "80.mender-mcu/docs.md"
+  - component: gitlab.com/Northern.tech/Mender/mendertesting/release-compass@master
+    inputs:
+      compass_component_id: "7a16336f-95c8-4964-a299-75aa89ce3c3d"
   - component: gitlab.com/Northern.tech/Mender/mendertesting/publish-codecov@master
     inputs:
       coverage_file: coverage.lcov
@@ -15,8 +24,6 @@ include:
 
 stages:
   - test
-  - changelog
-  - release
   - trigger
   - publish
   - .post

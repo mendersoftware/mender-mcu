@@ -1,4 +1,24 @@
 ---
+## 1.1.1 - 2026-11-25
+
+
+### Bug fixes
+
+- *(ci)* Quote the git extraHeader line to avoid YAML colon-space ambiguity ([eebd61b](https://github.com/mendersoftware/mender-mcu/commit/eebd61ba55d33a82cba57b1743acb4f21433f5e9))
+- *(zephyr)* Ignore artifact size limits for on-prem server. ([MEN-9478](https://northerntech.atlassian.net/browse/MEN-9478)) ([d9aea8d](https://github.com/mendersoftware/mender-mcu/commit/d9aea8d385573d288938c376d224a7893a333448))
+- Fix build errors with glibc >= 2.43 ([7fb987c](https://github.com/mendersoftware/mender-mcu/commit/7fb987ce1d64df86f54c08a2d15f3bec87b86b57))
+- Skip the rollback reboot states for an update without reboot ([b0d0a0a](https://github.com/mendersoftware/mender-mcu/commit/b0d0a0aadf3058a3e468b0a91a9ea406acfbb691))
+- Report a failed commit of an update without reboot as failure ([2cc86b2](https://github.com/mendersoftware/mender-mcu/commit/2cc86b264b59b5df21e7a46b05103a881a2f91df))
+- Store the artifact data after the module has committed ([68b5290](https://github.com/mendersoftware/mender-mcu/commit/68b5290d80f204f65be949fac1a2a4ecc64812fd))
+
+---
+### All tickets resolved in this release
+
+| Ticket |
+|---|
+| [MEN-9478](https://northerntech.atlassian.net/browse/MEN-9478) |
+
+
 ## 1.1.0 - 2026-09-01
 
 

@@ -37,7 +37,7 @@
  *       If this number is exceeded, the update will be aborted.
  */
 #ifndef CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT
-#define CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT 28
+#define CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT 29
 #endif /* CONFIG_MENDER_MAX_STATE_DATA_STORE_COUNT */
 
 static cJSON_bool

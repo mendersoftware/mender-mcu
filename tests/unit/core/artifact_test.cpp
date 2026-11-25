@@ -26,6 +26,7 @@
 
 #include "artifact.h"
 #include "deployment-data.h"
+#include "storage.h"
 #include "update-module.h"
 
 using namespace std;
@@ -93,6 +94,8 @@ protected:
 
     void InitializeData(mender_update_module_t *update_module, mender_deployment_data_t *deployment_data, mender_artifact_download_data_t *mock_download_data) {
         mender_create_deployment_data("id", "unit-test-artifact", &deployment_data);
+        /* The deployment data is stored when parsing the header, which requires a state */
+        mender_deployment_data_set_state(deployment_data, MENDER_UPDATE_STATE_DOWNLOAD);
 
         update_module->artifact_type = "unit-test";
         update_module->callbacks[MENDER_UPDATE_STATE_DOWNLOAD]
@@ -119,6 +122,8 @@ protected:
         fs::remove(script_file_name);
         fs::remove(artifact_path);
         DESTROY_AND_NULL(mender_delete_deployment_data, mock_download_data->deployment);
+        /* The posix storage writes the deployment data to the working directory */
+        mender_storage_delete_deployment_data();
         mender_free(deployment_data);
         mender_free(mock_download_data);
         mender_update_module_unregister_all();
@@ -181,6 +186,27 @@ TEST_F(MenderArtifactTest, ProcessData) {
     /* Check the stream state */
     EXPECT_EQ(ctx->stream_state, MENDER_ARTIFACT_STREAM_STATE_PARSING_HEADER);
 
+    mender_artifact_release_ctx(ctx);
+}
+
+TEST_F(MenderArtifactTest, ProcessData_StoresDeploymentDataWithPayloadType) {
+    mender_artifact_ctx_t *ctx = mender_artifact_create_ctx(1024);
+
+    EXPECT_EQ(MENDER_OK, mender_artifact_process_data(ctx, data, artifact_data.size(), mock_download_data));
+
+    /* The stored deployment data is used to clean up after an interrupted download */
+    mender_deployment_data_t *stored = nullptr;
+    ASSERT_EQ(MENDER_OK, mender_get_deployment_data(&stored));
+
+    mender_update_state_t state;
+    EXPECT_EQ(MENDER_OK, mender_deployment_data_get_state(stored, &state));
+    EXPECT_EQ(MENDER_UPDATE_STATE_DOWNLOAD, state);
+
+    const char *payload_type = nullptr;
+    EXPECT_EQ(MENDER_OK, mender_deployment_data_get_payload_type(stored, &payload_type));
+    EXPECT_STREQ("unit-test", payload_type);
+
+    mender_delete_deployment_data(stored);
     mender_artifact_release_ctx(ctx);
 }
 

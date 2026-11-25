@@ -55,6 +55,13 @@
 #endif /* CONFIG_MENDER_SERVER_TENANT_TOKEN */
 
 /**
+ * @brief Default secondary tenant token
+ */
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_TENANT_TOKEN
+#define CONFIG_MENDER_SECONDARY_SERVER_TENANT_TOKEN NULL
+#endif /* CONFIG_MENDER_SECONDARY_SERVER_TENANT_TOKEN */
+
+/**
  * @brief Default device tier
  */
 #ifndef CONFIG_MENDER_DEVICE_TIER
@@ -362,6 +369,17 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
     if ((NULL != mender_client_config.tenant_token) && (0 == strlen(mender_client_config.tenant_token))) {
         mender_client_config.tenant_token = NULL;
     }
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
+    if ((NULL != config->secondary_tenant_token) && (strlen(config->secondary_tenant_token) > 0)) {
+        mender_client_config.secondary_tenant_token = config->secondary_tenant_token;
+    } else {
+        mender_client_config.secondary_tenant_token = CONFIG_MENDER_SECONDARY_SERVER_TENANT_TOKEN;
+    }
+    if ((NULL == mender_client_config.secondary_tenant_token) || (0 == strlen(mender_client_config.secondary_tenant_token))) {
+        /* Fall back to the primary tenant token */
+        mender_client_config.secondary_tenant_token = mender_client_config.tenant_token;
+    }
+#endif /* !CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE */
     if (0 != config->update_poll_interval) {
         mender_client_config.update_poll_interval = config->update_poll_interval;
     } else {
@@ -404,7 +422,8 @@ mender_client_init(mender_client_config_t *config, mender_client_callbacks_t *ca
         .device_type = mender_client_config.device_type,
         .host        = mender_client_config.host,
 #ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
-        .secondary_host = mender_client_config.secondary_host,
+        .secondary_host         = mender_client_config.secondary_host,
+        .secondary_tenant_token = mender_client_config.secondary_tenant_token,
 #endif
         .tenant_token = mender_client_config.tenant_token,
         .device_tier  = mender_client_config.device_tier,
@@ -584,6 +603,10 @@ mender_client_exit(void) {
     mender_client_config.host                 = NULL;
     mender_client_config.tenant_token         = NULL;
     mender_client_config.update_poll_interval = 0;
+#ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
+    mender_client_config.secondary_host         = NULL;
+    mender_client_config.secondary_tenant_token = NULL;
+#endif /* !CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE */
     DESTROY_AND_NULL(mender_delete_deployment_data, mender_client_deployment_data);
 
     mender_update_module_unregister_all();

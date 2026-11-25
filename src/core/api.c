@@ -67,6 +67,7 @@
 static mender_api_config_t api_config;
 
 static const char *current_host;
+static const char *current_tenant_token;
 
 /**
  * @brief Authentication token
@@ -112,7 +113,8 @@ mender_api_init(mender_api_config_t *config) {
 
     /* Save configuration */
     memcpy(&api_config, config, sizeof(mender_api_config_t));
-    current_host = api_config.host;
+    current_host         = api_config.host;
+    current_tenant_token = api_config.tenant_token;
 
     /* Initializations */
     mender_http_config_t mender_http_config = { .host = api_config.host };
@@ -131,17 +133,19 @@ mender_api_init(mender_api_config_t *config) {
 
 #ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
 /**
- * @brief Swap the primary and secondary host (URLs)
+ * @brief Swap the primary and secondary host (URLs) along with the corresponding tenant tokens
  * @return the old host/URL
  */
 static inline const char *
 swap_primary_secondary_host(void) {
     assert((current_host == api_config.host) || (current_host == api_config.secondary_host));
     if (current_host == api_config.host) {
-        current_host = api_config.secondary_host;
+        current_host         = api_config.secondary_host;
+        current_tenant_token = api_config.secondary_tenant_token;
         return api_config.host;
     } else {
-        current_host = api_config.host;
+        current_host         = api_config.host;
+        current_tenant_token = api_config.tenant_token;
         return api_config.secondary_host;
     }
 }
@@ -265,8 +269,8 @@ perform_authentication(void) {
     }
     cJSON_AddStringToObject(json_payload, "id_data", identity_info);
     cJSON_AddStringToObject(json_payload, "pubkey", public_key_pem);
-    if (NULL != api_config.tenant_token) {
-        cJSON_AddStringToObject(json_payload, "tenant_token", api_config.tenant_token);
+    if (NULL != current_tenant_token) {
+        cJSON_AddStringToObject(json_payload, "tenant_token", current_tenant_token);
     }
     if (NULL != api_config.device_tier) {
         cJSON_AddStringToObject(json_payload, "tier", api_config.device_tier);

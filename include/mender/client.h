@@ -50,6 +50,8 @@ typedef struct {
     const char *host;        /**< URL of the mender server, must be string literal or outlive config */
 #ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
     const char *secondary_host; /**< URL of the secondary/fallback mender server, must be string literal or outlive config */
+    const char *
+        secondary_tenant_token; /**< Tenant token used to authenticate on the secondary/fallback mender server (optional), must be string literal or outlive config */
 #endif
     const char *tenant_token;         /**< Tenant token used to authenticate on the mender server (optional), must be string literal or outlive config */
     const char *device_tier;          /**< Device tier: "standard" or "micro" (optional), must be string literal or a string that outlives the config */

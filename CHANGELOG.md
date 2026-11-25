@@ -1,4 +1,42 @@
 ---
+## 1.2.0 - 2026-11-25
+
+
+### New features
+
+- esp-idf supports backoffs on retries and handles rate-limiting ([MEN-10016](https://northerntech.atlassian.net/browse/MEN-10016)) ([3dccb80](https://github.com/mendersoftware/mender-mcu/commit/3dccb804ff75a8cd73ecbd5813633da02f2f633d)) by @rewanrashid-boop
+- *(esp-idf)* Client now handles 429 headers from server. ([MEN-10030](https://northerntech.atlassian.net/browse/MEN-10030)) ([22b8269](https://github.com/mendersoftware/mender-mcu/commit/22b82699f07e5195ae34504bfa7b11291d255720)) by @rewanrashid-boop
+
+### Bug fixes
+
+- *(ci)* Quote the git extraHeader line to avoid YAML colon-space ambiguity ([86e2de2](https://github.com/mendersoftware/mender-mcu/commit/86e2de20d30baafe7eda1335c332e0a95a8b652d)) by @p-targowicz
+- *(zephyr)* Ignore artifact size limits for on-prem server. ([MEN-9478](https://northerntech.atlassian.net/browse/MEN-9478)) ([906eee0](https://github.com/mendersoftware/mender-mcu/commit/906eee0fffee63c043f4fa355b75f8e08f8d21d2)) by @rewanrashid-boop
+- Fix build errors with glibc >= 2.43 ([3266d79](https://github.com/mendersoftware/mender-mcu/commit/3266d79d5a402995edc8c4c2660d79a00fe26eca)) by @aduskett
+- Skip the rollback reboot states for an update without reboot ([a8be24d](https://github.com/mendersoftware/mender-mcu/commit/a8be24dfc91551543a8b394fc10070d0baae3774)) by @hkenken
+- Report a failed commit of an update without reboot as failure ([f19e7b5](https://github.com/mendersoftware/mender-mcu/commit/f19e7b50d41f265955be9b87b7c44d74ccf21a59)) by @hkenken
+- Store the artifact data after the module has committed ([808ce57](https://github.com/mendersoftware/mender-mcu/commit/808ce57763fce985ff4629eaae1f9de94a2b25d9)) by @hkenken
+- *(zephyr)* Erase the Mender NVS area on Zephyr if it was not initialized by Mender instead of reading garbage from it ([MEN-7530](https://northerntech.atlassian.net/browse/MEN-7530)) ([fbc4865](https://github.com/mendersoftware/mender-mcu/commit/fbc4865a5f564f43d211daf86a8b22e513c59964)) by @rewanrashid-boop
+- Fix deployments looping forever when the maximum state data
+store count is reached right before a reboot. ([MEN-8253](https://northerntech.atlassian.net/browse/MEN-8253)) ([ccdd196](https://github.com/mendersoftware/mender-mcu/commit/ccdd196a530716ab545f40d215e0129d4e323e27)) by @rewanrashid-boop
+- Fail the deployment and run Cleanup when the device restarts
+while downloading the artifact, like the Mender C++ client. ([MEN-8253](https://northerntech.atlassian.net/browse/MEN-8253)) ([148a2b9](https://github.com/mendersoftware/mender-mcu/commit/148a2b963a715488cea32a5c59dd73a497f8ef9c)) by @rewanrashid-boop
+
+### Dependency updates
+
+- *(deps)* Update dependency mendersoftware/mender-artifact to v4.4.2 ([1dbe291](https://github.com/mendersoftware/mender-mcu/commit/1dbe291b61d99b963e08855583f9bc2fa240a9ff)) by @mender-test-bot
+
+---
+### All tickets resolved in this release
+
+| Ticket |
+|---|
+| [MEN-10016](https://northerntech.atlassian.net/browse/MEN-10016) |
+| [MEN-10030](https://northerntech.atlassian.net/browse/MEN-10030) |
+| [MEN-9478](https://northerntech.atlassian.net/browse/MEN-9478) |
+| [MEN-7530](https://northerntech.atlassian.net/browse/MEN-7530) |
+| [MEN-8253](https://northerntech.atlassian.net/browse/MEN-8253) |
+
+
 ## 1.1.0 - 2026-09-01
 
 

@@ -102,6 +102,12 @@ if MENDER_MCU_CLIENT
             help
                 Set the Mender server Tenant Token, to be used with https://hosted.mender.io. Retrieve it from the "Organization and billing" settings of your account.
 
+        config MENDER_SECONDARY_SERVER_TENANT_TOKEN
+            string "Mender server secondary Tenant Token"
+            depends on MENDER_SECONDARY_SERVER_HOST_DISABLE=n
+            help
+                Set the Mender server Tenant Token, to be used with the secondary/fallback URL. If left empty the primary Tenant Token will be used.
+
         choice MENDER_DEVICE_TIER
             prompt "Mender Device Tier"
             default MENDER_DEVICE_TIER_MICRO

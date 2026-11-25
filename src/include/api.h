@@ -36,7 +36,8 @@ typedef struct {
     const char *device_type; /**< Device type */
     const char *host;        /**< URL of the mender server */
 #ifndef CONFIG_MENDER_SECONDARY_SERVER_HOST_DISABLE
-    const char *secondary_host; /**< URL of the secondary/fallback mender server */
+    const char *secondary_host;         /**< URL of the secondary/fallback mender server */
+    const char *secondary_tenant_token; /**< Tenant token used to authenticate on the secondary/fallback mender server (optional) */
 #endif
     const char *tenant_token;                                        /**< Tenant token used to authenticate on the mender server (optional) */
     const char *device_tier;                                         /**< Device tier: "standard" or "micro" */
